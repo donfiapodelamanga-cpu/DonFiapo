@@ -186,7 +186,7 @@ impl DonFiapoIntegration {
         };
         
         // Calcula o saque com APY dinâmico
-        let dynamic_apy = None; // Será obtido do sistema de APY dinâmico em produção
+        let dynamic_apy = None; // Will be obtained from dynamic APY system in production
         let withdrawal = self.staking_manager.calculate_withdrawal(&position, current_time, dynamic_apy)?;
         
         // Atualiza estatísticas
