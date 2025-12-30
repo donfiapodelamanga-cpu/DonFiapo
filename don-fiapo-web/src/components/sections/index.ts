@@ -11,3 +11,4 @@ export { FeeStructureSection } from './fee-structure';
 export { StakingTiersSection } from './staking-tiers';
 export { RewardsSystemSection } from './rewards-system';
 export { SupplyInfoSection } from './supply-info';
+export { NFTEvolutionSection } from './nft-evolution-section';

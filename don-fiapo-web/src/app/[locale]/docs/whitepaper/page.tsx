@@ -73,8 +73,8 @@ export default function WhitepaperPage() {
               </h2>
               <div className="bg-card rounded-xl p-6 border border-border space-y-4">
                 <p className="text-muted-foreground">
-                  Don Fiapo de Manga is a memecoin that combines humor with real utility on the Lunes blockchain. 
-                  Our mission is to create a sustainable ecosystem where community members can earn rewards 
+                  Don Fiapo de Manga is a memecoin that combines humor with real utility on the Lunes blockchain.
+                  Our mission is to create a sustainable ecosystem where community members can earn rewards
                   through staking, NFT mining, and active participation in governance.
                 </p>
                 <p className="text-muted-foreground">
@@ -82,7 +82,7 @@ export default function WhitepaperPage() {
                 </p>
                 <div className="bg-golden/10 border border-golden/30 rounded-lg p-4">
                   <p className="text-golden text-sm italic">
-                    Don Fiapo represents the evolution of memecoins: from pure speculation to genuine utility 
+                    Don Fiapo represents the evolution of memecoins: from pure speculation to genuine utility
                     with transparent tokenomics and community-driven development.
                   </p>
                 </div>
@@ -96,7 +96,7 @@ export default function WhitepaperPage() {
               </h2>
               <div className="bg-card rounded-xl p-6 border border-border space-y-6">
                 <p className="text-muted-foreground">
-                  While most memecoins rely solely on hype and speculation, Don Fiapo delivers a complete 
+                  While most memecoins rely solely on hype and speculation, Don Fiapo delivers a complete
                   ecosystem with real utility, sustainable rewards, and long-term value creation.
                 </p>
 
@@ -197,42 +197,42 @@ export default function WhitepaperPage() {
                     <div className="bg-gradient-to-br from-golden/10 to-yellow-500/5 p-4 rounded-lg border border-golden/30">
                       <h5 className="font-bold text-golden mb-2">💰 Multiple Income Streams</h5>
                       <p className="text-sm text-muted-foreground">
-                        Earn through staking (up to 300% APY), NFT mining, affiliate commissions, 
+                        Earn through staking (up to 300% APY), NFT mining, affiliate commissions,
                         ranking rewards, and lottery prizes - all from a single token.
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/5 p-4 rounded-lg border border-purple-500/30">
                       <h5 className="font-bold text-purple-500 mb-2">🎰 Fair Lottery System</h5>
                       <p className="text-sm text-muted-foreground">
-                        Monthly and annual lotteries exclude large wallets, ensuring fair distribution 
+                        Monthly and annual lotteries exclude large wallets, ensuring fair distribution
                         to regular community members. 5% of fees go to lottery pools.
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-orange-500/10 to-red-500/5 p-4 rounded-lg border border-orange-500/30">
                       <h5 className="font-bold text-orange-500 mb-2">🔥 Deflationary by Design</h5>
                       <p className="text-sm text-muted-foreground">
-                        30% of every transaction fee is burned. Burn-for-Boost feature rewards 
+                        30% of every transaction fee is burned. Burn-for-Boost feature rewards
                         users who actively reduce supply with enhanced APY bonuses.
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 p-4 rounded-lg border border-green-500/30">
                       <h5 className="font-bold text-green-500 mb-2">🛡️ Whale Protection</h5>
                       <p className="text-sm text-muted-foreground">
-                        Top 100 wallets are excluded from monthly rewards ranking, preventing 
+                        Top 100 wallets are excluded from monthly rewards ranking, preventing
                         concentration and ensuring fair rewards for active community members.
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 p-4 rounded-lg border border-blue-500/30">
                       <h5 className="font-bold text-blue-400 mb-2">⛏️ NFT Mining</h5>
                       <p className="text-sm text-muted-foreground">
-                        Unique NFT-based mining system where each NFT mines tokens daily for 112 days. 
+                        Unique NFT-based mining system where each NFT mines tokens daily for 112 days.
                         No other memecoin offers passive income through NFT ownership.
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-cyan-500/10 to-teal-500/5 p-4 rounded-lg border border-cyan-500/30">
                       <h5 className="font-bold text-cyan-400 mb-2">👥 Affiliate Rewards</h5>
                       <p className="text-sm text-muted-foreground">
-                        Earn commissions by referring new users. Multi-level affiliate system 
+                        Earn commissions by referring new users. Multi-level affiliate system
                         with real-time payouts - unprecedented in the memecoin space.
                       </p>
                     </div>
@@ -270,7 +270,7 @@ export default function WhitepaperPage() {
                     <p className="text-2xl font-bold">8</p>
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-bold mb-3">Token Distribution</h4>
                   <div className="grid md:grid-cols-2 gap-3">
@@ -307,7 +307,7 @@ export default function WhitepaperPage() {
                     <h4 className="font-bold text-orange-500">Burn Wallet</h4>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    A dedicated burn wallet receives and permanently removes tokens from circulation, 
+                    A dedicated burn wallet receives and permanently removes tokens from circulation,
                     creating deflationary pressure over time.
                   </p>
                 </div>
@@ -408,7 +408,7 @@ export default function WhitepaperPage() {
               </h2>
               <div className="bg-card rounded-xl p-6 border border-border space-y-6">
                 <p className="text-muted-foreground">Three unique staking pools with different strategies and reward mechanisms:</p>
-                
+
                 {/* Staking Pools */}
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-lg p-4 border border-orange-500/30">
@@ -461,8 +461,8 @@ export default function WhitepaperPage() {
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
                     <p className="text-sm text-muted-foreground">
-                      <strong className="text-green-500">First Year Bonus:</strong> During the first year, we will try to pay the best possible 
-                      subsidizing the fund, but for members (wallets) who engage in burning tokens, 
+                      <strong className="text-green-500">First Year Bonus:</strong> During the first year, we will try to pay the best possible
+                      subsidizing the fund, but for members (wallets) who engage in burning tokens,
                       priority will be given for enhanced rewards.
                     </p>
                   </div>
@@ -526,8 +526,8 @@ export default function WhitepaperPage() {
                 <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
                   <h4 className="font-bold text-purple-500 mb-2">🙏 &quot;God Looked at You&quot; - Monthly Lottery</h4>
                   <p className="text-sm text-muted-foreground">
-                    A random draw held at a random day and time each month. 5% of all fees in $FIAPO and LUSDT 
-                    from the month&apos;s ecosystem are raffled to a wallet, <strong>excluding large wallets</strong> 
+                    A random draw held at a random day and time each month. 5% of all fees in $FIAPO and LUSDT
+                    from the month&apos;s ecosystem are raffled to a wallet, <strong>excluding large wallets</strong>
                     to ensure fair distribution among regular participants.
                   </p>
                 </div>
@@ -536,8 +536,8 @@ export default function WhitepaperPage() {
                 <div className="bg-gradient-to-r from-red-500/10 to-green-500/10 border border-red-500/30 rounded-lg p-4">
                   <h4 className="font-bold text-red-500 mb-2">🎄 &quot;God Looked at You&quot; - Christmas Lottery</h4>
                   <p className="text-sm text-muted-foreground">
-                    A special annual Christmas raffle with 5% of all fees accumulated throughout the year in 
-                    $FIAPO and LUSDT from the ecosystem. The prize is raffled to a wallet, 
+                    A special annual Christmas raffle with 5% of all fees accumulated throughout the year in
+                    $FIAPO and LUSDT from the ecosystem. The prize is raffled to a wallet,
                     <strong> excluding large wallets</strong> to maintain fairness.
                   </p>
                 </div>
@@ -546,7 +546,7 @@ export default function WhitepaperPage() {
                 <div className="bg-golden/10 border border-golden/30 rounded-lg p-4">
                   <h4 className="font-bold text-golden mb-2">🏆 Top 7 Monthly Rewards</h4>
                   <p className="text-sm text-muted-foreground">
-                    The top 7 wallets by balance (excluding top 100 whales) receive 20% of the staking fund 
+                    The top 7 wallets by balance (excluding top 100 whales) receive 20% of the staking fund
                     distributed equally every month. This ensures active community members are rewarded fairly.
                   </p>
                 </div>
@@ -559,7 +559,7 @@ export default function WhitepaperPage() {
               </h2>
               <div className="bg-card rounded-xl p-6 border border-border space-y-4">
                 <p className="text-muted-foreground">
-                  Royal NFTs are PSP-34 tokens that mine $FIAPO daily for 112 days.
+                  Royal NFTs are PSP-34 tokens that mine $FIAPO daily. Each tier offers different mining rates and prices.
                 </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -568,19 +568,60 @@ export default function WhitepaperPage() {
                         <th className="text-left py-2">Tier</th>
                         <th className="text-right py-2">Price</th>
                         <th className="text-right py-2">Daily Mining</th>
-                        <th className="text-right py-2">Total (112 days)</th>
+                        <th className="text-right py-2">Monthly</th>
                       </tr>
                     </thead>
                     <tbody className="text-muted-foreground">
-                      <tr><td className="py-2">Free</td><td className="text-right">$0</td><td className="text-right">100</td><td className="text-right text-golden">11,200</td></tr>
-                      <tr><td className="py-2">Bronze</td><td className="text-right">$10</td><td className="text-right">500</td><td className="text-right text-golden">56,000</td></tr>
-                      <tr><td className="py-2">Silver</td><td className="text-right">$30</td><td className="text-right">1,500</td><td className="text-right text-golden">168,000</td></tr>
-                      <tr><td className="py-2">Gold</td><td className="text-right">$55</td><td className="text-right">3,000</td><td className="text-right text-golden">336,000</td></tr>
-                      <tr><td className="py-2">Platinum</td><td className="text-right">$100</td><td className="text-right">6,000</td><td className="text-right text-golden">672,000</td></tr>
-                      <tr><td className="py-2">Diamond</td><td className="text-right">$250</td><td className="text-right">15,000</td><td className="text-right text-golden">1,680,000</td></tr>
-                      <tr><td className="py-2">Royal</td><td className="text-right">$500</td><td className="text-right">35,000</td><td className="text-right text-golden">3,920,000</td></tr>
+                      <tr><td className="py-2">Free Peasant</td><td className="text-right">$0</td><td className="text-right">5</td><td className="text-right text-golden">150</td></tr>
+                      <tr><td className="py-2">Bronze Miner</td><td className="text-right">$10</td><td className="text-right">50</td><td className="text-right text-golden">1,500</td></tr>
+                      <tr><td className="py-2">Silver Excavator</td><td className="text-right">$30</td><td className="text-right">150</td><td className="text-right text-golden">4,500</td></tr>
+                      <tr><td className="py-2">Gold Prospector</td><td className="text-right">$55</td><td className="text-right">300</td><td className="text-right text-golden">9,000</td></tr>
+                      <tr><td className="py-2">Platinum Tycoon</td><td className="text-right">$100</td><td className="text-right">500</td><td className="text-right text-golden">15,000</td></tr>
+                      <tr><td className="py-2">Diamond Baron</td><td className="text-right">$250</td><td className="text-right">1,200</td><td className="text-right text-golden">36,000</td></tr>
+                      <tr><td className="py-2">Royal Crown</td><td className="text-right">$500</td><td className="text-right">2,500</td><td className="text-right text-golden">75,000</td></tr>
                     </tbody>
                   </table>
+                </div>
+
+                {/* NFT Evolution Section */}
+                <div className="mt-6 pt-6 border-t border-border">
+                  <h3 className="text-xl font-bold text-orange-500 flex items-center gap-2 mb-4">
+                    <Flame className="w-5 h-5" /> NFT Evolution System
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Don Fiapo features a unique <strong className="text-golden">deflationary NFT evolution</strong> system
+                    that allows holders to burn multiple NFTs to create a higher-tier NFT with permanent mining bonuses.
+                  </p>
+
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                      <h4 className="font-bold text-orange-500 mb-2">🔥 How It Works</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Burn <strong>2+ NFTs</strong> of the same tier</li>
+                        <li>• Receive <strong>1 NFT</strong> of the next tier</li>
+                        <li>• Gain <strong>+10% permanent mining bonus</strong></li>
+                        <li>• Bonus is <strong>cumulative</strong> (up to +50%)</li>
+                      </ul>
+                    </div>
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                      <h4 className="font-bold text-green-500 mb-2">📈 Deflationary Impact</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• 2 NFTs burned → 1 NFT created = <strong>-1 NFT</strong></li>
+                        <li>• Permanent supply reduction</li>
+                        <li>• Increased scarcity over time</li>
+                        <li>• Projected <strong>-70% NFT supply</strong> in Year 1</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="bg-golden/10 border border-golden/30 rounded-lg p-4">
+                    <h4 className="font-bold text-golden mb-2">💰 Evolution Bonus Example</h4>
+                    <p className="text-sm text-muted-foreground">
+                      A Royal Crown NFT with <strong>3 evolutions</strong>:<br />
+                      Base mining: 2,500 FIAPO/day → After bonus: <strong className="text-green-400">3,250 FIAPO/day (+30%)</strong><br />
+                      Extra yearly: <strong>+273,750 FIAPO</strong> compared to non-evolved NFT.
+                    </p>
+                  </div>
                 </div>
               </div>
             </section>
@@ -608,7 +649,7 @@ export default function WhitepaperPage() {
               </h2>
               <div className="bg-card rounded-xl p-6 border border-border space-y-4">
                 <p className="text-muted-foreground">
-                  The Don Fiapo team consists of experienced blockchain developers and community builders 
+                  The Don Fiapo team consists of experienced blockchain developers and community builders
                   committed to long-term project success.
                 </p>
                 <h4 className="font-bold mt-4">Roadmap Highlights</h4>

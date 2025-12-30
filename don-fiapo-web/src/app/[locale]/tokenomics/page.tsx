@@ -5,13 +5,14 @@ import { TrendingDown, Lock, Users, Flame, TrendingUp, Shield, Zap } from 'lucid
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export default function TokenomicsPage() {
+    // Data aligned with Whitepaper (source of truth)
     const supplyData = [
-        { label: 'Public Sale (ICO)', percent: 40, tokens: '400M', color: 'bg-blue-500' },
-        { label: 'Staking Rewards', percent: 25, tokens: '250M', color: 'bg-green-500' },
-        { label: 'Team & Advisors', percent: 15, tokens: '150M', color: 'bg-purple-500' },
-        { label: 'Treasury (DAO)', percent: 10, tokens: '100M', color: 'bg-yellow-500' },
-        { label: 'Liquidity Pool', percent: 5, tokens: '50M', color: 'bg-cyan-500' },
-        { label: 'Airdrop & Affiliate', percent: 5, tokens: '50M', color: 'bg-pink-500' },
+        { label: 'Staking Fund', percent: 80, tokens: '240Bi', color: 'bg-golden' },
+        { label: 'Airdrop', percent: 7, tokens: '21Bi', color: 'bg-pink-500' },
+        { label: 'Marketing', percent: 5, tokens: '15Bi', color: 'bg-cyan-500' },
+        { label: 'Charity Donations', percent: 5, tokens: '15Bi', color: 'bg-green-500' },
+        { label: 'IEO/ICO', percent: 2, tokens: '6Bi', color: 'bg-blue-500' },
+        { label: 'Team', percent: 1, tokens: '3Bi', color: 'bg-purple-500' },
     ];
 
     const deflationaryMechanisms = [
@@ -25,8 +26,8 @@ export default function TokenomicsPage() {
         {
             icon: TrendingDown,
             title: 'Transaction Fees',
-            description: '3% fee on all transfers',
-            breakdown: '1% Burn • 1% Staking • 1% Treasury',
+            description: '0.6% fee on all transfers',
+            breakdown: '30% Burn • 50% Staking • 20% Rewards',
             color: 'text-red-500'
         },
         {
@@ -39,19 +40,30 @@ export default function TokenomicsPage() {
     ];
 
     const metrics = [
-        { label: 'Total Supply', value: '1,000,000,000', suffix: 'FIAPO' },
-        { label: 'Target Min Supply', value: '100,000,000', suffix: 'FIAPO', subtext: '90% burn goal' },
+        { label: 'Max Supply', value: '300', suffix: 'Billion FIAPO' },
+        { label: 'Initial Supply', value: '100', suffix: 'Million FIAPO' },
         { label: 'Decimals', value: '8', suffix: '' },
-        { label: 'Max Staking APY', value: '15', suffix: '%' },
-        { label: 'Max NFT Mining', value: '7,000', suffix: 'FIAPO/day' },
+        { label: 'Max Staking APY', value: '300', suffix: '%' },
+        { label: 'Max NFT Mining', value: '2,500', suffix: 'FIAPO/day' },
         { label: 'Affiliate Commission', value: '10', suffix: '%' },
+    ];
+
+    // NFT Tiers with correct contract data
+    const nftTiers = [
+        { id: 0, name: 'Free Peasant', price: '$0', daily: '5' },
+        { id: 1, name: 'Bronze Miner', price: '$10', daily: '50' },
+        { id: 2, name: 'Silver Excavator', price: '$30', daily: '150' },
+        { id: 3, name: 'Gold Prospector', price: '$55', daily: '300' },
+        { id: 4, name: 'Platinum Tycoon', price: '$100', daily: '500' },
+        { id: 5, name: 'Diamond Baron', price: '$250', daily: '1,200' },
+        { id: 6, name: 'Royal Crown', price: '$500', daily: '2,500' },
     ];
 
     const utilityFeatures = [
         {
             icon: Zap,
             title: 'NFT Mining',
-            description: 'NFTs generate daily FIAPO based on tier (5-7,000/day)',
+            description: 'NFTs generate daily FIAPO based on tier (5-2,500/day)',
             benefit: 'Passive income stream'
         },
         {
@@ -188,6 +200,52 @@ export default function TokenomicsPage() {
                                 </CardContent>
                             </Card>
                         </div>
+                    </div>
+                </motion.section>
+
+                {/* NFT Tiers Table */}
+                <motion.section
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="mb-16"
+                >
+                    <h2 className="text-3xl font-bold text-golden mb-2 text-center">⛏️ NFT Mining Tiers</h2>
+                    <p className="text-center text-muted-foreground mb-8">
+                        Each NFT tier provides different daily mining rewards
+                    </p>
+
+                    <div className="max-w-4xl mx-auto">
+                        <Card className="bg-card/50 backdrop-blur border-golden/20 overflow-x-auto">
+                            <CardContent className="pt-6">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-golden/20">
+                                            <th className="text-left py-3 px-4">Tier</th>
+                                            <th className="text-left py-3 px-4">Name</th>
+                                            <th className="text-right py-3 px-4">Price</th>
+                                            <th className="text-right py-3 px-4 text-golden">Daily Mining</th>
+                                            <th className="text-right py-3 px-4 text-green-400">Monthly</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {nftTiers.map((tier) => (
+                                            <tr key={tier.id} className="border-b border-golden/10 hover:bg-golden/5">
+                                                <td className="py-3 px-4 font-bold text-golden">{tier.id}</td>
+                                                <td className="py-3 px-4">{tier.name}</td>
+                                                <td className="py-3 px-4 text-right">{tier.price}</td>
+                                                <td className="py-3 px-4 text-right font-bold text-golden">
+                                                    {tier.daily} FIAPO
+                                                </td>
+                                                <td className="py-3 px-4 text-right text-green-400">
+                                                    {(parseInt(tier.daily.replace(',', '')) * 30).toLocaleString()} FIAPO
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </CardContent>
+                        </Card>
                     </div>
                 </motion.section>
 
