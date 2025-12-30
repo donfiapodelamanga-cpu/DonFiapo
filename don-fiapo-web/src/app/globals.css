@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+/* Don Fiapo Royal Theme - Power, Elegance, Silence */
+:root {
+  /* Core Colors - Premium Don Fiapo Palette */
+  --background: #14110E;
+  /* Preto carvão (background principal) */
+  --foreground: #EFE4C8;
+  /* Bege quente (textos longos) */
+
+  --card: #2B1E14;
+  /* Marrom café escuro (cards/seções) */
+  --card-foreground: #EFE4C8;
+
+  --popover: #2B1E14;
+  --popover-foreground: #EFE4C8;
+
+  --primary: #C9A65B;
+  /* Dourado profundo (Botões/CTA) */
+  --primary-foreground: #14110E;
+
+  --secondary: #2B1E14;
+  /* Para elementos secundários */
+  --secondary-foreground: #C9A65B;
+  /* Dourado profundo para texto secundário */
+
+  --muted: #1A1612;
+  /* Levemente mais claro que o fundo */
+  --muted-foreground: #B89E6A;
+  /* Areia escura (ícones/divisórias/texto muted) */
+
+  --accent: #C9A65B;
+  --accent-foreground: #14110E;
+
+  --destructive: #8B0000;
+  --destructive-foreground: #EFE4C8;
+
+  --border: #3A2A1C;
+  /* Borda sutil */
+  --input: #3A2A1C;
+  --ring: #C9A65B;
+  /* Dourado profundo para foco */
+
+  /* Custom Brand Colors */
+  --golden: #E2C48A;
+  /* Dourado envelhecido (Títulos) */
+  --golden-deep: #C9A65B;
+  /* Dourado profundo (Hover/CTA) */
+  --cream: #EFE4C8;
+  /* Bege quente */
+  --sand: #B89E6A;
+  /* Areia escura */
+
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-golden: var(--golden);
+  --color-golden-deep: var(--golden-deep);
+  --color-cream: var(--cream);
+  --color-sand: var(--sand);
+  --font-sans: var(--font-montserrat), system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+/* Typography Overrides */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--golden);
+  /* Dourado envelhecido para títulos */
+}
+
+/* Premium Gradient - Aged Gold to Deep Gold */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #E2C48A 0%, #C9A65B 50%, #E2C48A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Royal Glow - Subtle and Elegant */
+.glow-gold {
+  box-shadow: 0 0 20px rgba(201, 166, 91, 0.2), 0 0 40px rgba(201, 166, 91, 0.05);
+}
+
+/* Button & Interactive States */
+.btn-primary:hover {
+  background-color: var(--golden);
+  /* #E2C48A on hover */
+}
+
+/* Card Improvements */
+.card-hover {
+  transition: all 0.4s ease-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(11, 9, 7, 0.4);
+  /* Sombra preta absoluta suave */
+  border-color: var(--golden-deep);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--golden-deep);
+}
+
+/* Selection */
+::selection {
+  background: var(--golden-deep);
+  color: var(--background);
+}
+
+/* Animations */
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-in {
+  animation: animateIn 0.2s ease-out;
+}
+
+.slide-in-from-top {
+  animation: slideInFromTop 0.2s ease-out;
+}
+
+@keyframes animateIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
