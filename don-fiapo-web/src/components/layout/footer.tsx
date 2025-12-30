@@ -35,7 +35,7 @@ export function Footer() {
             <p className="text-muted-foreground italic mb-6">
               &ldquo;{t("tagline")}&rdquo;
             </p>
-            
+
             {/* Social Links */}
             <div className="flex gap-3">
               {socialLinks.map((social) => (
@@ -102,6 +102,16 @@ export function Footer() {
               <li>
                 <Link href="/governance" className="text-muted-foreground hover:text-golden transition-colors">
                   Governance
+                </Link>
+              </li>
+              <li>
+                <Link href="/simulations" className="text-muted-foreground hover:text-golden transition-colors">
+                  Simulations
+                </Link>
+              </li>
+              <li>
+                <Link href="/tokenomics" className="text-muted-foreground hover:text-golden transition-colors">
+                  Tokenomics
                 </Link>
               </li>
             </ul>

@@ -1,0 +1,20 @@
+{
+  "metadata": { "title": "Don Fiapo Dela Manga - 迷因币之王", "description": "他不吠叫——他颁布法令。区块链现在有了君主制。加入王朝。" },
+  "nav": { "home": "首页", "ico": "ICO/NFT", "staking": "质押", "airdrop": "空投", "affiliate": "推广", "governance": "治理", "ranking": "排名", "wallet": "钱包", "docs": "文档", "connectWallet": "连接钱包", "disconnect": "断开连接" },
+  "hero": { "badge": "去中心化幽默之王", "title": "Don Fiapo Dela Manga", "subtitle": "迷因币之王", "description": "他不吠叫——他颁布法令。区块链现在有了君主制。加入王朝。", "cta": { "buy": "立即购买 $FIAPO", "whitepaper": "阅读皇家白皮书", "telegram": "加入Fiapeiros骑士团", "airdrop": "领取皇家空投" } },
+  "legend": { "title": "Don Fiapo的传说", "subtitle": "流浪狗成为陛下的故事。", "description": "在区块链被遗忘的巷子里，一只流浪狗发现了一个金色的芒果。他没有吃掉它——他颁布了法令。Don Fiapo是去中心化的像素皇族。" },
+  "tokenomics": { "title": "皇家代币经济学", "subtitle": "Fiapo王国的皇家国库", "totalSupply": "总供应量", "symbol": "符号", "distribution": "分配", "staking": "骑兵团", "airdrop": "骑士团", "marketing": "皇家国库", "liquidity": "流动性", "team": "团队", "note": "每笔交易都是贡品。每个持有者都是贵族。每个迷因都是法令。" },
+  "order": { "title": "Fiapeiros骑士团", "subtitle": "向Don宣誓效忠。获得王国的荣耀。", "description": "持有$FIAPO，您就加入了Fiapeiros骑士团——去中心化幽默的捍卫者。", "cta": "加入骑士团" },
+  "roadmap": { "title": "皇家路线图", "subtitle": "通往荣耀的皇家之路", "phase1": { "title": "第一阶段 — 加冕典礼", "items": ["代币发布", "网站", "白皮书", "迷因"] }, "phase2": { "title": "第二阶段 — 王国征服", "items": ["空投", "DEX上市", "活动"] }, "phase3": { "title": "第三阶段 — 迷因帝国", "items": ["游戏化质押", "NFT", "$OSSIN"] }, "phase4": { "title": "第四阶段 — 全球统治", "items": ["周边", "游戏", "合作"] } },
+  "comparison": { "title": "Don Fiapo和被击败的狗群宫廷", "subtitle": "当其他狗在吠叫时……Don Fiapo在统治。", "quote": "当其他人满足于月亮时，我要求王座。", "author": "— Don Fiapo，皇家流浪狗", "cta": "展示你的忠诚。立即购买$FIAPO。" },
+  "rewards": { "title": "奖励、抽奖和任务", "subtitle": "成为贵族有回报。", "staking": "质押 + 头衔", "leaderboard": "排行榜", "missions": "每周任务", "monthly": "月度奖", "christmas": "皇家圣诞节", "ctaMissions": "查看任务", "ctaLeaderboard": "查看排行榜" },
+  "cta": { "title": "选择你的阵营", "subtitle": "要么你是FUD平民，要么你是皇家Fiapeiro。", "buy": "购买 $FIAPO", "whitepaper": "下载白皮书", "telegram": "加入社区", "social": "关注Don" },
+  "footer": { "tagline": "Don Fiapo Dela Manga是一个迷因，但它是认真的。", "links": { "whitepaper": "白皮书", "faq": "常见问题", "contract": "合约", "contact": "联系" }, "copyright": "© 2025 Don Fiapo Dela Manga. 保留所有权利。" },
+  "staking": { "title": "皇家质押", "subtitle": "质押$FIAPO，获得皇家奖励", "donBurn": { "title": "Don Burn", "description": "燃烧代币，赚取更多。", "apy": "10% APY", "frequency": "每日奖励" }, "donLunes": { "title": "Don Lunes", "description": "Lunes网络驱动。", "apy": "6% APY", "frequency": "每周奖励" }, "donFiapo": { "title": "Don Fiapo", "description": "皇家池。", "apy": "7% APY", "frequency": "每月奖励" }, "stake": "质押", "unstake": "取消质押", "claim": "领取奖励", "myPositions": "我的仓位", "totalStaked": "总质押量", "rewardsEarned": "已获奖励", "nextPayout": "下次发放" },
+  "ico": { "title": "皇家NFT系列", "subtitle": "在王国铸造你的位置", "free": "免费NFT", "tier2": "等级2 - $10", "tier3": "等级3 - $30", "tier4": "等级4 - $55", "tier5": "等级5 - $100", "tier6": "等级6 - $250", "tier7": "等级7 - $500", "mint": "铸造NFT", "myNfts": "我的NFT", "mining": "挖矿面板", "tokensMined": "已挖代币", "daysRemaining": "剩余天数", "claimTokens": "领取代币" },
+  "airdrop": { "title": "皇家空投", "subtitle": "领取你的份额", "eligible": "您有资格！", "notEligible": "暂无资格", "claim": "领取空投", "claimed": "已领取", "amount": "可用数量", "status": "分发状态" },
+  "wallet": { "title": "皇家钱包", "connect": "连接钱包", "selectWallet": "选择钱包", "balance": "余额", "transactions": "交易", "transfer": "转账", "send": "发送", "receive": "接收", "history": "交易历史" },
+  "ranking": { "title": "皇家排名", "subtitle": "王国最伟大的贵族" },
+  "affiliate": { "title": "推广计划", "subtitle": "邀请朋友并获得皇家奖励", "referralLink": "您的推荐链接", "howItWorks": "如何运作" },
+  "common": { "loading": "加载中...", "error": "发生错误", "success": "成功！", "confirm": "确认", "cancel": "取消", "back": "返回", "next": "下一步", "submit": "提交", "connect": "连接", "viewMore": "查看更多", "seeAll": "查看全部" }
+}

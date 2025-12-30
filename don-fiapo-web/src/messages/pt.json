@@ -1,0 +1,203 @@
+{
+  "metadata": {
+    "title": "Don Fiapo Dela Manga - O Alfa dos Memecoins",
+    "description": "Ele não late — ele decreta. A blockchain agora tem uma monarquia. Junte-se ao reinado."
+  },
+  "nav": {
+    "home": "Início",
+    "ico": "ICO/NFTs",
+    "staking": "Staking",
+    "simulations": "Simulações",
+    "tokenomics": "Economia",
+    "airdrop": "Airdrop",
+    "affiliate": "Afiliados",
+    "governance": "Governança",
+    "ranking": "Ranking",
+    "wallet": "Carteira",
+    "docs": "Docs",
+    "connectWallet": "Conectar Carteira",
+    "disconnect": "Desconectar"
+  },
+  "hero": {
+    "badge": "O Rei da Zoeira Descentralizada",
+    "title": "Don Fiapo Dela Manga",
+    "subtitle": "O Alfa dos Memecoins",
+    "description": "Ele não late — ele decreta. A blockchain agora tem uma monarquia. Junte-se ao reinado.",
+    "cta": {
+      "buy": "Compre $FIAPO Agora",
+      "whitepaper": "Leia o Whitepaper Real",
+      "telegram": "Junte-se à Ordem dos Fiapeiros",
+      "airdrop": "Pegue seu Airdrop Realengo"
+    }
+  },
+  "legend": {
+    "title": "A Lenda do Don Fiapo",
+    "subtitle": "A história do vira-lata que virou majestade.",
+    "description": "Nas quebradas esquecidas da blockchain, um vira-lata encontrou uma manga dourada. Ele não a comeu — ele a decretou. Don Fiapo é a realeza pixelada da descentralização."
+  },
+  "tokenomics": {
+    "title": "Tokenomics da Realeza",
+    "subtitle": "O Tesouro Real do Reino de Fiapo",
+    "totalSupply": "Supply Total",
+    "symbol": "Símbolo",
+    "distribution": "Distribuição",
+    "staking": "Cavalaria (Recompensas de Staking)",
+    "airdrop": "Ordem dos Fiapeiros (Airdrop)",
+    "marketing": "Tesouro Real (Marketing)",
+    "liquidity": "Liquidez + LP Locked",
+    "team": "Time e Mint Inicial",
+    "note": "Cada transação é um tributo. Cada holder, um nobre. Cada meme, um decreto."
+  },
+  "order": {
+    "title": "A Ordem dos Fiapeiros",
+    "subtitle": "Jure Lealdade ao Don. Receba as Glórias do Reino.",
+    "description": "Ao segurar $FIAPO, você entra na Ordem dos Fiapeiros — defensores do humor descentralizado. Você recebe: Airdrops, Missões, Loot boxes, Stickers e NFTs.",
+    "cta": "Entrar para a Ordem"
+  },
+  "roadmap": {
+    "title": "Roadmap Realengo",
+    "subtitle": "O Caminho Real da Glória",
+    "phase1": {
+      "title": "Fase 1 — A Coroação",
+      "items": ["Lançamento do Token", "Site", "Whitepaper", "Memes"]
+    },
+    "phase2": {
+      "title": "Fase 2 — Conquista do Reino",
+      "items": ["Airdrops", "Listagens DEX", "Campanha \"De Fiapo a Rei\""]
+    },
+    "phase3": {
+      "title": "Fase 3 — O Império dos Memes",
+      "items": ["Staking gamificado", "NFTs", "Token $OSSIN"]
+    },
+    "phase4": {
+      "title": "Fase 4 — Dominação Global",
+      "items": ["Merch", "Game \"Corrida Real do Fiapo\"", "Parcerias"]
+    }
+  },
+  "comparison": {
+    "title": "Don Fiapo e a Corte dos Cães Derrotados",
+    "subtitle": "Enquanto os outros latem… Don Fiapo governa.",
+    "quote": "\"Enquanto os outros se contentam com lua, eu exijo trono.\"",
+    "author": "— Don Fiapo, o Vira-Lata Real",
+    "cta": "Mostre sua lealdade. Compre $FIAPO agora."
+  },
+  "rewards": {
+    "title": "Recompensas, Sorteios e Missões",
+    "subtitle": "Ser Nobre Dá Recompensa. Literalmente.",
+    "staking": "Staking + Títulos",
+    "leaderboard": "Leaderboard",
+    "missions": "Missões Semanais",
+    "monthly": "\"Deus Olhou Pra Você\" Mensal",
+    "christmas": "Natal Realengo",
+    "ctaMissions": "Ver Missões da Corte",
+    "ctaLeaderboard": "Consultar Leaderboard"
+  },
+  "cta": {
+    "title": "Escolha seu Lado",
+    "subtitle": "Ou você é um plebeu do FUD, ou é um Fiapeiro Real.",
+    "buy": "Comprar $FIAPO",
+    "whitepaper": "Baixar Whitepaper",
+    "telegram": "Entrar no Telegram/Discord",
+    "social": "Seguir o Don"
+  },
+  "footer": {
+    "tagline": "Don Fiapo Dela Manga é um meme, mas é sério.",
+    "links": {
+      "whitepaper": "Whitepaper",
+      "faq": "FAQ",
+      "contract": "Contrato Lunes",
+      "contact": "Contato da Corte"
+    },
+    "copyright": "© 2025 Don Fiapo Dela Manga. Todos os direitos reservados."
+  },
+  "staking": {
+    "title": "Staking Real",
+    "subtitle": "Faça staking do seu $FIAPO e ganhe recompensas dignas da realeza",
+    "donBurn": {
+      "title": "Don Burn",
+      "description": "Queime tokens, ganhe mais. A chama eterna do reino.",
+      "apy": "10% APY",
+      "frequency": "Recompensas diárias"
+    },
+    "donLunes": {
+      "title": "Don Lunes",
+      "description": "Movido pela rede Lunes. Estabilidade para os nobres.",
+      "apy": "6% APY",
+      "frequency": "Recompensas semanais"
+    },
+    "donFiapo": {
+      "title": "Don Fiapo",
+      "description": "O pool real. Máximo prestígio para holders leais.",
+      "apy": "7% APY",
+      "frequency": "Recompensas mensais"
+    },
+    "stake": "Fazer Staking",
+    "unstake": "Retirar Staking",
+    "claim": "Resgatar Recompensas",
+    "myPositions": "Minhas Posições",
+    "totalStaked": "Total em Staking",
+    "rewardsEarned": "Recompensas Ganhas",
+    "nextPayout": "Próximo Pagamento"
+  },
+  "ico": {
+    "title": "Coleção Real de NFTs",
+    "subtitle": "Minte seu lugar no Reino",
+    "free": "NFT Grátis",
+    "tier2": "Tier 2 - $10",
+    "tier3": "Tier 3 - $30",
+    "tier4": "Tier 4 - $55",
+    "tier5": "Tier 5 - $100",
+    "tier6": "Tier 6 - $250",
+    "tier7": "Tier 7 - $500",
+    "mint": "Mintar NFT",
+    "myNfts": "Meus NFTs",
+    "mining": "Dashboard de Mineração",
+    "tokensMined": "Tokens Minerados",
+    "daysRemaining": "Dias Restantes",
+    "claimTokens": "Resgatar Tokens"
+  },
+  "airdrop": {
+    "title": "Airdrop Realengo",
+    "subtitle": "Resgate sua parte do reino",
+    "eligible": "Você é elegível!",
+    "notEligible": "Ainda não elegível",
+    "claim": "Resgatar Airdrop",
+    "claimed": "Já Resgatado",
+    "amount": "Quantidade Disponível",
+    "status": "Status da Distribuição"
+  },
+  "wallet": {
+    "title": "Carteira Real",
+    "connect": "Conectar Carteira",
+    "selectWallet": "Selecione uma carteira",
+    "balance": "Saldo",
+    "transactions": "Transações",
+    "transfer": "Transferir",
+    "send": "Enviar",
+    "receive": "Receber",
+    "history": "Histórico de Transações"
+  },
+  "ranking": {
+    "title": "Ranking Real",
+    "subtitle": "Os maiores nobres do reino"
+  },
+  "affiliate": {
+    "title": "Programa de Afiliados",
+    "subtitle": "Convide amigos e ganhe recompensas reais",
+    "referralLink": "Seu Link de Indicação",
+    "howItWorks": "Como Funciona"
+  },
+  "common": {
+    "loading": "Carregando...",
+    "error": "Ocorreu um erro",
+    "success": "Sucesso!",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "submit": "Enviar",
+    "connect": "Conectar",
+    "viewMore": "Ver Mais",
+    "seeAll": "Ver Todos"
+  }
+}

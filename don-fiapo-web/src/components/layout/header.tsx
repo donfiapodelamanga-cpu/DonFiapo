@@ -11,6 +11,8 @@ const navItems = [
   { href: "/", key: "home" },
   { href: "/ico", key: "ico" },
   { href: "/staking", key: "staking" },
+  { href: "/simulations", key: "simulations" },
+  { href: "/tokenomics", key: "tokenomics" },
   { href: "/airdrop", key: "airdrop" },
   { href: "/affiliate", key: "affiliate" },
   { href: "/ranking", key: "ranking" },

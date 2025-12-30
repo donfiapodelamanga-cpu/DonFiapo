@@ -1,0 +1,201 @@
+{
+  "metadata": {
+    "title": "Don Fiapo Dela Manga - L'Alpha des Memecoins",
+    "description": "Il n'aboie pas — il décrète. La blockchain a maintenant une monarchie. Rejoignez le règne."
+  },
+  "nav": {
+    "home": "Accueil",
+    "ico": "ICO/NFTs",
+    "staking": "Staking",
+    "airdrop": "Airdrop",
+    "affiliate": "Affiliés",
+    "governance": "Gouvernance",
+    "ranking": "Classement",
+    "wallet": "Portefeuille",
+    "docs": "Docs",
+    "connectWallet": "Connecter Portefeuille",
+    "disconnect": "Déconnecter"
+  },
+  "hero": {
+    "badge": "Le Roi de l'Humour Décentralisé",
+    "title": "Don Fiapo Dela Manga",
+    "subtitle": "L'Alpha des Memecoins",
+    "description": "Il n'aboie pas — il décrète. La blockchain a maintenant une monarchie. Rejoignez le règne.",
+    "cta": {
+      "buy": "Acheter $FIAPO Maintenant",
+      "whitepaper": "Lire le Whitepaper Royal",
+      "telegram": "Rejoindre l'Ordre des Fiapeiros",
+      "airdrop": "Réclamez votre Airdrop Royal"
+    }
+  },
+  "legend": {
+    "title": "La Légende du Don Fiapo",
+    "subtitle": "L'histoire du chien errant devenu majesté.",
+    "description": "Dans les ruelles oubliées de la blockchain, un chien errant a trouvé une mangue dorée. Il ne l'a pas mangée — il l'a décrétée. Don Fiapo est la royauté pixelisée de la décentralisation."
+  },
+  "tokenomics": {
+    "title": "Tokenomics Royal",
+    "subtitle": "Le Trésor Royal du Royaume de Fiapo",
+    "totalSupply": "Offre Totale",
+    "symbol": "Symbole",
+    "distribution": "Distribution",
+    "staking": "Cavalerie (Récompenses de Staking)",
+    "airdrop": "Ordre des Fiapeiros (Airdrop)",
+    "marketing": "Trésor Royal (Marketing)",
+    "liquidity": "Liquidité + LP Verrouillé",
+    "team": "Équipe et Mint Initial",
+    "note": "Chaque transaction est un tribut. Chaque détenteur, un noble. Chaque mème, un décret."
+  },
+  "order": {
+    "title": "L'Ordre des Fiapeiros",
+    "subtitle": "Jurez Fidélité au Don. Recevez les Gloires du Royaume.",
+    "description": "En détenant $FIAPO, vous rejoignez l'Ordre des Fiapeiros — défenseurs de l'humour décentralisé. Vous recevez: Airdrops, Missions, Coffres, Stickers et NFTs.",
+    "cta": "Rejoindre l'Ordre"
+  },
+  "roadmap": {
+    "title": "Feuille de Route Royale",
+    "subtitle": "Le Chemin Royal vers la Gloire",
+    "phase1": {
+      "title": "Phase 1 — Le Couronnement",
+      "items": ["Lancement du Token", "Site Web", "Whitepaper", "Mèmes"]
+    },
+    "phase2": {
+      "title": "Phase 2 — Conquête du Royaume",
+      "items": ["Airdrops", "Listages DEX", "Campagne \"De Fiapo à Roi\""]
+    },
+    "phase3": {
+      "title": "Phase 3 — L'Empire des Mèmes",
+      "items": ["Staking gamifié", "NFTs", "Token $OSSIN"]
+    },
+    "phase4": {
+      "title": "Phase 4 — Domination Mondiale",
+      "items": ["Merch", "Jeu \"Course Royale du Fiapo\"", "Partenariats"]
+    }
+  },
+  "comparison": {
+    "title": "Don Fiapo et la Cour des Chiens Vaincus",
+    "subtitle": "Pendant que les autres aboient… Don Fiapo règne.",
+    "quote": "\"Pendant que les autres se contentent de la lune, j'exige le trône.\"",
+    "author": "— Don Fiapo, le Chien Royal",
+    "cta": "Montrez votre loyauté. Achetez $FIAPO maintenant."
+  },
+  "rewards": {
+    "title": "Récompenses, Tirages et Missions",
+    "subtitle": "Être Noble Rapporte. Littéralement.",
+    "staking": "Staking + Titres",
+    "leaderboard": "Classement",
+    "missions": "Missions Hebdomadaires",
+    "monthly": "\"Dieu Vous a Regardé\" Mensuel",
+    "christmas": "Noël Royal",
+    "ctaMissions": "Voir les Missions de la Cour",
+    "ctaLeaderboard": "Consulter le Classement"
+  },
+  "cta": {
+    "title": "Choisissez Votre Camp",
+    "subtitle": "Soit vous êtes un plébéien du FUD, soit vous êtes un Fiapeiro Royal.",
+    "buy": "Acheter $FIAPO",
+    "whitepaper": "Télécharger Whitepaper",
+    "telegram": "Rejoindre Telegram/Discord",
+    "social": "Suivre le Don"
+  },
+  "footer": {
+    "tagline": "Don Fiapo Dela Manga est un mème, mais c'est sérieux.",
+    "links": {
+      "whitepaper": "Whitepaper",
+      "faq": "FAQ",
+      "contract": "Contrat Lunes",
+      "contact": "Contact de la Cour"
+    },
+    "copyright": "© 2025 Don Fiapo Dela Manga. Tous droits réservés."
+  },
+  "staking": {
+    "title": "Staking Royal",
+    "subtitle": "Stakez votre $FIAPO et gagnez des récompenses dignes de la royauté",
+    "donBurn": {
+      "title": "Don Burn",
+      "description": "Brûlez des tokens, gagnez plus. La flamme éternelle du royaume.",
+      "apy": "10% APY",
+      "frequency": "Récompenses quotidiennes"
+    },
+    "donLunes": {
+      "title": "Don Lunes",
+      "description": "Propulsé par le réseau Lunes. Stabilité pour les nobles.",
+      "apy": "6% APY",
+      "frequency": "Récompenses hebdomadaires"
+    },
+    "donFiapo": {
+      "title": "Don Fiapo",
+      "description": "Le pool royal. Prestige maximum pour les détenteurs fidèles.",
+      "apy": "7% APY",
+      "frequency": "Récompenses mensuelles"
+    },
+    "stake": "Staker Maintenant",
+    "unstake": "Unstaker",
+    "claim": "Réclamer Récompenses",
+    "myPositions": "Mes Positions",
+    "totalStaked": "Total Staké",
+    "rewardsEarned": "Récompenses Gagnées",
+    "nextPayout": "Prochain Paiement"
+  },
+  "ico": {
+    "title": "Collection Royale de NFTs",
+    "subtitle": "Mintez votre place dans le Royaume",
+    "free": "NFT Gratuit",
+    "tier2": "Niveau 2 - $10",
+    "tier3": "Niveau 3 - $30",
+    "tier4": "Niveau 4 - $55",
+    "tier5": "Niveau 5 - $100",
+    "tier6": "Niveau 6 - $250",
+    "tier7": "Niveau 7 - $500",
+    "mint": "Minter NFT",
+    "myNfts": "Mes NFTs",
+    "mining": "Tableau de Bord Mining",
+    "tokensMined": "Tokens Minés",
+    "daysRemaining": "Jours Restants",
+    "claimTokens": "Réclamer Tokens"
+  },
+  "airdrop": {
+    "title": "Airdrop Royal",
+    "subtitle": "Réclamez votre part du royaume",
+    "eligible": "Vous êtes éligible!",
+    "notEligible": "Pas encore éligible",
+    "claim": "Réclamer Airdrop",
+    "claimed": "Déjà Réclamé",
+    "amount": "Montant Disponible",
+    "status": "Statut de la Distribution"
+  },
+  "wallet": {
+    "title": "Portefeuille Royal",
+    "connect": "Connecter le Portefeuille",
+    "selectWallet": "Sélectionnez un portefeuille",
+    "balance": "Solde",
+    "transactions": "Transactions",
+    "transfer": "Transférer",
+    "send": "Envoyer",
+    "receive": "Recevoir",
+    "history": "Historique des Transactions"
+  },
+  "ranking": {
+    "title": "Classement Royal",
+    "subtitle": "Les plus grands nobles du royaume"
+  },
+  "affiliate": {
+    "title": "Programme d'Affiliation",
+    "subtitle": "Invitez vos amis et gagnez des récompenses royales",
+    "referralLink": "Votre Lien de Parrainage",
+    "howItWorks": "Comment ça Marche"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "success": "Succès!",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "next": "Suivant",
+    "submit": "Soumettre",
+    "connect": "Connecter",
+    "viewMore": "Voir Plus",
+    "seeAll": "Voir Tout"
+  }
+}

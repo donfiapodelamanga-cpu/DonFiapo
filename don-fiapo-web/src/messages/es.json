@@ -1,0 +1,203 @@
+{
+  "metadata": {
+    "title": "Don Fiapo Dela Manga - El Alfa de las Memecoins",
+    "description": "Él no ladra — él decreta. La blockchain ahora tiene una monarquía. Únete al reinado."
+  },
+  "nav": {
+    "home": "Inicio",
+    "ico": "ICO/NFTs",
+    "staking": "Staking",
+    "simulations": "Simulaciones",
+    "tokenomics": "Tokenómica",
+    "airdrop": "Airdrop",
+    "affiliate": "Afiliados",
+    "governance": "Gobernanza",
+    "ranking": "Ranking",
+    "wallet": "Billetera",
+    "docs": "Docs",
+    "connectWallet": "Conectar Billetera",
+    "disconnect": "Desconectar"
+  },
+  "hero": {
+    "badge": "El Rey del Humor Descentralizado",
+    "title": "Don Fiapo Dela Manga",
+    "subtitle": "El Alfa de las Memecoins",
+    "description": "Él no ladra — él decreta. La blockchain ahora tiene una monarquía. Únete al reinado.",
+    "cta": {
+      "buy": "Compra $FIAPO Ahora",
+      "whitepaper": "Lee el Whitepaper Real",
+      "telegram": "Únete a la Orden de los Fiapeiros",
+      "airdrop": "Reclama tu Airdrop Real"
+    }
+  },
+  "legend": {
+    "title": "La Leyenda del Don Fiapo",
+    "subtitle": "La historia del perro callejero que se convirtió en majestad.",
+    "description": "En los callejones olvidados de la blockchain, un perro callejero encontró un mango dorado. No se lo comió — lo decretó. Don Fiapo es la realeza pixelada de la descentralización."
+  },
+  "tokenomics": {
+    "title": "Tokenomics de la Realeza",
+    "subtitle": "El Tesoro Real del Reino de Fiapo",
+    "totalSupply": "Suministro Total",
+    "symbol": "Símbolo",
+    "distribution": "Distribución",
+    "staking": "Caballería (Recompensas de Staking)",
+    "airdrop": "Orden de los Fiapeiros (Airdrop)",
+    "marketing": "Tesoro Real (Marketing)",
+    "liquidity": "Liquidez + LP Bloqueado",
+    "team": "Equipo y Mint Inicial",
+    "note": "Cada transacción es un tributo. Cada holder, un noble. Cada meme, un decreto."
+  },
+  "order": {
+    "title": "La Orden de los Fiapeiros",
+    "subtitle": "Jura Lealtad al Don. Recibe las Glorias del Reino.",
+    "description": "Al mantener $FIAPO, entras en la Orden de los Fiapeiros — defensores del humor descentralizado. Recibes: Airdrops, Misiones, Cajas de botín, Stickers y NFTs.",
+    "cta": "Unirse a la Orden"
+  },
+  "roadmap": {
+    "title": "Roadmap Real",
+    "subtitle": "El Camino Real hacia la Gloria",
+    "phase1": {
+      "title": "Fase 1 — La Coronación",
+      "items": ["Lanzamiento del Token", "Sitio Web", "Whitepaper", "Memes"]
+    },
+    "phase2": {
+      "title": "Fase 2 — Conquista del Reino",
+      "items": ["Airdrops", "Listados en DEX", "Campaña \"De Fiapo a Rey\""]
+    },
+    "phase3": {
+      "title": "Fase 3 — El Imperio de los Memes",
+      "items": ["Staking gamificado", "NFTs", "Token $OSSIN"]
+    },
+    "phase4": {
+      "title": "Fase 4 — Dominación Global",
+      "items": ["Merch", "Juego \"Carrera Real del Fiapo\"", "Alianzas"]
+    }
+  },
+  "comparison": {
+    "title": "Don Fiapo y la Corte de los Perros Derrotados",
+    "subtitle": "Mientras otros ladran… Don Fiapo gobierna.",
+    "quote": "\"Mientras otros se conforman con la luna, yo exijo el trono.\"",
+    "author": "— Don Fiapo, el Perro Real",
+    "cta": "Muestra tu lealtad. Compra $FIAPO ahora."
+  },
+  "rewards": {
+    "title": "Recompensas, Sorteos y Misiones",
+    "subtitle": "Ser Noble Trae Recompensas. Literalmente.",
+    "staking": "Staking + Títulos",
+    "leaderboard": "Tabla de Clasificación",
+    "missions": "Misiones Semanales",
+    "monthly": "\"Dios Te Miró\" Mensual",
+    "christmas": "Navidad Real",
+    "ctaMissions": "Ver Misiones de la Corte",
+    "ctaLeaderboard": "Consultar Clasificación"
+  },
+  "cta": {
+    "title": "Elige Tu Bando",
+    "subtitle": "O eres un plebeyo del FUD, o eres un Fiapeiro Real.",
+    "buy": "Comprar $FIAPO",
+    "whitepaper": "Descargar Whitepaper",
+    "telegram": "Unirse a Telegram/Discord",
+    "social": "Seguir al Don"
+  },
+  "footer": {
+    "tagline": "Don Fiapo Dela Manga es un meme, pero es serio.",
+    "links": {
+      "whitepaper": "Whitepaper",
+      "faq": "FAQ",
+      "contract": "Contrato Lunes",
+      "contact": "Contacto de la Corte"
+    },
+    "copyright": "© 2025 Don Fiapo Dela Manga. Todos los derechos reservados."
+  },
+  "staking": {
+    "title": "Staking Real",
+    "subtitle": "Haz staking de tu $FIAPO y gana recompensas dignas de la realeza",
+    "donBurn": {
+      "title": "Don Burn",
+      "description": "Quema tokens, gana más. La llama eterna del reino.",
+      "apy": "10% APY",
+      "frequency": "Recompensas diarias"
+    },
+    "donLunes": {
+      "title": "Don Lunes",
+      "description": "Impulsado por la red Lunes. Estabilidad para los nobles.",
+      "apy": "6% APY",
+      "frequency": "Recompensas semanales"
+    },
+    "donFiapo": {
+      "title": "Don Fiapo",
+      "description": "El pool real. Máximo prestigio para holders leales.",
+      "apy": "7% APY",
+      "frequency": "Recompensas mensuales"
+    },
+    "stake": "Hacer Staking",
+    "unstake": "Retirar Staking",
+    "claim": "Reclamar Recompensas",
+    "myPositions": "Mis Posiciones",
+    "totalStaked": "Total en Staking",
+    "rewardsEarned": "Recompensas Ganadas",
+    "nextPayout": "Próximo Pago"
+  },
+  "ico": {
+    "title": "Colección Real de NFTs",
+    "subtitle": "Mintea tu lugar en el Reino",
+    "free": "NFT Gratis",
+    "tier2": "Tier 2 - $10",
+    "tier3": "Tier 3 - $30",
+    "tier4": "Tier 4 - $55",
+    "tier5": "Tier 5 - $100",
+    "tier6": "Tier 6 - $250",
+    "tier7": "Tier 7 - $500",
+    "mint": "Mintear NFT",
+    "myNfts": "Mis NFTs",
+    "mining": "Dashboard de Minería",
+    "tokensMined": "Tokens Minados",
+    "daysRemaining": "Días Restantes",
+    "claimTokens": "Reclamar Tokens"
+  },
+  "airdrop": {
+    "title": "Airdrop Real",
+    "subtitle": "Reclama tu parte del reino",
+    "eligible": "¡Eres elegible!",
+    "notEligible": "Aún no elegible",
+    "claim": "Reclamar Airdrop",
+    "claimed": "Ya Reclamado",
+    "amount": "Cantidad Disponible",
+    "status": "Estado de la Distribución"
+  },
+  "wallet": {
+    "title": "Billetera Real",
+    "connect": "Conectar Billetera",
+    "selectWallet": "Selecciona una billetera",
+    "balance": "Saldo",
+    "transactions": "Transacciones",
+    "transfer": "Transferir",
+    "send": "Enviar",
+    "receive": "Recibir",
+    "history": "Historial de Transacciones"
+  },
+  "ranking": {
+    "title": "Ranking Real",
+    "subtitle": "Los más nobles del reino"
+  },
+  "affiliate": {
+    "title": "Programa de Afiliados",
+    "subtitle": "Invita amigos y gana recompensas reales",
+    "referralLink": "Tu Link de Referido",
+    "howItWorks": "Cómo Funciona"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ocurrió un error",
+    "success": "¡Éxito!",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "connect": "Conectar",
+    "viewMore": "Ver Más",
+    "seeAll": "Ver Todo"
+  }
+}
