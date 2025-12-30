@@ -1,0 +1,48 @@
+[package]
+name = "don-fiapo-contract-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.don-fiapo-contract]
+path = ".."
+features = ["std"]
+
+# Fuzz target para cálculo de taxas
+[[bin]]
+name = "fuzz_fee_calculation"
+path = "fuzz_targets/fuzz_fee_calculation.rs"
+test = false
+doc = false
+bench = false
+
+# Fuzz target para cálculo de APY
+[[bin]]
+name = "fuzz_apy_calculation"
+path = "fuzz_targets/fuzz_apy_calculation.rs"
+test = false
+doc = false
+bench = false
+
+# Fuzz target para validação de burn
+[[bin]]
+name = "fuzz_burn_validation"
+path = "fuzz_targets/fuzz_burn_validation.rs"
+test = false
+doc = false
+bench = false
+
+# Fuzz target para oracle multi-sig
+[[bin]]
+name = "fuzz_oracle_multisig"
+path = "fuzz_targets/fuzz_oracle_multisig.rs"
+test = false
+doc = false
+bench = false

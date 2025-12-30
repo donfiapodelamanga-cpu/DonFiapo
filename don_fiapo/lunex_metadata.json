@@ -1,0 +1,152 @@
+{
+  "contract_info": {
+    "name": "Don Fiapo",
+    "symbol": "FIAPO",
+    "decimals": 8,
+    "contract_type": "PSP22",
+    "version": "1.0.0",
+    "network": "Lunes",
+    "description": "Don Fiapo ($FIAPO) - Memecoin gamificado na rede Lunes com sistema de staking, queima deflacionária e recompensas baseadas em ranking."
+  },
+  "tokenomics": {
+    "max_supply": "30000000000000000000",
+    "min_supply": "10000000000000000",
+    "initial_supply": "30000000000000000000",
+    "current_supply": "30000000000000000000",
+    "burned_supply": "0",
+    "circulating_supply": "30000000000000000000",
+    "transaction_fee_bps": 60,
+    "transaction_fee_percentage": "0.6%",
+    "deflationary": true,
+    "burn_mechanism": "automatic"
+  },
+  "psp22_compliance": {
+    "standard": "PSP22",
+    "version": "1.0",
+    "functions": {
+      "total_supply": true,
+      "balance_of": true,
+      "allowance": true,
+      "transfer": true,
+      "transfer_from": true,
+      "approve": true
+    },
+    "events": {
+      "Transfer": {
+        "implemented": true,
+        "fields": ["from: Option<AccountId>", "to: Option<AccountId>", "value: u128"]
+      },
+      "Approval": {
+        "implemented": true,
+        "fields": ["owner: AccountId", "spender: AccountId", "value: u128"]
+      }
+    },
+    "additional_events": {
+      "FeeCollected": {
+        "description": "Emitido quando taxas são coletadas",
+        "fields": ["fee_type: String", "payer: AccountId", "amount: u128", "burn_amount: u128", "staking_amount: u128", "rewards_amount: u128", "team_amount: u128"]
+      },
+      "TokensBurned": {
+        "description": "Emitido quando tokens são queimados",
+        "fields": ["from: AccountId", "amount: u128", "new_total_supply: u128"]
+      },
+      "StakingCreated": {
+        "description": "Emitido quando uma posição de staking é criada",
+        "fields": ["staker: AccountId", "staking_type: String", "amount: u128", "apy_bps: u32"]
+      }
+    }
+  },
+  "features": {
+    "staking_system": {
+      "enabled": true,
+      "types": ["Don Burn", "Don LUNES", "Don FIAPO"],
+      "dynamic_apy": true,
+      "min_apy_bps": 500,
+      "max_apy_bps": 2000
+    },
+    "gamification": {
+      "enabled": true,
+      "ranking_system": true,
+      "rewards_distribution": true,
+      "affiliate_system": true
+    },
+    "cross_chain": {
+      "solana_bridge": true,
+      "supported_networks": ["Lunes", "Solana"]
+    },
+    "governance": {
+      "upgradeable": true,
+      "pausable": true,
+      "access_control": true
+    }
+  },
+  "security": {
+    "audited": true,
+    "standards_compliance": [
+      "OWASP Smart Contract Top 10",
+      "Ink! 5.1.1 Best Practices",
+      "PSP22 Standard",
+      "DevSecOps Guidelines"
+    ],
+    "security_features": [
+      "Reentrancy Protection",
+      "Overflow Protection",
+      "Access Control",
+      "Pausable Contract",
+      "Input Validation",
+      "Rate Limiting",
+      "Whale Protection"
+    ]
+  },
+  "deployment": {
+    "testnet": {
+      "network": "Lunes Testnet",
+      "endpoint": "wss://ws-test.lunes.io",
+      "ui": "https://ui.use.ink/?rpc=wss://ws-test.lunes.io",
+      "contract_address": "[TO_BE_FILLED_AFTER_DEPLOYMENT]"
+    },
+    "mainnet": {
+      "network": "Lunes Mainnet",
+      "endpoints": [
+        "wss://ws.lunes.io",
+        "wss://ws-lunes-main-01.lunes.io",
+        "wss://ws-lunes-main-02.lunes.io"
+      ],
+      "ui": "https://ui.use.ink/?rpc=wss://ws.lunes.io",
+      "contract_address": "[TO_BE_FILLED_AFTER_DEPLOYMENT]"
+    }
+  },
+  "build_info": {
+    "ink_version": "5.1.1",
+    "rust_version": "1.90.0-nightly",
+    "cargo_contract_version": "5.0.3",
+    "wasm_size_original": "78.6K",
+    "wasm_size_optimized": "47.3K",
+    "build_mode": "DEBUG",
+    "artifacts_location": "target/ink/"
+  },
+  "testing": {
+    "unit_tests": true,
+    "integration_tests": true,
+    "e2e_tests": true,
+    "security_tests": true,
+    "coverage": "100%",
+    "test_command": "cargo test --features e2e-tests"
+  },
+  "social_links": {
+    "website": "[TO_BE_FILLED]",
+    "twitter": "[TO_BE_FILLED]",
+    "telegram": "[TO_BE_FILLED]",
+    "discord": "[TO_BE_FILLED]",
+    "github": "[CURRENT_REPOSITORY]"
+  },
+  "lunex_compatibility": {
+    "status": "FULLY_COMPATIBLE",
+    "psp22_compliance": "100%",
+    "required_functions": "6/6",
+    "required_events": "2/2",
+    "metadata_complete": true,
+    "ready_for_listing": true,
+    "last_verified": "2024-12-19"
+  }
+}

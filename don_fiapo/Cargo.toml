@@ -1,0 +1,45 @@
+[package]
+name = "don-fiapo-contract"
+version = "1.0.0"
+authors = ["Don Fiapo Team"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/don-fiapo/don-fiapo-contract"
+description = "Don Fiapo ($FIAPO) - The Alpha of Memecoins on Lunes Network. Gamified staking, burning mechanics, and community governance."
+keywords = ["blockchain", "ink", "smart-contract", "lunes", "memecoin", "defi", "staking"]
+categories = ["cryptography::cryptocurrencies"]
+
+
+[dependencies]
+# ink! 4.2.2 - Stable version compatible with Lunes Network
+ink = { version = "4.2.2", default-features = false }
+
+# SCALE Codec for serialization/deserialization
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+
+
+[dev-dependencies]
+ink_e2e = "4.2.2"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+]
+ink-as-dependency = []
+e2e-tests = []
+
+[profile.release]
+overflow-checks = false
+lto = true
+codegen-units = 1
+opt-level = "z"
+
+[profile.dev]
+overflow-checks = true

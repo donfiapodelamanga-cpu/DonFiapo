@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+target/
+dist/
+build/
+
+# Environment Variables (CRITICAL)
+.env
+.env.*
+!.env.example
+*.env
+
+# System Files
+.DS_Store
+Thumbs.db
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# Security & Private Keys
+*.pem
+*.key
+*.json
+!package.json
+!tsconfig.json
+!don_fiapo.json
+wallet.json
+id.json
+
+# Build Outputs
+don-fiapo-web/.next/
+don_fiapo/target/
+
+# AI Artifacts
+.gemini/

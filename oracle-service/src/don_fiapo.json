@@ -1,0 +1,4038 @@
+{
+  "source": {
+    "hash": "0xf58e3c1f4f6cb8885046799ed5b82c0fb907df6fc73fc7e891fac51a987df722",
+    "language": "ink! 4.3.0",
+    "compiler": "rustc 1.89.0",
+    "build_info": {
+      "build_mode": "Release",
+      "cargo_contract_version": "2.2.1",
+      "rust_toolchain": "stable-x86_64-apple-darwin",
+      "wasm_opt_settings": {
+        "keep_debug_symbols": false,
+        "optimization_passes": "Z"
+      }
+    }
+  },
+  "contract": {
+    "name": "don-fiapo-contract",
+    "version": "1.0.0",
+    "authors": [
+      "Don Fiapo Team"
+    ],
+    "description": "Don Fiapo ($FIAPO) - Memecoin gamificado na rede Lunes",
+    "repository": "https://github.com/don-fiapo/don-fiapo-contract",
+    "license": "MIT"
+  },
+  "spec": {
+    "constructors": [
+      {
+        "args": [
+          {
+            "label": "name",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "symbol",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "initial_supply",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "burn_wallet",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "team_wallet",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "staking_wallet",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "rewards_wallet",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          "Construtor do contrato"
+        ],
+        "label": "new",
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 18
+        },
+        "selector": "0x9bae9d5e"
+      }
+    ],
+    "docs": [],
+    "environment": {
+      "accountId": {
+        "displayName": [
+          "AccountId"
+        ],
+        "type": 2
+      },
+      "balance": {
+        "displayName": [
+          "Balance"
+        ],
+        "type": 1
+      },
+      "blockNumber": {
+        "displayName": [
+          "BlockNumber"
+        ],
+        "type": 10
+      },
+      "chainExtension": {
+        "displayName": [
+          "ChainExtension"
+        ],
+        "type": 45
+      },
+      "hash": {
+        "displayName": [
+          "Hash"
+        ],
+        "type": 44
+      },
+      "maxEventTopics": 4,
+      "timestamp": {
+        "displayName": [
+          "Timestamp"
+        ],
+        "type": 7
+      }
+    },
+    "events": [
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "from",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 29
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "to",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 29
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando tokens são transferidos"
+        ],
+        "label": "Transfer"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "fee_type",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "payer",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "burn_amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "staking_amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "rewards_amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "team_amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando uma taxa é coletada"
+        ],
+        "label": "FeeCollected"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando uma aprovação é feita"
+        ],
+        "label": "Approval"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "from",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "new_total_supply",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando tokens são queimados"
+        ],
+        "label": "TokensBurned"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "staker",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "staking_type",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "apy_bps",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 10
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando staking é criado"
+        ],
+        "label": "StakingCreated"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "previous_owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "new_owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "timestamp",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 7
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando a propriedade é transferida"
+        ],
+        "label": "OwnershipTransferred"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "paused",
+            "type": {
+              "displayName": [
+                "bool"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "changed_by",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "timestamp",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 7
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando o sistema é pausado/despausado"
+        ],
+        "label": "SystemPauseChanged"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "wallet_type",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "old_wallet",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 29
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "new_wallet",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "updated_by",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "timestamp",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 7
+            }
+          }
+        ],
+        "docs": [
+          "Evento emitido quando carteiras do sistema são atualizadas"
+        ],
+        "label": "SystemWalletUpdated"
+      }
+    ],
+    "lang_error": {
+      "displayName": [
+        "ink",
+        "LangError"
+      ],
+      "type": 22
+    },
+    "messages": [
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Retorna o nome do token"
+        ],
+        "label": "token_name",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 23
+        },
+        "selector": "0x53db29ae"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Retorna o símbolo do token"
+        ],
+        "label": "token_symbol",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 23
+        },
+        "selector": "0xd733ea17"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Retorna o número de decimais"
+        ],
+        "label": "decimals",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 24
+        },
+        "selector": "0x81c09d87"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Retorna o total supply atual"
+        ],
+        "label": "total_supply",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 25
+        },
+        "selector": "0xdb6375a8"
+      },
+      {
+        "args": [
+          {
+            "label": "owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Retorna o saldo de uma conta"
+        ],
+        "label": "balance_of",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 25
+        },
+        "selector": "0x0f755a56"
+      },
+      {
+        "args": [
+          {
+            "label": "owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Retorna o valor aprovado para gasto"
+        ],
+        "label": "allowance",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 25
+        },
+        "selector": "0x6a00165e"
+      },
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Transfere tokens entre contas aplicando taxa de transação",
+          " ",
+          " # Segurança",
+          " - Protegido contra reentrancy",
+          " - Valida endereços e valores",
+          " - Aplica taxa de 0.6%"
+        ],
+        "label": "transfer",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0x84a15da1"
+      },
+      {
+        "args": [
+          {
+            "label": "from",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Transfere tokens de uma conta aprovada",
+          " ",
+          " # Segurança",
+          " - Protegido contra reentrancy",
+          " - Valida endereços e valores",
+          " - Verifica allowance"
+        ],
+        "label": "transfer_from",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0x0b396f18"
+      },
+      {
+        "args": [
+          {
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Aprova um spender para gastar tokens",
+          " ",
+          " # Segurança",
+          " - Valida endereço do spender (não pode ser zero)",
+          " - Emite evento para auditoria"
+        ],
+        "label": "approve",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0x681266a0"
+      },
+      {
+        "args": [
+          {
+            "label": "referrer",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Registra um novo afiliado"
+        ],
+        "label": "register_affiliate",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0x5369d42e"
+      },
+      {
+        "args": [
+          {
+            "label": "user",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Obtém dados de afiliado"
+        ],
+        "label": "get_affiliate_data",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 26
+        },
+        "selector": "0x7c3ef9bf"
+      },
+      {
+        "args": [
+          {
+            "label": "user",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Obtém boost de APY baseado em afiliados"
+        ],
+        "label": "get_affiliate_apy_boost",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 30
+        },
+        "selector": "0xd93e2e0e"
+      },
+      {
+        "args": [
+          {
+            "label": "staking_type",
+            "type": {
+              "displayName": [
+                "StakingType"
+              ],
+              "type": 31
+            }
+          },
+          {
+            "label": "amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Cria uma posição de staking básica"
+        ],
+        "label": "create_staking",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0xa4b6205b"
+      },
+      {
+        "args": [
+          {
+            "label": "user",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Retorna informações de uma posição de staking"
+        ],
+        "label": "get_staking_position",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 32
+        },
+        "selector": "0x4cc73837"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Retorna o proprietário do contrato (apenas owner) - DEPRECATED"
+        ],
+        "label": "owner",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 36
+        },
+        "selector": "0xfeaea4fa"
+      },
+      {
+        "args": [
+          {
+            "label": "new_owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Transfere a propriedade do contrato (apenas owner) - DEPRECATED"
+        ],
+        "label": "transfer_ownership",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0x107e33ea"
+      },
+      {
+        "args": [
+          {
+            "label": "participants",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 17
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Executa sorteio mensal (Exige lista de participantes para gas efficiency)"
+        ],
+        "label": "execute_monthly_lottery",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0xa6702452"
+      },
+      {
+        "args": [
+          {
+            "label": "top_wallets",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 17
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Distribui recompensas de ranking"
+        ],
+        "label": "distribute_ranking_rewards",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0xeeb080b7"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Pausa o contrato (apenas owner)"
+        ],
+        "label": "pause_owner",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0xaf8028e1"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Despausa o contrato (apenas owner)"
+        ],
+        "label": "unpause_owner",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 18
+        },
+        "selector": "0xcf65f376"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Verifica se o sistema está pausado"
+        ],
+        "label": "is_paused",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 37
+        },
+        "selector": "0xfa7d505b"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Retorna as carteiras especiais do sistema"
+        ],
+        "label": "get_system_wallets",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 38
+        },
+        "selector": "0x977bd3ca"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Calcula distribuição inicial baseada no total supply"
+        ],
+        "label": "calculate_initial_distribution",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 40
+        },
+        "selector": "0xcc6080fc"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Retorna as estatísticas do sistema"
+        ],
+        "label": "get_stats",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x0b58aa38"
+      }
+    ]
+  },
+  "storage": {
+    "root": {
+      "layout": {
+        "struct": {
+          "fields": [
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "symbol"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "name"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "total_supply"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x62358b5f",
+                      "ty": 1
+                    }
+                  },
+                  "root_key": "0x62358b5f"
+                }
+              },
+              "name": "balances"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x04bdc13e",
+                      "ty": 1
+                    }
+                  },
+                  "root_key": "0x04bdc13e"
+                }
+              },
+              "name": "allowances"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 2
+                }
+              },
+              "name": "owner"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 2
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "burn_wallet"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 2
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "team_wallet"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 2
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "staking_wallet"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 2
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "rewards_wallet"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "apy_enabled"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x88d799fd",
+                              "ty": 6
+                            }
+                          },
+                          "name": "min_apy"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x88d799fd",
+                              "ty": 6
+                            }
+                          },
+                          "name": "max_apy"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x88d799fd",
+                              "ty": 1
+                            }
+                          },
+                          "name": "burn_threshold_per_apy_point"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x88d799fd",
+                              "ty": 6
+                            }
+                          },
+                          "name": "apy_increment"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x88d799fd",
+                              "ty": 0
+                            }
+                          },
+                          "name": "staking_type"
+                        }
+                      ],
+                      "name": "DynamicAPYConfig"
+                    }
+                  },
+                  "root_key": "0x88d799fd"
+                }
+              },
+              "name": "apy_configs"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc451fc6e",
+                              "ty": 1
+                            }
+                          },
+                          "name": "total_burned"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc451fc6e",
+                              "ty": 6
+                            }
+                          },
+                          "name": "current_apy"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc451fc6e",
+                              "ty": 7
+                            }
+                          },
+                          "name": "last_update"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc451fc6e",
+                              "ty": 1
+                            }
+                          },
+                          "name": "next_threshold"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc451fc6e",
+                              "ty": 0
+                            }
+                          },
+                          "name": "staking_type"
+                        }
+                      ],
+                      "name": "UserAPYData"
+                    }
+                  },
+                  "root_key": "0xc451fc6e"
+                }
+              },
+              "name": "apy_user_data"
+            },
+            {
+              "layout": {
+                "struct": {
+                  "fields": [
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "total_burned"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "last_24h_burned"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "last_7d_burned"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "last_30d_burned"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 7
+                        }
+                      },
+                      "name": "last_update"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 8
+                        }
+                      },
+                      "name": "burn_windows"
+                    }
+                  ],
+                  "name": "GlobalBurnHistory"
+                }
+              },
+              "name": "apy_global_history"
+            },
+            {
+              "layout": {
+                "struct": {
+                  "fields": [
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "first_place_percentage"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "second_place_percentage"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "third_place_percentage"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "minimum_balance"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "maximum_balance"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 10
+                        }
+                      },
+                      "name": "exclude_top_wallets"
+                    }
+                  ],
+                  "name": "LotteryConfig"
+                }
+              },
+              "name": "lottery_monthly_config"
+            },
+            {
+              "layout": {
+                "struct": {
+                  "fields": [
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "first_place_percentage"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "second_place_percentage"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "third_place_percentage"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "minimum_balance"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "maximum_balance"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 10
+                        }
+                      },
+                      "name": "exclude_top_wallets"
+                    }
+                  ],
+                  "name": "LotteryConfig"
+                }
+              },
+              "name": "lottery_christmas_config"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 11
+                }
+              },
+              "name": "lottery_history"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "lottery_next_id"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "lottery_last_monthly"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "lottery_last_christmas"
+            },
+            {
+              "layout": {
+                "struct": {
+                  "fields": [
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "first_place"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "second_place"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "third_place"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "fourth_to_sixth"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 6
+                        }
+                      },
+                      "name": "seventh_to_twelfth"
+                    }
+                  ],
+                  "name": "RewardDistribution"
+                }
+              },
+              "name": "rewards_distribution"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "rewards_last_distribution"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "is_paused"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "reentrancy_locked"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "upgrade_timelock_period"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "upgrade_proposal_lifetime"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "upgrades_enabled"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "current_version"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "upgrade_current_proposal_id"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "upgrade_next_proposal_id"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "upgrade_system_active"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 7
+                            }
+                          },
+                          "name": "id"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 2
+                            }
+                          },
+                          "name": "proposer"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 16
+                            }
+                          },
+                          "name": "new_code_hash"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 0
+                            }
+                          },
+                          "name": "description"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 7
+                            }
+                          },
+                          "name": "created_at"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 7
+                            }
+                          },
+                          "name": "execution_time"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0xd8a4277b",
+                              "name": "UpgradeStatus",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "None"
+                                },
+                                "1": {
+                                  "fields": [],
+                                  "name": "Proposed"
+                                },
+                                "2": {
+                                  "fields": [],
+                                  "name": "Approved"
+                                },
+                                "3": {
+                                  "fields": [],
+                                  "name": "Executed"
+                                },
+                                "4": {
+                                  "fields": [],
+                                  "name": "Cancelled"
+                                }
+                              }
+                            }
+                          },
+                          "name": "status"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 5
+                            }
+                          },
+                          "name": "executed"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xd8a4277b",
+                              "ty": 0
+                            }
+                          },
+                          "name": "version"
+                        }
+                      ],
+                      "name": "UpgradeProposal"
+                    }
+                  },
+                  "root_key": "0xd8a4277b"
+                }
+              },
+              "name": "upgrade_history"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "airdrop_is_active"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 10
+                }
+              },
+              "name": "airdrop_distribution_start_block"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 10
+                }
+              },
+              "name": "airdrop_distribution_end_block"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "airdrop_min_balance"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 10
+                }
+              },
+              "name": "airdrop_current_round"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "airdrop_total_tokens"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "airdrop_total_points"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x8bbde3b8",
+                              "ty": 10
+                            }
+                          },
+                          "name": "round_id"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x8bbde3b8",
+                              "ty": 1
+                            }
+                          },
+                          "name": "balance_points"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x8bbde3b8",
+                              "ty": 1
+                            }
+                          },
+                          "name": "staking_points"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x8bbde3b8",
+                              "ty": 1
+                            }
+                          },
+                          "name": "burning_points"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x8bbde3b8",
+                              "ty": 1
+                            }
+                          },
+                          "name": "affiliate_points"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x8bbde3b8",
+                              "ty": 5
+                            }
+                          },
+                          "name": "claimed"
+                        }
+                      ],
+                      "name": "UserAirdrop"
+                    }
+                  },
+                  "root_key": "0x8bbde3b8"
+                }
+              },
+              "name": "airdrop_users"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc6b6b6a4",
+                              "ty": 10
+                            }
+                          },
+                          "name": "id"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc6b6b6a4",
+                              "ty": 1
+                            }
+                          },
+                          "name": "total_points"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc6b6b6a4",
+                              "ty": 10
+                            }
+                          },
+                          "name": "total_participants"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc6b6b6a4",
+                              "ty": 1
+                            }
+                          },
+                          "name": "tokens_per_point"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc6b6b6a4",
+                              "ty": 5
+                            }
+                          },
+                          "name": "is_distributed"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0xc6b6b6a4",
+                              "name": "Option",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "None"
+                                },
+                                "1": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0xc6b6b6a4",
+                                          "ty": 10
+                                        }
+                                      },
+                                      "name": "0"
+                                    }
+                                  ],
+                                  "name": "Some"
+                                }
+                              }
+                            }
+                          },
+                          "name": "closed_at"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xc6b6b6a4",
+                              "ty": 1
+                            }
+                          },
+                          "name": "total_distributed"
+                        }
+                      ],
+                      "name": "AirdropRound"
+                    }
+                  },
+                  "root_key": "0xc6b6b6a4"
+                }
+              },
+              "name": "airdrop_rounds"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x85811751",
+                      "ty": 17
+                    }
+                  },
+                  "root_key": "0x85811751"
+                }
+              },
+              "name": "airdrop_affiliates"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0xe2cc1fc0",
+                      "ty": 2
+                    }
+                  },
+                  "root_key": "0xe2cc1fc0"
+                }
+              },
+              "name": "airdrop_referrers"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "affiliate_enabled"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 10
+                }
+              },
+              "name": "affiliate_boost_per_affiliate_bps"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 10
+                }
+              },
+              "name": "affiliate_max_boost_bps"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "affiliate_min_staking_volume"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0xac009cf8",
+                              "name": "Option",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "None"
+                                },
+                                "1": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0xac009cf8",
+                                          "ty": 2
+                                        }
+                                      },
+                                      "name": "0"
+                                    }
+                                  ],
+                                  "name": "Some"
+                                }
+                              }
+                            }
+                          },
+                          "name": "referrer"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xac009cf8",
+                              "ty": 17
+                            }
+                          },
+                          "name": "direct_referrals"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xac009cf8",
+                              "ty": 17
+                            }
+                          },
+                          "name": "second_level_referrals"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xac009cf8",
+                              "ty": 7
+                            }
+                          },
+                          "name": "registration_timestamp"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xac009cf8",
+                              "ty": 10
+                            }
+                          },
+                          "name": "current_boost_bps"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xac009cf8",
+                              "ty": 1
+                            }
+                          },
+                          "name": "total_referral_rewards"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xac009cf8",
+                              "ty": 5
+                            }
+                          },
+                          "name": "is_active"
+                        }
+                      ],
+                      "name": "AffiliateData"
+                    }
+                  },
+                  "root_key": "0xac009cf8"
+                }
+              },
+              "name": "affiliate_data"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9b6f89b6",
+                              "ty": 1
+                            }
+                          },
+                          "name": "total_staked_volume"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9b6f89b6",
+                              "ty": 5
+                            }
+                          },
+                          "name": "is_active"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9b6f89b6",
+                              "ty": 7
+                            }
+                          },
+                          "name": "last_activity_timestamp"
+                        }
+                      ],
+                      "name": "ReferralActivity"
+                    }
+                  },
+                  "root_key": "0x9b6f89b6"
+                }
+              },
+              "name": "affiliate_referral_activity"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x63ab613f",
+                      "ty": 10
+                    }
+                  },
+                  "root_key": "0x63ab613f"
+                }
+              },
+              "name": "affiliate_direct_referral_count"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x6ce0c3fe",
+                      "ty": 10
+                    }
+                  },
+                  "root_key": "0x6ce0c3fe"
+                }
+              },
+              "name": "affiliate_second_level_referral_count"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xa87af028",
+                              "ty": 7
+                            }
+                          },
+                          "name": "id"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xa87af028",
+                              "ty": 2
+                            }
+                          },
+                          "name": "user"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0xa87af028",
+                              "name": "StakingType",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "DonBurn"
+                                },
+                                "1": {
+                                  "fields": [],
+                                  "name": "DonLunes"
+                                },
+                                "2": {
+                                  "fields": [],
+                                  "name": "DonFiapo"
+                                }
+                              }
+                            }
+                          },
+                          "name": "staking_type"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xa87af028",
+                              "ty": 1
+                            }
+                          },
+                          "name": "amount"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xa87af028",
+                              "ty": 1
+                            }
+                          },
+                          "name": "entry_fee"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xa87af028",
+                              "ty": 7
+                            }
+                          },
+                          "name": "start_time"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xa87af028",
+                              "ty": 7
+                            }
+                          },
+                          "name": "last_reward_time"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0xa87af028",
+                              "ty": 1
+                            }
+                          },
+                          "name": "accumulated_rewards"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0xa87af028",
+                              "name": "StakingStatus",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "Active"
+                                },
+                                "1": {
+                                  "fields": [],
+                                  "name": "Cancelled"
+                                },
+                                "2": {
+                                  "fields": [],
+                                  "name": "Completed"
+                                }
+                              }
+                            }
+                          },
+                          "name": "status"
+                        }
+                      ],
+                      "name": "StakingPosition"
+                    }
+                  },
+                  "root_key": "0xa87af028"
+                }
+              },
+              "name": "staking_positions"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 7
+                }
+              },
+              "name": "next_position_id"
+            },
+            {
+              "layout": {
+                "struct": {
+                  "fields": [
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "total_staked"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "total_rewards_distributed"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 10
+                        }
+                      },
+                      "name": "active_staking_positions"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "total_burned"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 1
+                        }
+                      },
+                      "name": "total_fees_collected"
+                    },
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 10
+                        }
+                      },
+                      "name": "wallets_in_ranking"
+                    }
+                  ],
+                  "name": "SystemStats"
+                }
+              },
+              "name": "stats"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 17
+                }
+              },
+              "name": "whale_exclusion_list"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "whale_exclusion_threshold"
+            }
+          ],
+          "name": "DonFiapo"
+        }
+      },
+      "root_key": "0x00000000"
+    }
+  },
+  "types": [
+    {
+      "id": 0,
+      "type": {
+        "def": {
+          "primitive": "str"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "type": {
+        "def": {
+          "primitive": "u128"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 3,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "AccountId"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": {
+        "def": {
+          "array": {
+            "len": 32,
+            "type": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": {
+        "def": {
+          "primitive": "u8"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": {
+        "def": {
+          "primitive": "bool"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": {
+        "def": {
+          "primitive": "u16"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": {
+        "def": {
+          "primitive": "u64"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 9
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "start_time",
+                "type": 7,
+                "typeName": "u64"
+              },
+              {
+                "name": "end_time",
+                "type": 7,
+                "typeName": "u64"
+              },
+              {
+                "name": "amount_burned",
+                "type": 1,
+                "typeName": "Balance"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "apy",
+          "BurnWindow"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "primitive": "u32"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 12
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "lottery_id",
+                "type": 7,
+                "typeName": "u64"
+              },
+              {
+                "name": "lottery_type",
+                "type": 13,
+                "typeName": "LotteryType"
+              },
+              {
+                "name": "winners",
+                "type": 14,
+                "typeName": "Vec<LotteryWinner>"
+              },
+              {
+                "name": "total_distributed",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "total_fund",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "total_participants",
+                "type": 10,
+                "typeName": "u32"
+              },
+              {
+                "name": "executed_at",
+                "type": 7,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "lottery",
+          "LotteryResult"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Monthly"
+              },
+              {
+                "index": 1,
+                "name": "Christmas"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "lottery",
+          "LotteryType"
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 15
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "wallet",
+                "type": 3,
+                "typeName": "[u8; 32]"
+              },
+              {
+                "name": "prize_amount",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "position",
+                "type": 4,
+                "typeName": "u8"
+              },
+              {
+                "name": "won_at",
+                "type": 7,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "lottery",
+          "LotteryWinner"
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 19
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 19
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 20
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 21
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 20
+          },
+          {
+            "name": "E",
+            "type": 21
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "tuple": []
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Unauthorized"
+              },
+              {
+                "index": 1,
+                "name": "InsufficientBalance"
+              },
+              {
+                "index": 2,
+                "name": "InvalidValue"
+              },
+              {
+                "index": 3,
+                "name": "TokenNotFound"
+              },
+              {
+                "index": 4,
+                "name": "InvalidOperation"
+              },
+              {
+                "index": 5,
+                "name": "SystemPaused"
+              },
+              {
+                "index": 6,
+                "name": "ArithmeticError"
+              },
+              {
+                "index": 7,
+                "name": "FeeError"
+              },
+              {
+                "index": 8,
+                "name": "StakingError"
+              },
+              {
+                "index": 9,
+                "name": "AffiliateError"
+              },
+              {
+                "index": 10,
+                "name": "RewardsError"
+              },
+              {
+                "index": 11,
+                "name": "LotteryError"
+              },
+              {
+                "index": 12,
+                "name": "SolanaIntegrationError"
+              },
+              {
+                "index": 13,
+                "name": "InvalidInput"
+              },
+              {
+                "index": 14,
+                "name": "BurnWalletNotSet"
+              },
+              {
+                "index": 15,
+                "name": "MaxSupplyExceeded"
+              },
+              {
+                "index": 16,
+                "name": "MinSupplyViolated"
+              },
+              {
+                "index": 17,
+                "name": "NotOwner"
+              },
+              {
+                "index": 18,
+                "name": "InvalidAddress"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "don_fiapo",
+          "Error"
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 1,
+                "name": "CouldNotReadInput"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "LangError"
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 4
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 4
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 1
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 1
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 27
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 27
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 28
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 28
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "referrer",
+                "type": 29,
+                "typeName": "Option<AccountId>"
+              },
+              {
+                "name": "direct_referrals",
+                "type": 17,
+                "typeName": "Vec<AccountId>"
+              },
+              {
+                "name": "second_level_referrals",
+                "type": 17,
+                "typeName": "Vec<AccountId>"
+              },
+              {
+                "name": "registration_timestamp",
+                "type": 7,
+                "typeName": "u64"
+              },
+              {
+                "name": "current_boost_bps",
+                "type": 10,
+                "typeName": "u32"
+              },
+              {
+                "name": "total_referral_rewards",
+                "type": 1,
+                "typeName": "Balance"
+              },
+              {
+                "name": "is_active",
+                "type": 5,
+                "typeName": "bool"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "affiliate",
+          "AffiliateData"
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 2
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 2
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 10
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 10
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "DonBurn"
+              },
+              {
+                "index": 1,
+                "name": "DonLunes"
+              },
+              {
+                "index": 2,
+                "name": "DonFiapo"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "staking",
+          "StakingType"
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 33
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 33
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 34
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 34
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "id",
+                "type": 7,
+                "typeName": "u64"
+              },
+              {
+                "name": "user",
+                "type": 2,
+                "typeName": "ink::primitives::AccountId"
+              },
+              {
+                "name": "staking_type",
+                "type": 31,
+                "typeName": "StakingType"
+              },
+              {
+                "name": "amount",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "entry_fee",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "start_time",
+                "type": 7,
+                "typeName": "u64"
+              },
+              {
+                "name": "last_reward_time",
+                "type": 7,
+                "typeName": "u64"
+              },
+              {
+                "name": "accumulated_rewards",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "status",
+                "type": 35,
+                "typeName": "StakingStatus"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "staking",
+          "StakingPosition"
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Active"
+              },
+              {
+                "index": 1,
+                "name": "Cancelled"
+              },
+              {
+                "index": 2,
+                "name": "Completed"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "staking",
+          "StakingStatus"
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 2
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 2
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 37,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 39
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 39
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "type": {
+        "def": {
+          "tuple": [
+            29,
+            29,
+            29,
+            29
+          ]
+        }
+      }
+    },
+    {
+      "id": 40,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 41
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 41
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "staking_fund",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "airdrop",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "marketing",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "charity",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "ieo_ico",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "team",
+                "type": 1,
+                "typeName": "u128"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "don_fiapo",
+          "InitialDistribution"
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 43
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 43
+          },
+          {
+            "name": "E",
+            "type": 22
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "total_staked",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "total_rewards_distributed",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "active_staking_positions",
+                "type": 10,
+                "typeName": "u32"
+              },
+              {
+                "name": "total_burned",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "total_fees_collected",
+                "type": 1,
+                "typeName": "u128"
+              },
+              {
+                "name": "wallets_in_ranking",
+                "type": 10,
+                "typeName": "u32"
+              }
+            ]
+          }
+        },
+        "path": [
+          "don_fiapo_contract",
+          "don_fiapo",
+          "SystemStats"
+        ]
+      }
+    },
+    {
+      "id": 44,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 3,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "Hash"
+        ]
+      }
+    },
+    {
+      "id": 45,
+      "type": {
+        "def": {
+          "variant": {}
+        },
+        "path": [
+          "ink_env",
+          "types",
+          "NoChainExtension"
+        ]
+      }
+    }
+  ],
+  "version": "4"
+}

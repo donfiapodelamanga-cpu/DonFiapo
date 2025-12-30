@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  oracle-service:
+    build:
+      context: ./oracle-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./oracle-service/.env
+    environment:
+      - ORACLE_API_KEY=dev-secret-key
+      - PORT=3000
+    volumes:
+      - ./oracle-service/payments.db:/app/payments.db
+
+  don-fiapo-web:
+    build:
+      context: ./don-fiapo-web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./don-fiapo-web/.env
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - ORACLE_SERVICE_URL=http://oracle-service:3000
+
+    depends_on:
+      - oracle-service

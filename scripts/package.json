@@ -1,0 +1,19 @@
+{
+    "name": "don-fiapo-scripts",
+    "version": "1.0.0",
+    "description": "Utility scripts for Don Fiapo",
+    "type": "module",
+    "scripts": {
+        "upload-ipfs": "ts-node upload-to-pinata.ts"
+    },
+    "dependencies": {
+        "@pinata/sdk": "^2.1.0",
+        "dotenv": "^16.0.0",
+        "form-data": "^4.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.0.0"
+    }
+}
