@@ -16,7 +16,7 @@ const faqCategories = [
       },
       {
         q: "What makes Don Fiapo different?",
-        a: "Unlike typical memecoins, Don Fiapo offers real utility: 7-tier NFT mining system, multi-pool staking with up to 10% APY, and community governance."
+        a: "Unlike typical memecoins, Don Fiapo offers real utility: 7-tier NFT mining system, multi-pool staking with up to 300% APY (Don Burn pool), and community governance."
       },
       {
         q: "What is the total supply?",
@@ -29,7 +29,7 @@ const faqCategories = [
     questions: [
       {
         q: "What are the staking options?",
-        a: "We offer three pools: Don Burn (10% APY, burns tokens), Don Lunes (6% APY, rewards in LUNES), and Don Fiapo (7% APY, compound rewards)."
+        a: "We offer three pools: Don Burn (10%-300% APY, burns tokens), Don Lunes (6%-37% APY, rewards in LUNES), and Don Fiapo (7%-70% APY, compound rewards). APY increases as you burn more tokens."
       },
       {
         q: "What is the minimum stake amount?",
@@ -46,7 +46,7 @@ const faqCategories = [
     questions: [
       {
         q: "What are Royal NFTs?",
-        a: "Royal NFTs are ERC-721 tokens that mine $FIAPO daily. Higher tiers mine more tokens. Mining runs for 112 days from mint."
+        a: "Royal NFTs are PSP-34 tokens (Substrate standard) that mine $FIAPO daily. Higher tiers mine more tokens. You can also evolve NFTs to boost mining by +10% per evolution."
       },
       {
         q: "How many tiers are there?",
