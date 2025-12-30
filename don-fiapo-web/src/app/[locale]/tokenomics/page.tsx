@@ -183,19 +183,19 @@ export default function TokenomicsPage() {
                         </Card>
 
                         <div className="grid md:grid-cols-2 gap-4">
-                            <Card className="bg-blue-500/10 border border-blue-500/30">
+                            <Card className="bg-golden/10 border border-golden/30">
                                 <CardContent className="pt-6">
-                                    <div className="text-sm text-blue-400 font-bold mb-1">Public Sale (40%)</div>
+                                    <div className="text-sm text-golden font-bold mb-1">Staking Fund (80%)</div>
                                     <p className="text-xs text-muted-foreground">
-                                        Available through NFT purchases. Funds go directly to treasury.
+                                        Primary source for staking rewards. Distributed based on APY tiers.
                                     </p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-green-500/10 border border-green-500/30">
+                            <Card className="bg-pink-500/10 border border-pink-500/30">
                                 <CardContent className="pt-6">
-                                    <div className="text-sm text-green-400 font-bold mb-1">Staking Rewards (25%)</div>
+                                    <div className="text-sm text-pink-400 font-bold mb-1">Airdrop (7%)</div>
                                     <p className="text-xs text-muted-foreground">
-                                        Distributed over 5 years to stakers. Vested linearly.
+                                        Community airdrops for early adopters and active participants.
                                     </p>
                                 </CardContent>
                             </Card>
