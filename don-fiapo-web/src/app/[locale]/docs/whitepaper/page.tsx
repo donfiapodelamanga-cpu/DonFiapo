@@ -654,10 +654,10 @@ export default function WhitepaperPage() {
                 </p>
                 <h4 className="font-bold mt-4">Roadmap Highlights</h4>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li>• <strong className="text-green-500">Q4 2024:</strong> Token launch, staking, NFT mint</li>
-                  <li>• <strong className="text-blue-400">Q1 2025:</strong> DEX listings, partnerships</li>
-                  <li>• <strong className="text-purple-500">Q2 2025:</strong> Mobile app, gamification</li>
-                  <li>• <strong className="text-golden">Q3 2025:</strong> Cross-chain expansion</li>
+                  <li>• <strong className="text-green-500">Q1 2026:</strong> Token launch, staking, NFT mint</li>
+                  <li>• <strong className="text-blue-400">Q2 2026:</strong> DEX listings, partnerships</li>
+                  <li>• <strong className="text-purple-500">Q3 2026:</strong> Mobile app, gamification</li>
+                  <li>• <strong className="text-golden">Q4 2026:</strong> Cross-chain expansion</li>
                 </ul>
               </div>
             </section>
