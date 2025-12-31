@@ -25,9 +25,7 @@ export default function WhitepaperPage() {
           <Link href="/docs" className="inline-flex items-center gap-2 text-muted-foreground hover:text-golden">
             <ArrowLeft className="w-4 h-4" /> Back to Docs
           </Link>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" /> Download PDF
-          </Button>
+
         </div>
 
         <div className="grid lg:grid-cols-4 gap-8">
