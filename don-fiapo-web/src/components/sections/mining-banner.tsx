@@ -1,4 +1,3 @@
-```
 "use client";
 
 import { useState, useEffect } from "react";
@@ -48,7 +47,7 @@ export function MiningBanner() {
 
                     <div className="space-y-4 relative z-10">
                         <div className="flex items-center gap-3">
-                            <div className={`inline - flex items - center gap - 2 px - 3 py - 1 rounded - full ${ hasFreeMint ? "bg-green-500/20 text-green-500 border-green-500/30" : "bg-golden/20 text-golden border-golden/30" } text - xs font - bold border shadow - sm`}>
+                            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${hasFreeMint ? "bg-green-500/20 text-green-500 border-green-500/30" : "bg-golden/20 text-golden border-golden/30"} text-xs font-bold border shadow-sm`}>
                                 {hasFreeMint ? <Sparkles className="w-3 h-3" /> : <Crown className="w-3 h-3" />}
                                 <span>{hasFreeMint ? "Limit Time Offer" : "Decree #777"}</span>
                             </div>
@@ -85,4 +84,3 @@ export function MiningBanner() {
         </AnimatePresence>
     );
 }
-```

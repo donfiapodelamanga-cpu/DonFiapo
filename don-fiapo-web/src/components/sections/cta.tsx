@@ -31,24 +31,24 @@ export function CTASection() {
             {t("subtitle")}
           </p>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button size="xl" className="glow-gold">
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button size="xl" className="glow-gold w-full sm:w-auto px-8">
               <Coins className="w-5 h-5 mr-2" />
               {t("buy")}
             </Button>
-            <Button size="xl" variant="outline" asChild>
+            <Button size="xl" variant="outline" className="w-full sm:w-auto px-8" asChild>
               <Link href="/docs/whitepaper">
                 <FileText className="w-5 h-5 mr-2" />
                 {t("whitepaper")}
               </Link>
             </Button>
-            <Button size="xl" variant="secondary" asChild>
+            <Button size="xl" variant="secondary" className="w-full sm:w-auto px-8" asChild>
               <a href="https://t.me/donfiapo" target="_blank" rel="noopener noreferrer">
                 <Send className="w-5 h-5 mr-2" />
                 {t("telegram")}
               </a>
             </Button>
-            <Button size="xl" variant="secondary" asChild>
+            <Button size="xl" variant="secondary" className="w-full sm:w-auto px-8" asChild>
               <a href="https://twitter.com/donfiapo" target="_blank" rel="noopener noreferrer">
                 <Twitter className="w-5 h-5 mr-2" />
                 {t("social")}
