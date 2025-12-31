@@ -28,13 +28,7 @@ const docSections = [
     href: "/docs/getting-started",
     color: "text-green-500",
   },
-  {
-    icon: Shield,
-    title: "Security",
-    description: "Audit reports and security measures",
-    href: "/docs/security",
-    color: "text-purple-500",
-  },
+
   {
     icon: Code,
     title: "Contracts",
