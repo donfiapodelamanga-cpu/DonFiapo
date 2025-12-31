@@ -176,6 +176,20 @@ export default function MintPage() {
                 <CardDescription>Each tier provides different mining rewards</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Free NFT Requirements Info */}
+                <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                    <div className="text-sm text-blue-200">
+                      <p className="font-medium">Free NFT Requirements:</p>
+                      <ul className="mt-1 text-xs text-blue-300 space-y-0.5">
+                        <li>• First free NFT: No LUNES required</li>
+                        <li>• 2nd-5th free NFT: Hold at least <span className="font-bold text-blue-200">10 LUNES</span></li>
+                        <li>• Maximum <span className="font-bold text-blue-200">5 free NFTs</span> per wallet</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {nftTiers.map((tier) => (
                     <button
