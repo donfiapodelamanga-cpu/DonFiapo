@@ -19,7 +19,7 @@ export default function ContractsPage() {
         {
             name: "Token Contract (FIAPO)",
             address: API_CONFIG.contracts.donFiapo,
-            description: "The main ERC-20/PSP-22 token contract for Don Fiapo.",
+            description: "The main token contract for Don Fiapo on Lunes Network.",
             explorerUrl: `https://blockexplorer.lunes.io/address/${API_CONFIG.contracts.donFiapo}`, // Hypothetical explorer URL
             network: "Lunes Network",
             status: "Verified",
