@@ -8,13 +8,15 @@ import {
   RewardsSystemSection,
   RoadmapSection,
   StakingPreviewSection,
-  CTASection
+  CTASection,
+  MiningBanner
 } from "@/components/sections";
 
 export default function HomePage() {
   return (
     <>
       <HeroSection />
+      <MiningBanner />
       <TokenomicsSection />
       <SupplyInfoSection />
       <NFTEvolutionSection />
