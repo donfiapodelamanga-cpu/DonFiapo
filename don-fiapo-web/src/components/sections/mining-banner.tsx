@@ -10,9 +10,9 @@ export function MiningBanner() {
         <section className="py-8 bg-background relative overflow-hidden">
             <div className="container mx-auto px-4">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
                     className="bg-gradient-to-r from-golden/20 via-golden/10 to-transparent border border-golden/30 rounded-2xl p-6 md:p-8 relative overflow-hidden"
                 >
                     {/* Background decoration */}
