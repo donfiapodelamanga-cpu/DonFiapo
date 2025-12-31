@@ -25,9 +25,16 @@ echo -e "${BLUE}======================================${NC}"
 echo -e "${BLUE}   Don Fiapo Fresh Deploy Script     ${NC}"
 echo -e "${BLUE}======================================${NC}"
 
-# Load environment
+# Load environment - use set -a to export all variables  
 if [ -f "oracle-service/.env" ]; then
-    source oracle-service/.env
+    # Read .env line by line, ignoring comments and empty lines
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^#.*$ ]] && continue
+        [[ -z "$line" ]] && continue
+        # Export the variable
+        export "$line" 2>/dev/null || true
+    done < "oracle-service/.env"
     echo -e "${GREEN}✓ Loaded environment from oracle-service/.env${NC}"
 fi
 

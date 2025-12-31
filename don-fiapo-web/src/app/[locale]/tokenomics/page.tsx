@@ -39,7 +39,7 @@ export default function TokenomicsPage() {
         },
     ];
 
-    const metrics = [
+    const metrics: { label: string; value: string; suffix: string; subtext?: string }[] = [
         { label: 'Max Supply', value: '300', suffix: 'Billion FIAPO' },
         { label: 'Initial Supply', value: '100', suffix: 'Million FIAPO' },
         { label: 'Decimals', value: '8', suffix: '' },

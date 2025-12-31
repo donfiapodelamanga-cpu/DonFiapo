@@ -8,6 +8,7 @@ import { Header, Footer } from "@/components/layout";
 import { WalletProvider } from "@/components/providers/wallet-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import { ErrorLogger } from "@/components/debug/error-logger";
+import JsonLd from "@/components/seo/JsonLd";
 import "../globals.css";
 
 const montserrat = Montserrat({
@@ -24,6 +25,7 @@ const anton = Anton({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://donfiapo.com"),
   title: "Don Fiapo Dela Manga - The Alpha of Memecoins",
   description: "He doesn't bark — he decrees. The blockchain now has a monarchy. Join the reign.",
   keywords: ["memecoin", "cryptocurrency", "NFT", "staking", "airdrop", "DeFi", "Lunes"],
@@ -34,11 +36,31 @@ export const metadata: Metadata = {
     url: "https://donfiapo.com",
     siteName: "Don Fiapo",
     type: "website",
+    images: [
+      {
+        url: "/hero-bg.png",
+        width: 1200,
+        height: 630,
+        alt: "Don Fiapo",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Don Fiapo de Manga",
     description: "The Alpha of Memecoins. The King of Decentralized Humor.",
+    images: ["/hero-bg.png"],
+  },
+  alternates: {
+    canonical: "https://donfiapo.com",
+    languages: {
+      en: "https://donfiapo.com/en",
+      es: "https://donfiapo.com/es",
+      fr: "https://donfiapo.com/fr",
+      pt: "https://donfiapo.com/pt",
+      ru: "https://donfiapo.com/ru",
+      zh: "https://donfiapo.com/zh",
+    },
   },
   robots: {
     index: true,
@@ -68,6 +90,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className={`${montserrat.variable} ${anton.variable}`} suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased" suppressHydrationWarning>
+        <JsonLd />
         {process.env.NODE_ENV === 'development' && <ErrorLogger />}
         <NextIntlClientProvider locale={locale} messages={messages}>
           <WalletProvider>

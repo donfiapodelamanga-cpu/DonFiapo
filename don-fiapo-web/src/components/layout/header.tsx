@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/lib/navigation";
+import Image from "next/image";
 import { Menu, X, Crown, Loader2 } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { WalletButton } from "@/components/wallet";
@@ -44,8 +45,13 @@ export function Header() {
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-full bg-golden flex items-center justify-center">
-              <Crown className="w-6 h-6 text-background" />
+            <div className="relative w-12 h-12 rounded-full overflow-hidden border border-golden/20">
+              <Image
+                src="/images/logo-round.png"
+                alt="Don Fiapo Logo"
+                fill
+                className="object-contain"
+              />
             </div>
             <span className="text-xl font-bold font-display text-golden hidden sm:block">
               Don Fiapo

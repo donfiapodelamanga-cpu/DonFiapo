@@ -52,7 +52,7 @@ export default function MintPage() {
   const [paymentStep, setPaymentStep] = useState<"idle" | "paying" | "verifying" | "success">("idle");
   const [isLunesModalOpen, setIsLunesModalOpen] = useState(false);
 
-  const { lunesConnected } = useWalletStore();
+  const { lunesConnected, lunesAddress } = useWalletStore();
   const { connected: solanaConnected, publicKey } = useWallet();
   const { sendUSDT, sendUSDC, isReady: solanaReady } = useSolana();
 
@@ -146,9 +146,9 @@ export default function MintPage() {
 
       // Import contract module and call mintNFT directly
       const contract = await import('@/lib/api/contract');
-      const result = await contract.mintNFT(lunesAddress!, 0); // tier 0 = free
+      const result = await contract.mintNFT(lunesAddress!, 0, 1); // tier 0 = free, quantity 1
 
-      addToast("success", "NFT Minted!", `You received a ${freeTier.shortName} NFT! Token ID: ${result.tokenId}`);
+      addToast("success", "NFT Minted!", `You received a ${freeTier.shortName} NFT! Transaction Hash: ${result}`);
     } catch (error) {
       console.error("[Mint] Free mint error:", error);
       addToast("error", "Mint Failed", error instanceof Error ? error.message : "Failed to mint free NFT");
