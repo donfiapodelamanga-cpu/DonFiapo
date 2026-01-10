@@ -1,14 +1,17 @@
 # Build Stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+COPY scripts ./scripts
+RUN apk add --no-cache python3 make g++ && npm ci --ignore-scripts \
+    && node scripts/patch-solana.js
 COPY . .
-# Next.js build
-RUN npm run build
+# Next.js build - use webpack (not turbopack) for proper transpilePackages support
+# --no-turbopack is REQUIRED to apply webpack loaders that fix octal escape sequences
+RUN npx next build --no-turbopack
 
 # Production Stage
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
