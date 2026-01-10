@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Backend Service
+  oracle-service:
+    build:
+      context: ../oracle-service
+      dockerfile: Dockerfile
+    container_name: don-fiapo-oracle
+    restart: unless-stopped
+    env_file:
+      - .env.oracle
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - oracle_data:/app/data
+    networks:
+      - app_network
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Service
+  don-fiapo-web:
+    build:
+      context: ../don-fiapo-web
+      dockerfile: Dockerfile
+    container_name: don-fiapo-web
+    restart: unless-stopped
+    env_file:
+      - .env.web
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - app_network
+    depends_on:
+      - oracle-service
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: don-fiapo-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    networks:
+      - app_network
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  # Certbot for SSL
+  certbot:
+    image: certbot/certbot
+    container_name: don-fiapo-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  oracle_data:
+
+
+networks:
+  app_network:
+    driver: bridge
