@@ -2,11 +2,18 @@
 
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { FileText, HelpCircle, BookOpen, Shield, Code, ExternalLink } from "lucide-react";
+import { FileText, HelpCircle, BookOpen, Shield, Code, ExternalLink, Wallet } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Link } from "@/lib/navigation";
 
 const docSections = [
+  {
+    icon: Wallet,
+    title: "Wallet Setup",
+    description: "Configure your wallet for the Lunes Network",
+    href: "/docs/wallet-setup",
+    color: "text-purple-500",
+  },
   {
     icon: FileText,
     title: "Whitepaper",

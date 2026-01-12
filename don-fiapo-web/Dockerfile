@@ -6,9 +6,9 @@ COPY scripts ./scripts
 RUN apk add --no-cache python3 make g++ && npm ci --ignore-scripts \
     && node scripts/patch-solana.js
 COPY . .
-# Next.js build - use webpack (not turbopack) for proper transpilePackages support
-# --no-turbopack is REQUIRED to apply webpack loaders that fix octal escape sequences
-RUN npx next build --no-turbopack
+# Next.js build - webpack is used by default for production builds
+# This allows string-replace-loader to fix octal escape sequences in dependencies
+RUN npx next build
 
 # Production Stage
 FROM node:20-alpine AS runner

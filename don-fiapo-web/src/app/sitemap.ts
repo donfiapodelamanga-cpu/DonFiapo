@@ -2,7 +2,7 @@ import { locales } from '@/config/i18n';
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = 'https://donfiapo.com';
+    const baseUrl = 'https://donfiapo.fun';
 
     const localeUrls = locales.map((locale) => ({
         url: `${baseUrl}/${locale}`,

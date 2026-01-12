@@ -103,10 +103,10 @@ export function exportErrorsAsTaskMd(): string {
         let idx = 0;
         for (const [, err] of uniqueMessages) {
             idx++;
-            md += `- [ ] **${err.type.toUpperCase()}**: ${err.message.substring(0, 150)} <!-- id: ${category.toLowerCase()}-${idx} -->\n`;
-            md += `  - Página: \`${err.page}\`\n`;
-            if (err.source) md += `  - Fonte: \`${err.source}\`\n`;
-            md += `  - Timestamp: ${err.timestamp}\n\n`;
+            md += `- [ ] **` + err.type.toUpperCase() + `**: ` + err.message.substring(0, 150) + ` <!-- id: ` + category.toLowerCase() + `-` + idx + ` -->\n`;
+            md += '  - Página: `' + err.page + '`\n';
+            if (err.source) md += '  - Fonte: `' + err.source + '`\n';
+            md += '  - Timestamp: ' + err.timestamp + '\n\n';
         }
     }
 

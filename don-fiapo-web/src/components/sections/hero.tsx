@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Crown, Scroll, Users, Gift, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import { Link } from "@/lib/navigation";
 
 export function HeroSection() {
@@ -12,10 +13,17 @@ export function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
       {/* Hero Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/hero-bg.png')" }}
-      />
+      {/* Hero Background Image */}
+      <div className="absolute inset-0">
+        <Image
+          src="/hero-bg.png"
+          alt="Hero Background"
+          fill
+          priority
+          className="object-cover"
+          quality={90}
+        />
+      </div>
       {/* Dark overlay for text readability */}
       <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
       {/* Additional decorative effects */}

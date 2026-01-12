@@ -425,7 +425,7 @@ export async function claimMinedTokens(
   if (!contractInstance) throw new Error('Contract not available - network offline');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.claimMinedTokens(
+  const tx = contractInstance.tx.claimTokens(
     { gasLimit: -1, storageDepositLimit: null },
     tokenId
   );

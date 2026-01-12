@@ -52,7 +52,7 @@ export function createSolTransfer(
       lamports: amount * LAMPORTS_PER_SOL,
     })
   );
-  
+
   return transaction;
 }
 

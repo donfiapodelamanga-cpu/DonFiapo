@@ -280,6 +280,51 @@ export const CONTRACT_ABI = {
         returnType: { type: 7 },
         selector: "0x7a7a7a7a",
       },
+      // ===== NFT Methods (RECONSTRUCTED) =====
+      {
+        args: [
+          { label: "nft_type", type: { type: 21 } },
+          { label: "lunes_balance", type: { type: 0 } },
+          { label: "payment_proof", type: { type: 23 } },
+        ],
+        default: false,
+        docs: ["Mints a new NFT"],
+        label: "mint_nft",
+        mutates: true,
+        payable: false,
+        returnType: { type: 29 },
+        selector: "0x219a113e",
+      },
+      {
+        args: [{ label: "owner", type: { type: 1 } }],
+        default: false,
+        docs: ["Returns NFTs owned by account"],
+        label: "get_user_nfts",
+        mutates: false,
+        payable: false,
+        returnType: { type: 28 },
+        selector: "0x75b82d34",
+      },
+      {
+        args: [{ label: "nft_id", type: { type: 5 } }],
+        default: false,
+        docs: ["Claims available tokens from NFT"],
+        label: "claim_tokens",
+        mutates: true,
+        payable: false,
+        returnType: { type: 30 },
+        selector: "0xfbcfbf73",
+      },
+      {
+        args: [{ label: "nft_id", type: { type: 5 } }],
+        default: false,
+        docs: ["Gets claimable tokens amount"],
+        label: "get_claimable_tokens",
+        mutates: false,
+        payable: false,
+        returnType: { type: 30 },
+        selector: "0x236f2a7e",
+      },
     ],
   },
   types: [
@@ -300,6 +345,16 @@ export const CONTRACT_ABI = {
     { id: 18, type: { def: { composite: { fields: [] } } } }, // InitialDistribution
     { id: 19, type: { def: { sequence: { type: 1 } } } }, // Vec<AccountId>
     { id: 20, type: { def: { array: { len: 32, type: 6 } } } }, // [u8; 32]
+    { id: 21, type: { def: { variant: { variants: [{ index: 0, name: "Free" }, { index: 1, name: "Tier2" }, { index: 2, name: "Tier3" }, { index: 3, name: "Tier4" }, { index: 4, name: "Tier5" }, { index: 5, name: "Tier6" }, { index: 6, name: "Tier7" }] } } } }, // NFTType
+    { id: 22, type: { def: { composite: { fields: [{ name: "transaction_hash", type: 4 }, { name: "sender_address", type: 4 }, { name: "amount_usdt", type: 5 }] } } } }, // PaymentProof
+    { id: 23, type: { def: { variant: { variants: [{ index: 0, name: "None" }, { index: 1, name: "Some", fields: [{ type: 22 }] }] } } } }, // Option<PaymentProof>
+    { id: 24, type: { def: { variant: { variants: [{ index: 0, name: "Common" }, { index: 1, name: "Uncommon" }, { index: 2, name: "Rare" }, { index: 3, name: "Epic" }, { index: 4, name: "Legendary" }] } } } }, // VisualRarity
+    { id: 25, type: { def: { sequence: { type: 5 } } } }, // Vec<u64>
+    { id: 26, type: { def: { composite: { fields: [{ name: "id", type: 5 }, { name: "nft_type", type: 21 }, { name: "owner", type: 1 }, { name: "created_at", type: 5 }, { name: "tokens_mined", type: 0 }, { name: "tokens_claimed", type: 0 }, { name: "last_mining_timestamp", type: 5 }, { name: "active", type: 16 }, { name: "visual_rarity", type: 24 }, { name: "evolution_count", type: 6 }, { name: "mining_bonus_bps", type: 6 }, { name: "evolved_from", type: 25 }] } } } }, // NFTData
+    { id: 27, type: { def: { sequence: { type: 26 } } } }, // Vec<NFTData>
+    { id: 28, type: { def: { variant: { variants: [{ index: 0, name: "Ok", fields: [{ type: 27 }] }, { index: 1, name: "Err", fields: [{ type: 4 }] }] } } } }, // Result<Vec<NFTData>, Error>
+    { id: 29, type: { def: { variant: { variants: [{ index: 0, name: "Ok", fields: [{ type: 5 }] }, { index: 1, name: "Err", fields: [{ type: 4 }] }] } } } }, // Result<u64, Error>
+    { id: 30, type: { def: { variant: { variants: [{ index: 0, name: "Ok", fields: [{ type: 0 }] }, { index: 1, name: "Err", fields: [{ type: 4 }] }] } } } }, // Result<u128, Error>
   ],
 };
 
@@ -351,6 +406,11 @@ export const METHOD_MAP = {
   pauseOwner: "pause_owner",
   unpauseOwner: "unpause_owner",
   distributeRankingRewards: "distribute_ranking_rewards",
+  // NFT
+  mintNft: "mint_nft",
+  getUserNfts: "get_user_nfts",
+  claimTokens: "claim_tokens",
+  getClaimableTokens: "get_claimable_tokens",
 };
 
 // Contract method selectors
@@ -370,4 +430,9 @@ export const SELECTORS = {
   getStats: "0x1a1a1a1a",
   isPaused: "0x2b2b2b2b",
   getSystemWallets: "0x3c3c3c3c",
+  // NFT
+  mintNft: "0x219a113e",
+  getUserNfts: "0x75b82d34",
+  claimTokens: "0xfbcfbf73",
+  getClaimableTokens: "0x236f2a7e",
 };
