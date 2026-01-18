@@ -78,7 +78,7 @@ pub struct StakingPosition {
 
 /// Configuração de um tipo de staking
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct StakingConfig {
     /// APY em basis points (1000 = 10%)
     pub apy_bps: u16,
@@ -127,7 +127,8 @@ pub struct WithdrawalResult {
 }
 
 /// Gerenciador de staking
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct StakingManager {
     /// Configurações por tipo de staking
     configs: [StakingConfig; 3],

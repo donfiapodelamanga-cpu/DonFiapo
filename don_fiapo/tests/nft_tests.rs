@@ -14,7 +14,7 @@ mod nft_tests {
         
         // Verificar se a configuração contém o gateway IPFS
         assert!(config.gateway_url.contains("https://ipfs.io/ipfs/"));
-        assert!(config.metadata_hash.contains("Hash"));
+        assert!(config.metadata_hash.starts_with("baf")); // IPFS CID v1 starts with 'baf'
     }
 
     /// Testa a obtenção de informações de display de um NFT
@@ -62,8 +62,8 @@ mod nft_tests {
         let config = manager.get_ipfs_config(&NFTType::Free)
             .expect("IPFS config should exist for Free NFT");
         
-        assert!(config.image_hash.contains("Hash"));
-        assert!(config.metadata_hash.contains("Hash"));
+        assert!(config.image_hash.starts_with("baf")); // IPFS CID v1 starts with 'baf'
+        assert!(config.metadata_hash.starts_with("baf")); // IPFS CID v1 starts with 'baf'
         assert_eq!(config.gateway_url, "https://ipfs.io/ipfs/");
     }
 

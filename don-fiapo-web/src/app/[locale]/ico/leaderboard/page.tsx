@@ -4,9 +4,9 @@ import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { 
-  ArrowLeft, 
-  Trophy, 
+import {
+  ArrowLeft,
+  Trophy,
   Crown,
   Sparkles,
   Medal,
@@ -20,32 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "@/lib/navigation";
 import { API_CONFIG, getRarityConfig } from "@/lib/api/config";
+import { getLeaderboardData, type LeaderboardEntry } from "@/lib/api/contract";
 
 // Leaderboard entry type
-interface LeaderboardEntry {
-  rank: number;
-  address: string;
-  nftId: number;
-  tierId: number;
-  rarity: string;
-  evolutionCount: number;
-  miningBonus: number;
-  totalMined: number;
-}
 
-// Mock leaderboard data
-const mockLeaderboard: LeaderboardEntry[] = [
-  { rank: 1, address: '5GrwvaEF5zXb26F...utQY', nftId: 777, tierId: 6, rarity: 'legendary', evolutionCount: 3, miningBonus: 30, totalMined: 450000 },
-  { rank: 2, address: '5FHneW46xGXgs5m...7sEY', nftId: 888, tierId: 5, rarity: 'legendary', evolutionCount: 2, miningBonus: 20, totalMined: 380000 },
-  { rank: 3, address: '5DAAnrj7VHTznn2...ZJwC', nftId: 999, tierId: 6, rarity: 'epic', evolutionCount: 2, miningBonus: 20, totalMined: 350000 },
-  { rank: 4, address: '5HGjWAeFDfFCWP...2dZw', nftId: 555, tierId: 5, rarity: 'epic', evolutionCount: 1, miningBonus: 10, totalMined: 280000 },
-  { rank: 5, address: '5CiPPseXPECbkjW...NqKv', nftId: 444, tierId: 4, rarity: 'epic', evolutionCount: 1, miningBonus: 10, totalMined: 220000 },
-  { rank: 6, address: '5GNJqTPyNqANBkU...PzLA', nftId: 333, tierId: 4, rarity: 'rare', evolutionCount: 2, miningBonus: 20, totalMined: 180000 },
-  { rank: 7, address: '5HpG9w8EBLe5XCr...Dn7o', nftId: 222, tierId: 3, rarity: 'rare', evolutionCount: 1, miningBonus: 10, totalMined: 150000 },
-  { rank: 8, address: '5Ck5SLSHYac6WFt...yRxs', nftId: 111, tierId: 3, rarity: 'rare', evolutionCount: 0, miningBonus: 0, totalMined: 120000 },
-  { rank: 9, address: '5FLSigC9HGRKVhB...YLzX', nftId: 666, tierId: 2, rarity: 'uncommon', evolutionCount: 1, miningBonus: 10, totalMined: 90000 },
-  { rank: 10, address: '5DAAnrj7VHTznn...JwC2', nftId: 123, tierId: 2, rarity: 'uncommon', evolutionCount: 0, miningBonus: 0, totalMined: 75000 },
-];
+// Mock data removed in favor of real contract data
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
@@ -72,11 +51,18 @@ export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<'rarity' | 'mining' | 'evolution'>('rarity');
 
   useEffect(() => {
-    // In production, fetch from contract
-    setTimeout(() => {
-      setLeaderboard(mockLeaderboard);
-      setLoading(false);
-    }, 1000);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await getLeaderboardData();
+        setLeaderboard(data);
+      } catch (error) {
+        console.error("Failed to fetch leaderboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   // Sort based on active tab
@@ -102,9 +88,9 @@ export default function LeaderboardPage() {
           <ArrowLeft className="w-4 h-4" /> Back to ICO
         </Link>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-bold font-display text-golden mb-4">
@@ -131,7 +117,7 @@ export default function LeaderboardPage() {
               <p className="text-sm text-muted-foreground">Legendary NFTs</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30">
             <CardContent className="pt-6 text-center">
               <Sparkles className="w-8 h-8 text-purple-500 mx-auto mb-2" />
@@ -141,7 +127,7 @@ export default function LeaderboardPage() {
               <p className="text-sm text-muted-foreground">Epic NFTs</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/30">
             <CardContent className="pt-6 text-center">
               <Flame className="w-8 h-8 text-orange-500 mx-auto mb-2" />
@@ -151,7 +137,7 @@ export default function LeaderboardPage() {
               <p className="text-sm text-muted-foreground">Total Evolutions</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
             <CardContent className="pt-6 text-center">
               <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-2" />
@@ -211,7 +197,7 @@ export default function LeaderboardPage() {
                   {sortedLeaderboard.map((entry, index) => {
                     const tierConfig = API_CONFIG.nftTiers[entry.tierId];
                     const rarityConfig = getRarityConfig(entry.rarity);
-                    
+
                     return (
                       <motion.div
                         key={entry.nftId}

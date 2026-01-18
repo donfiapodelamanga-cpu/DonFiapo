@@ -6,6 +6,7 @@
   "nav": {
     "home": "Início",
     "ico": "ICO/NFTs",
+    "marketplace": "Marketplace",
     "staking": "Staking",
     "simulations": "Simulações",
     "tokenomics": "Economia",
@@ -59,19 +60,36 @@
     "subtitle": "O Caminho Real da Glória",
     "phase1": {
       "title": "Fase 1 — A Coroação",
-      "items": ["Lançamento do Token", "Site", "Whitepaper", "Memes"]
+      "items": [
+        "Lançamento do Token",
+        "Site",
+        "Whitepaper",
+        "Memes"
+      ]
     },
     "phase2": {
       "title": "Fase 2 — Conquista do Reino",
-      "items": ["Airdrops", "Listagens DEX", "Campanha \"De Fiapo a Rei\""]
+      "items": [
+        "Airdrops",
+        "Listagens DEX",
+        "Campanha \"De Fiapo a Rei\""
+      ]
     },
     "phase3": {
       "title": "Fase 3 — O Império dos Memes",
-      "items": ["Staking gamificado", "NFTs", "Token $OSSIN"]
+      "items": [
+        "Staking gamificado",
+        "NFTs",
+        "Token $OSSIN"
+      ]
     },
     "phase4": {
       "title": "Fase 4 — Dominação Global",
-      "items": ["Merch", "Game \"Corrida Real do Fiapo\"", "Parcerias"]
+      "items": [
+        "Merch",
+        "Game \"Corrida Real do Fiapo\"",
+        "Parcerias"
+      ]
     }
   },
   "comparison": {

@@ -36,3 +36,19 @@ don_fiapo/target/
 # AI Artifacts
 .gemini/
 docs/internal/
+brain/
+
+# Documentation (User Request)
+*.md
+
+# Debug & Temp Files
+*.txt
+debug_bundle.js
+debug_contract.js
+don-fiapo-web/*.cjs
+don-fiapo-web/scripts/*.mjs
+don-fiapo-web/scripts/debug-nft-evolution.cjs
+don-fiapo-web/scripts/fund-wallet.cjs
+don_fiapo/build_output.txt
+don_fiapo/test_results.txt
+ssl/

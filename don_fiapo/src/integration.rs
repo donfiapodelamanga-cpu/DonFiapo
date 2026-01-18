@@ -14,6 +14,8 @@ use scale::{Decode, Encode};
 use crate::staking::{StakingManager, StakingType, StakingPosition, WithdrawalResult};
 use crate::rewards::{RewardsManager, RankingResult};
 use crate::fees::calculation::{FeeCalculator, FeeCalculationResult};
+use crate::ico::{ICOManager, NFTData, NFTType, PaymentProof};
+use ink::env::DefaultEnvironment;
 
 /// Configuração geral do sistema Don Fiapo
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
@@ -74,6 +76,8 @@ pub struct DonFiapoIntegration {
     staking_manager: StakingManager,
     /// Gerenciador de recompensas
     rewards_manager: RewardsManager,
+    /// Gerenciador de ICO/NFTs
+    pub ico_manager: ICOManager,
     /// Estatísticas do sistema
     stats: SystemStats,
 }
@@ -106,6 +110,7 @@ impl DonFiapoIntegration {
             fee_calculator: FeeCalculator::new(),
             staking_manager: StakingManager::new(),
             rewards_manager: RewardsManager::new(),
+            ico_manager: ICOManager::new(),
             stats: SystemStats::default(),
         }
     }
@@ -122,6 +127,7 @@ impl DonFiapoIntegration {
             fee_calculator,
             staking_manager,
             rewards_manager,
+            ico_manager: ICOManager::new(),
             stats: SystemStats::default(),
         }
     }
@@ -333,6 +339,61 @@ impl DonFiapoIntegration {
     pub fn calculate_staking_entry_fee(&self, amount: u128) -> FeeCalculationResult {
         let fee_calculator = FeeCalculator::new();
         fee_calculator.calculate_staking_entry_fee(amount)
+    }
+
+    /// Executa mint de NFT (Wrapper para ICOManager com mock de caller)
+    #[cfg(any(test, feature = "std"))]
+    pub fn mint_nft(
+        &mut self,
+        nft_type: NFTType,
+        lunes_balance: u128,
+        payment_proof: Option<String>,
+        owner: AccountId,
+        _current_time: u64, // Ignored logic-wise but kept for signature consistency if needed
+    ) -> Result<u64, &'static str> {
+        // Mock do caller para o teste
+        ink::env::test::set_caller::<DefaultEnvironment>(owner);
+        
+        // Conversão de PaymentProof se necessário (simplificado para string mock)
+        let proof = payment_proof.map(|hash| PaymentProof {
+            transaction_hash: hash,
+            sender_address: "mock_sender".into(),
+            amount_usdt: 0,
+            timestamp: 0,
+        });
+
+        let nft_id = self.ico_manager.mint_nft(
+            nft_type,
+            lunes_balance,
+            proof
+        ).map_err(|_| "NFT Minting failed")?;
+        Ok(nft_id)
+    }
+
+    /// Reivindica tokens de mineração de NFT
+    #[cfg(any(test, feature = "std"))]
+    pub fn claim_nft_tokens(
+        &mut self,
+        nft_id: u64,
+        owner: AccountId,
+        _current_time: u64,
+    ) -> Result<u128, String> {
+        ink::env::test::set_caller::<DefaultEnvironment>(owner);
+        
+        let amount = self.ico_manager.claim_tokens(
+            nft_id
+        ).map_err(|e| format!("Claim failed: {:?}", e))?;
+        Ok(amount)
+    }
+
+    /// Inicia a mineração de NFTs (Admin)
+    pub fn start_nft_mining(&mut self, current_time: u64) {
+        self.ico_manager.start_mining(current_time);
+    }
+
+    /// Obtém dados de um NFT do storage
+    pub fn get_nft_data(&self, nft_id: u64) -> Option<NFTData> {
+        self.ico_manager.nfts.get(nft_id)
     }
 }
 

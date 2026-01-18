@@ -99,12 +99,12 @@ impl RarityProbabilities {
 pub struct NFTVisualAttributes {
     /// Nível de raridade visual
     pub rarity: VisualRarity,
-    /// Lista de atributos visuais
-    pub attributes: Vec<VisualAttribute>,
-    /// Hash do seed usado para gerar (para verificação)
-    pub seed_hash: u64,
-    /// Se os atributos foram revelados
-    pub revealed: bool,
+    /// Tier do NFT (0-6)
+    pub tier: u8,
+    /// Contador de evoluções
+    pub evolution_count: u8,
+    /// Bônus de mineração em basis points
+    pub mining_bonus_bps: u16,
 }
 
 /// Resultado do roll de raridade
@@ -171,6 +171,32 @@ impl RarityManager {
             total_rolls: 0,
         }
     }
+
+    /// Gera uma raridade simples para um NFT (usado em evolução)
+    /// Usa nft_id e timestamp como seeds para pseudo-randomness
+    pub fn generate_rarity(&mut self, nft_id: u64, timestamp: u64) -> VisualRarity {
+        // Combinar seeds para pseudo-randomness
+        let mut seed = nft_id.wrapping_mul(31337);
+        seed = seed.wrapping_add(timestamp);
+        seed = seed.wrapping_mul(6364136223846793005);
+        seed = seed.wrapping_add(1442695040888963407);
+        
+        let roll = ((seed >> 32) % 10000) as u16;
+        let rarity = self.determine_rarity(roll);
+        
+        // Atualizar contagens
+        match rarity {
+            VisualRarity::Common => self.rarity_counts.common += 1,
+            VisualRarity::Uncommon => self.rarity_counts.uncommon += 1,
+            VisualRarity::Rare => self.rarity_counts.rare += 1,
+            VisualRarity::Epic => self.rarity_counts.epic += 1,
+            VisualRarity::Legendary => self.rarity_counts.legendary += 1,
+        }
+        self.total_rolls += 1;
+        
+        rarity
+    }
+
 
     /// Determina a raridade baseada em um valor de roll (0-9999)
     /// 
@@ -592,7 +618,7 @@ mod tests {
         
         // Pelo menos alguma variação deve existir
         // (não garantimos que sejam diferentes, mas é muito improvável que sejam iguais)
-        let all_same = result1.roll_value == result2.roll_value 
+        let _all_same = result1.roll_value == result2.roll_value 
             && result2.roll_value == result3.roll_value;
         
         // Em produção, isso raramente será verdade

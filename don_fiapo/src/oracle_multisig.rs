@@ -8,7 +8,7 @@
 //! 2. Oracle 2 submete confirmação com mesmos dados
 //! 3. Após M confirmações idênticas, pagamento é processado automaticamente
 
-use ink::prelude::string::{String, ToString};
+use ink::prelude::string::String;
 use ink::prelude::vec::Vec;
 use ink::primitives::AccountId;
 use scale::{Decode, Encode};

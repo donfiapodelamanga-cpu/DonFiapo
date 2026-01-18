@@ -78,12 +78,17 @@ mod security_tests {
 
     // ==========================================================================
     // TESTES DE RATE LIMITER
-    // Nota: Esses testes requerem contexto ink! test, marcados como ignore
     // ==========================================================================
 
+    fn setup_test_env() -> AccountId {
+        let callee = AccountId::from([1u8; 32]);
+        ink::env::test::set_callee::<ink::env::DefaultEnvironment>(callee);
+        callee
+    }
+
     #[test]
-    #[ignore = "Requires ink! test context for AccountId"]
     fn test_rate_limiter_allows_first_operation() {
+        let _ = setup_test_env();
         let limiter = RateLimiter::new(60); // 60 segundos de intervalo
         let account = AccountId::from([1u8; 32]);
         let current_time = 1000u64;
@@ -92,8 +97,8 @@ mod security_tests {
     }
 
     #[test]
-    #[ignore = "Requires ink! test context for AccountId"]
     fn test_rate_limiter_blocks_rapid_operations() {
+        let _ = setup_test_env();
         let mut limiter = RateLimiter::new(60);
         let account = AccountId::from([1u8; 32]);
         let current_time = 1000u64;
@@ -107,8 +112,8 @@ mod security_tests {
     }
 
     #[test]
-    #[ignore = "Requires ink! test context for AccountId"]
     fn test_rate_limiter_allows_after_interval() {
+        let _ = setup_test_env();
         let mut limiter = RateLimiter::new(60);
         let account = AccountId::from([1u8; 32]);
         let current_time = 1000u64;
@@ -122,8 +127,8 @@ mod security_tests {
     }
 
     #[test]
-    #[ignore = "Requires ink! test context for AccountId"]
     fn test_rate_limiter_execute_with_limit() {
+        let _ = setup_test_env();
         let mut limiter = RateLimiter::new(60);
         let account = AccountId::from([1u8; 32]);
         let current_time = 1000u64;

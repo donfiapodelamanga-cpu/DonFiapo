@@ -42,7 +42,7 @@ pub enum RankingError {
 
 /// Tipos de ranking disponíveis
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub enum RankingType {
     /// Ranking de recompensas mensais (top 12 carteiras por saldo)
     MonthlyRewards,
@@ -64,7 +64,7 @@ pub enum RankingType {
 
 /// Status do ranking
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub enum RankingStatus {
     /// Ranking ativo e funcionando
     Active,
@@ -78,7 +78,7 @@ pub enum RankingStatus {
 
 /// Configuração de um tipo de ranking
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct RankingConfig {
     /// Número máximo de carteiras no ranking
     pub max_ranking_size: u8,
@@ -102,7 +102,7 @@ pub struct RankingConfig {
 
 /// Pesos para cálculo do ranking geral
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct ScoringWeights {
     /// Peso do saldo de tokens (25%)
     pub balance_weight: u8,
@@ -120,7 +120,7 @@ pub struct ScoringWeights {
 
 /// Informações detalhadas de uma carteira no ranking
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct WalletRankingInfo {
     /// Endereço da carteira
     pub address: [u8; 32],
@@ -154,7 +154,7 @@ pub struct WalletRankingInfo {
 
 /// Resultado de um ranking específico
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct RankingResult {
     /// ID único do ranking
     pub ranking_id: u64,
@@ -178,7 +178,7 @@ pub struct RankingResult {
 
 /// Histórico de rankings
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct RankingHistory {
     /// Tipo de ranking
     pub ranking_type: RankingType,
@@ -192,7 +192,7 @@ pub struct RankingHistory {
 
 /// Estatísticas do sistema de ranking
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct RankingStats {
     /// Total de rankings executados
     pub total_rankings: u64,
@@ -207,8 +207,8 @@ pub struct RankingStats {
 }
 
 /// Sistema principal de ranking
+#[ink::storage_item]
 #[derive(Debug)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub struct RankingSystem {
     /// Configurações por tipo de ranking
     pub configs: Mapping<RankingType, RankingConfig>,

@@ -13,7 +13,7 @@ export function WalletButton() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  
+
   const { lunesConnected, lunesAddress, lunesBalance, disconnectAll } = useWalletStore();
 
   const handleCopyAddress = async () => {
@@ -55,17 +55,15 @@ export function WalletButton() {
 
       {isDropdownOpen && (
         <>
-          <div 
-            className="fixed inset-0 z-40" 
-            onClick={() => setIsDropdownOpen(false)} 
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsDropdownOpen(false)}
           />
           <div className="absolute right-0 top-full mt-2 w-72 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
             {/* Balance */}
             <div className="p-4 border-b border-border">
               <p className="text-sm text-muted-foreground mb-1">Balance</p>
-              <p className="text-2xl font-bold text-golden">
-                {formatBalance(lunesBalance)}
-              </p>
+              {formatBalance(lunesBalance, 'LUNES')}
             </div>
 
             {/* Address */}

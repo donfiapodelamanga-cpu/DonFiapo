@@ -12,19 +12,21 @@
 
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
+import path from 'path';
 import { SolanaVerifier } from './solana-verifier';
 import { LunesContractClient } from './lunes-contract';
 import { PaymentRepository, PendingPayment } from './db';
 import { OracleWatcher } from './watcher'; // NEW IMPORT
 
-dotenv.config();
+// Load environment from project root
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Configuração
 const config = {
   solanaRpcUrl: process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
   usdtTokenAddress: process.env.USDT_TOKEN_ADDRESS || 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
   usdtReceiverAddress: process.env.USDT_RECEIVER_ADDRESS || '',
-  lunesRpcUrl: process.env.LUNES_RPC_URL || 'wss://ws.lunes.io',
+  lunesRpcUrls: (process.env.LUNES_RPC_URL || 'wss://ws.lunes.io').split(',').map(url => url.trim()),
   contractAddress: process.env.CONTRACT_ADDRESS || '',
   oracleSeed: process.env.ORACLE_SEED || '//OracleAccount',
   minConfirmations: parseInt(process.env.MIN_CONFIRMATIONS || '12', 10),
@@ -106,7 +108,7 @@ async function initialize(): Promise<void> {
 
   // Inicializa cliente Lunes
   lunesClient = new LunesContractClient(
-    config.lunesRpcUrl,
+    config.lunesRpcUrls,
     config.contractAddress,
     config.oracleSeed
   );

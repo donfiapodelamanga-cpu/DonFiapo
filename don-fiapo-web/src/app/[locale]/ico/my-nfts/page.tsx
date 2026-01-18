@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Crown, ArrowLeft, Pickaxe, Loader2, Sparkles, Flame, TrendingUp, Check, X, AlertCircle, PartyPopper, History, Trophy } from "lucide-react";
+import { Crown, ArrowLeft, Pickaxe, Loader2, Sparkles, Flame, TrendingUp, Check, X, AlertCircle, PartyPopper, History, Trophy, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "@/lib/navigation";
@@ -13,11 +13,13 @@ import { useNFTs } from "@/hooks/useContract";
 import { useEvolution, type VisualRarity } from "@/hooks/useEvolution";
 import { API_CONFIG, getRarityConfig } from "@/lib/api/config";
 import { useToast } from "@/components/ui/toast";
+import { ListNFTModal } from "@/components/nft/ListNFTModal";
+import { getNFTVisualAttributes } from "@/lib/api/contract";
 
 // NFT tier rarity labels (tier-based)
 const tierRarityLabels: Record<number, string> = {
   0: "Common",
-  1: "Common", 
+  1: "Common",
   2: "Uncommon",
   3: "Rare",
   4: "Epic",
@@ -29,14 +31,15 @@ export default function MyNFTsPage() {
   const t = useTranslations("ico");
   const { lunesConnected, lunesAddress } = useWalletStore();
   const { nfts, loading, fetchNFTs } = useNFTs();
-  
+
   // Visual rarity cache
   const [visualRarities, setVisualRarities] = useState<Record<number, VisualRarity>>({});
-  
+
   // Use evolution hook
   const evolution = useEvolution();
   const evolutionPreview = evolution.getEvolutionPreview(nfts);
   const { addToast } = useToast();
+  const [selectedForListing, setSelectedForListing] = useState<any | null>(null);
 
   useEffect(() => {
     if (lunesConnected && lunesAddress) {
@@ -48,7 +51,7 @@ export default function MyNFTsPage() {
   useEffect(() => {
     const fetchRarities = async () => {
       if (typeof window === 'undefined') return;
-      
+
       const contract = await import('@/lib/api/contract');
       const rarities: Record<number, VisualRarity> = {};
       for (const nft of nfts) {
@@ -59,7 +62,7 @@ export default function MyNFTsPage() {
       }
       setVisualRarities(rarities);
     };
-    
+
     if (nfts.length > 0) {
       fetchRarities();
     }
@@ -68,13 +71,13 @@ export default function MyNFTsPage() {
   // Handle evolution execution
   const handleEvolve = async () => {
     addToast("info", "Evolution Started", "Processing your NFT evolution...");
-    
+
     const result = await evolution.executeEvolution();
     if (result) {
       const newTierName = API_CONFIG.nftTiers[result.newTier]?.shortName || 'NFT';
       addToast(
-        "success", 
-        "Evolution Complete! 🎉", 
+        "success",
+        "Evolution Complete! 🎉",
         `Your NFTs evolved into a ${newTierName} with +${result.bonusBps / 100}% mining bonus!`
       );
       // Refresh NFTs after successful evolution
@@ -184,12 +187,12 @@ export default function MyNFTsPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="px-3 py-1 bg-purple-500/20 rounded-full text-sm">
                       {evolution.selectedNFTs.length} selected
                     </span>
-                    
+
                     {evolutionPreview && (
                       <div className="flex items-center gap-2 px-3 py-1 bg-golden/20 rounded-full">
                         <TrendingUp className="w-4 h-4 text-golden" />
@@ -198,7 +201,7 @@ export default function MyNFTsPage() {
                         </span>
                       </div>
                     )}
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -206,7 +209,7 @@ export default function MyNFTsPage() {
                     >
                       <X className="w-4 h-4 mr-1" /> Cancel
                     </Button>
-                    
+
                     <Button
                       disabled={evolution.selectedNFTs.length < 2 || !evolutionPreview || evolution.isLoading}
                       size="sm"
@@ -265,18 +268,18 @@ export default function MyNFTsPage() {
                 const tierRarity = tierRarityLabels[nft.nftType] || "Common";
                 const minedTokens = Number(nft.minedTokens) / 10 ** API_CONFIG.token.decimals;
                 const isSelected = evolution.selectedNFTs.includes(nft.tokenId);
-                
+
                 // Visual rarity from contract or fallback
                 const visualRarityKey = visualRarities[nft.tokenId] || 'common';
                 const visualRarity = getRarityConfig(visualRarityKey);
-                
+
                 // Check if selectable (same type as already selected)
-                const firstSelected = evolution.selectedNFTs.length > 0 
-                  ? nfts.find(n => n.tokenId === evolution.selectedNFTs[0]) 
+                const firstSelected = evolution.selectedNFTs.length > 0
+                  ? nfts.find(n => n.tokenId === evolution.selectedNFTs[0])
                   : null;
                 const isSelectable = !evolution.isEvolutionMode || !firstSelected || firstSelected.nftType === nft.nftType;
                 const isMaxTier = nft.nftType >= 6;
-                
+
                 return (
                   <motion.div
                     key={nft.tokenId}
@@ -286,13 +289,12 @@ export default function MyNFTsPage() {
                     onClick={() => !isMaxTier && evolution.toggleNFTSelection(nft.tokenId, nft.nftType, nfts)}
                     className={evolution.isEvolutionMode && !isMaxTier ? 'cursor-pointer' : ''}
                   >
-                    <Card className={`bg-card overflow-hidden card-hover group border-2 transition-all duration-200 ${
-                      isSelected 
-                        ? 'border-purple-500 ring-2 ring-purple-500/50' 
-                        : evolution.isEvolutionMode && !isSelectable
-                          ? 'opacity-50 cursor-not-allowed border-border'
-                          : 'hover:border-golden border-border'
-                    }`}>
+                    <Card className={`bg-card overflow-hidden card-hover group border-2 transition-all duration-200 ${isSelected
+                      ? 'border-purple-500 ring-2 ring-purple-500/50'
+                      : evolution.isEvolutionMode && !isSelectable
+                        ? 'opacity-50 cursor-not-allowed border-border'
+                        : 'hover:border-golden border-border'
+                      }`}>
                       <div className="relative aspect-[3/4]">
                         <Image
                           src={tierConfig.image}
@@ -300,6 +302,7 @@ export default function MyNFTsPage() {
                           fill
                           className="object-contain group-hover:scale-105 transition-transform duration-300"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          unoptimized={true}
                         />
                         {/* Selection indicator */}
                         {isSelected && (
@@ -347,12 +350,38 @@ export default function MyNFTsPage() {
                             <p className="font-medium text-sm">{minedTokens.toLocaleString()} FIAPO</p>
                           </div>
                         </div>
+
+                        {!evolution.isEvolutionMode && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-4 border-golden/30 text-golden hover:bg-golden/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedForListing({ id: nft.tokenId, name: tierConfig.shortName });
+                            }}
+                          >
+                            <Tag className="w-4 h-4 mr-2" /> Sell
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
                 );
               })}
             </div>
+
+            {/* Marketplace Modal */}
+            <ListNFTModal
+              isOpen={!!selectedForListing}
+              onClose={() => setSelectedForListing(null)}
+              tokenId={selectedForListing?.id}
+              nftName={selectedForListing?.name}
+              onSuccess={() => {
+                fetchNFTs();
+                setSelectedForListing(null);
+              }}
+            />
           </>
         )}
       </div>

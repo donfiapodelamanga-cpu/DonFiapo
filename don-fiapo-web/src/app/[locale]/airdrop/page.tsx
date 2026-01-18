@@ -10,6 +10,8 @@ import { useWalletStore } from "@/lib/stores";
 import { useAirdrop, useAirdropStats, useAirdropConfig } from "@/hooks/useContract";
 import { useToast } from "@/components/ui/toast";
 import { API_CONFIG } from "@/lib/api/config";
+import { AirdropTimeline } from "@/components/sections/AirdropTimeline";
+import { AirdropCalculator } from "@/components/sections/AirdropCalculator";
 
 export default function AirdropPage() {
   const t = useTranslations("airdrop");
@@ -40,7 +42,7 @@ export default function AirdropPage() {
   const isEligible = userData.eligible || status.eligible;
   const availableAmount = Number(userData.estimatedTokens || status.amount) / 10 ** API_CONFIG.token.decimals;
   const hasClaimed = userData.claimed || status.claimed;
-  
+
   // Calculate points percentages for visual breakdown
   const totalPoints = Number(userData.totalPoints);
   const balancePercent = totalPoints > 0 ? (Number(userData.balancePoints) / totalPoints) * 100 : 0;
@@ -60,9 +62,21 @@ export default function AirdropPage() {
           <h1 className="text-4xl md:text-6xl font-bold font-display text-golden mb-4">
             🎁 {t("title")}
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4">
             {t("subtitle")}
           </p>
+          <div className="inline-flex items-center gap-3 bg-golden/10 border-2 border-golden/50 rounded-full px-6 py-3">
+            <Gift className="w-6 h-6 text-golden" />
+            <div className="text-left">
+              <p className="text-sm text-muted-foreground">Total Airdrop Pool</p>
+              <p className="text-2xl font-bold text-golden">21,000,000,000 $FIAPO</p>
+            </div>
+            <div className="h-8 w-px bg-golden/30" />
+            <div className="text-left">
+              <p className="text-sm text-muted-foreground">Allocation</p>
+              <p className="text-2xl font-bold text-golden">7% of Supply</p>
+            </div>
+          </div>
         </motion.div>
 
         {/* Stats */}
@@ -188,19 +202,19 @@ export default function AirdropPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Distribution Progress</span>
                   <span className="text-golden">
-                    {globalStats.totalAmount > BigInt(0) 
+                    {globalStats.totalAmount > BigInt(0)
                       ? `${((Number(globalStats.totalClaimed) / Number(globalStats.totalAmount)) * 100).toFixed(1)}%`
                       : '0%'}
                   </span>
                 </div>
                 <div className="h-3 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-golden rounded-full transition-all duration-500" 
-                    style={{ 
+                  <div
+                    className="h-full bg-golden rounded-full transition-all duration-500"
+                    style={{
                       width: globalStats.totalAmount > BigInt(0)
                         ? `${(Number(globalStats.totalClaimed) / Number(globalStats.totalAmount)) * 100}%`
                         : '0%'
-                    }} 
+                    }}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground text-center">
@@ -220,9 +234,9 @@ export default function AirdropPage() {
                   <p className="text-green-500 font-bold">Airdrop Already Claimed!</p>
                 </div>
               ) : (
-                <Button 
-                  size="xl" 
-                  className="w-full glow-gold" 
+                <Button
+                  size="xl"
+                  className="w-full glow-gold"
                   disabled={!isEligible || loading}
                   onClick={handleClaim}
                 >
@@ -242,40 +256,182 @@ export default function AirdropPage() {
           </Card>
         </motion.div>
 
-        {/* How to Earn Points */}
+        {/* Timeline Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="mt-16 max-w-4xl mx-auto"
         >
+          <AirdropTimeline />
+        </motion.div>
+
+        {/* Calculator Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-16 max-w-4xl mx-auto"
+        >
+          <AirdropCalculator config={{
+            pointsPerFiapo: config.pointsPerFiapo || 1,
+            pointsPerStake: config.pointsPerStake || 2,
+            pointsPerBurn: config.pointsPerBurn || 5,
+            affiliateMultiplier: config.affiliateMultiplier || 10,
+            secondLevelAffiliateMultiplier: 5, // From contract: second level multiplier
+            distributionRates: config.distributionRates || {
+              holders: 30,
+              stakers: 35,
+              burners: 20,
+              affiliates: 15
+            }
+          }} />
+        </motion.div>
+
+        {/* Distribution Breakdown */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="mt-16 max-w-4xl mx-auto"
+        >
+          <Card className="bg-gradient-to-br from-golden/5 to-golden/10 border-golden/30">
+            <CardHeader className="text-center">
+              <CardTitle className="text-3xl text-golden">💰 21 Billion $FIAPO Distribution</CardTitle>
+              <CardDescription className="text-base">
+                7% of total supply (300B) allocated across four reward categories
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-background/50 rounded-lg p-4 border border-golden/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <PiggyBank className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Holders Pool</p>
+                      <p className="text-xl font-bold text-foreground">5.25B $FIAPO</p>
+                    </div>
+                    <span className="text-2xl font-bold text-golden">25%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-400 rounded-full" style={{ width: '25%' }} />
+                  </div>
+                </div>
+
+                <div className="bg-background/50 rounded-lg p-4 border border-golden/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Stakers Pool</p>
+                      <p className="text-xl font-bold text-foreground">6.3B $FIAPO</p>
+                    </div>
+                    <span className="text-2xl font-bold text-golden">30%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-green-400 rounded-full" style={{ width: '30%' }} />
+                  </div>
+                </div>
+
+                <div className="bg-background/50 rounded-lg p-4 border border-golden/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                      <Flame className="w-5 h-5 text-orange-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Burners Pool</p>
+                      <p className="text-xl font-bold text-foreground">4.2B $FIAPO</p>
+                    </div>
+                    <span className="text-2xl font-bold text-golden">20%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-orange-400 rounded-full" style={{ width: '20%' }} />
+                  </div>
+                </div>
+
+                <div className="bg-background/50 rounded-lg p-4 border border-golden/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                      <UserPlus className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Affiliates Pool</p>
+                      <p className="text-xl font-bold text-foreground">2.1B $FIAPO</p>
+                    </div>
+                    <span className="text-2xl font-bold text-golden">10%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-purple-400 rounded-full" style={{ width: '10%' }} />
+                  </div>
+                </div>
+
+                <div className="bg-background/50 rounded-lg p-4 border border-golden/20 md:col-span-2">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-golden/20 flex items-center justify-center">
+                      <Gift className="w-5 h-5 text-golden" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">NFT Holders Pool 🆕</p>
+                      <p className="text-xl font-bold text-foreground">3.15B $FIAPO</p>
+                    </div>
+                    <span className="text-2xl font-bold text-golden">15%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-golden rounded-full" style={{ width: '15%' }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Points awarded for NFT tier (Free 1x → $500 60x) + 500pts per evolution
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 bg-golden/10 border border-golden/30 rounded-lg p-4 text-center">
+                <p className="text-sm text-muted-foreground mb-1">Your reward is proportional to your points in each category</p>
+                <p className="text-lg font-bold text-golden">
+                  More Points = Bigger Share of the Pool 🎯
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* How to Earn Points */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="mt-16 max-w-4xl mx-auto"
+        >
           <h2 className="text-2xl font-bold text-golden text-center mb-8">How to Earn Points</h2>
           <div className="grid md:grid-cols-4 gap-4">
             {[
-              { 
-                icon: PiggyBank, 
-                title: "Hold $FIAPO", 
+              {
+                icon: PiggyBank,
+                title: "Hold $FIAPO",
                 desc: `${config.pointsPerFiapo}x points per FIAPO`,
                 rate: `${config.distributionRates.holders}%`,
                 color: "text-blue-400"
               },
-              { 
-                icon: TrendingUp, 
-                title: "Stake Tokens", 
+              {
+                icon: TrendingUp,
+                title: "Stake Tokens",
                 desc: `${config.pointsPerStake}x points per staked`,
                 rate: `${config.distributionRates.stakers}%`,
                 color: "text-green-400"
               },
-              { 
-                icon: Flame, 
-                title: "Burn Tokens", 
+              {
+                icon: Flame,
+                title: "Burn Tokens",
                 desc: `${config.pointsPerBurn}x points per burned`,
                 rate: `${config.distributionRates.burners}%`,
                 color: "text-orange-400"
               },
-              { 
-                icon: UserPlus, 
-                title: "Refer Friends", 
+              {
+                icon: UserPlus,
+                title: "Refer Friends",
                 desc: `${config.affiliateMultiplier}x per referral`,
                 rate: `${config.distributionRates.affiliates}%`,
                 color: "text-purple-400"
@@ -295,7 +451,7 @@ export default function AirdropPage() {
               </Card>
             ))}
           </div>
-          
+
           {/* Minimum Requirements */}
           <div className="mt-8 bg-card rounded-xl p-6 border border-border">
             <h3 className="font-bold text-foreground mb-4 text-center">Minimum Requirements</h3>

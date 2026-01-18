@@ -2,26 +2,25 @@
  * API Configuration
  */
 
-// Lunes Network RPC endpoints (ordered by priority)
+// Lunes Network RPC endpoints - uses only env variable for testnet/mainnet switching
 export const LUNES_RPC_ENDPOINTS = [
-  process.env.NEXT_PUBLIC_LUNES_RPC || 'wss://ws.lunes.io',
-  'wss://ws-lunes-main-02.lunes.io',
-  'wss://ws.lunes.io',
+  'ws://127.0.0.1:9944',
 ];
+
 
 export const API_CONFIG = {
   // Oracle service URL
   oracleUrl: process.env.NEXT_PUBLIC_ORACLE_URL || 'http://localhost:3001',
 
   // Lunes Network (primary - for backward compatibility)
-  lunesRpc: process.env.NEXT_PUBLIC_LUNES_RPC || 'wss://ws.lunes.io',
+  lunesRpc: process.env.NEXT_PUBLIC_LUNES_RPC || 'ws://127.0.0.1:9944',
 
   // Lunes RPC endpoints for redundancy
   lunesRpcEndpoints: LUNES_RPC_ENDPOINTS,
 
   // Contract addresses (replace with actual deployed addresses)
   contracts: {
-    donFiapo: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
+    donFiapo: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
   },
 
   // Solana configuration

@@ -29,7 +29,7 @@ class MockSolanaVerifier extends SolanaVerifier {
 }
 
 class MockLunesClient extends LunesContractClient {
-    constructor() { super('ws://mock', 'mock', 'mock'); }
+    constructor() { super(['ws://mock'], 'mock', 'mock'); }
 
     async isTransactionProcessed(hash: string): Promise<boolean> {
         return false;

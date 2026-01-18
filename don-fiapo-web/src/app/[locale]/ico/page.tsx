@@ -9,9 +9,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Link } from "@/lib/navigation";
 import { API_CONFIG } from "@/lib/api/config";
 import { formatNumber } from "@/lib/utils/format";
+import { getICOStats, getIcoNftConfigs, type ICOStats } from "@/lib/api/contract";
+import { useEffect, useState } from "react";
 
 // Use NFT tiers from config
-const nftTiers = API_CONFIG.nftTiers.map((tier, index) => ({
+const initialNftTiers = API_CONFIG.nftTiers.map((tier, index) => ({
   key: `tier${index}`,
   ...tier,
   minted: 0, // Will come from contract
@@ -19,33 +21,81 @@ const nftTiers = API_CONFIG.nftTiers.map((tier, index) => ({
 
 export default function ICOPage() {
   const t = useTranslations("ico");
+  const [stats, setStats] = useState<ICOStats | null>(null);
+  const [nftTiers, setNftTiers] = useState(initialNftTiers);
 
-  const totalMinted = nftTiers.reduce((acc, tier) => acc + tier.minted, 0);
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [statsData, configsData] = await Promise.all([
+          getICOStats(),
+          getIcoNftConfigs()
+        ]);
+
+        if (statsData) {
+          setStats(statsData);
+        }
+
+        if (configsData) {
+          setNftTiers(prev => prev.map((tier, index) => {
+            // Determine if we have a matching config for this tier
+            // configsData should be in order of NFT Types (0..6)
+            // tier.id should match the index if sorted
+            const config = configsData[index];
+            if (config) {
+              return {
+                ...tier,
+                minted: config.minted,
+              };
+            }
+            return tier;
+          }));
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch ICO stats:", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // Use fetched total if available, otherwise 0
+  const totalMinted = stats ? stats.totalNftsMinted : 0;
   const totalSupply = nftTiers.reduce((acc, tier) => acc + tier.supply, 0);
 
   return (
     <div className="min-h-screen pt-24 pb-16">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 flex flex-col">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16"
+        <div
+          className="text-center mb-12 order-1"
         >
           <h1 className="text-4xl md:text-6xl font-bold font-display text-golden mb-4">
             👑 {t("title")}
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
             {t("subtitle")}
           </p>
-        </motion.div>
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button variant="outline" size="lg" asChild className="border-golden/50 hover:border-golden hover:bg-golden/10">
+              <Link href="/ico/my-nfts">
+                <Crown className="w-4 h-4 mr-2" />
+                {t("myNfts")}
+              </Link>
+            </Button>
+            <Button variant="outline" size="lg" asChild className="border-golden/50 hover:border-golden hover:bg-golden/10">
+              <Link href="/ico/mining">
+                <Gem className="w-4 h-4 mr-2" />
+                {t("mining")}
+              </Link>
+            </Button>
+          </div>
+        </div >
 
         {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
+        <div
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 order-2"
         >
           {[
             { icon: Crown, label: "Total NFTs", value: formatNumber(totalSupply) },
@@ -63,14 +113,11 @@ export default function ICOPage() {
               </CardContent>
             </Card>
           ))}
-        </motion.div>
+        </div >
 
         {/* Progress Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="mb-12"
+        <div
+          className="mb-12 order-3"
         >
           <Card className="bg-card">
             <CardContent className="pt-6">
@@ -88,20 +135,17 @@ export default function ICOPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div >
 
         {/* NFT Tiers */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 order-4">
           {nftTiers.map((tier, i) => {
             const available = tier.supply - tier.minted;
             const progress = (tier.minted / tier.supply) * 100;
 
             return (
-              <motion.div
+              <div
                 key={tier.key}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
               >
                 <Card className={`h-full card-hover bg-background border-2 hover:border-golden ${available === 0 ? 'opacity-60' : ''}`}>
                   <CardHeader className="p-0">
@@ -173,25 +217,12 @@ export default function ICOPage() {
                     </Button>
                   </CardFooter>
                 </Card>
-              </motion.div>
+              </div >
             );
           })}
         </div>
 
-        {/* Quick Links */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-12 flex flex-wrap justify-center gap-4"
-        >
-          <Button variant="outline" size="lg" asChild>
-            <Link href="/ico/my-nfts">{t("myNfts")}</Link>
-          </Button>
-          <Button variant="outline" size="lg" asChild>
-            <Link href="/ico/mining">{t("mining")}</Link>
-          </Button>
-        </motion.div>
+
       </div>
     </div>
   );

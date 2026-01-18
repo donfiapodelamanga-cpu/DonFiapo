@@ -1,3 +1,7 @@
+
+
+
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(unexpected_cfgs)]
 #![allow(clippy::needless_borrows_for_generic_args)]
@@ -60,6 +64,9 @@ mod don_fiapo {
     use crate::apy::{DynamicAPYConfig, UserAPYData, GlobalBurnHistory};
     use crate::lottery::{LotteryConfig, LotteryResult, LotteryType};
     use crate::rewards::RewardDistribution;
+    use crate::governance::GovernanceStats;
+    use crate::ranking_system::{RankingType, WalletRankingInfo};
+    use crate::marketplace::Listing;
 
     /// Decimais do token FIAPO
     pub const DECIMALS: u8 = 8;
@@ -121,6 +128,12 @@ mod don_fiapo {
         OracleMultiSigError(crate::oracle_multisig::OracleMultiSigError),
         /// Erro no sistema de governança
         GovernanceError(crate::governance::GovernanceError),
+        /// Erro no sistema de upgrade
+        UpgradeError(crate::upgrade::UpgradeError),
+        /// Reentrancy detectada
+        ReentrancyDetected,
+        /// Erro no sistema de marketplace
+        MarketplaceError(crate::marketplace::MarketplaceError),
     }
 
     impl From<crate::oracle_multisig::OracleMultiSigError> for Error {
@@ -129,9 +142,21 @@ mod don_fiapo {
         }
     }
 
+    impl From<crate::marketplace::MarketplaceError> for Error {
+        fn from(err: crate::marketplace::MarketplaceError) -> Self {
+            Error::MarketplaceError(err)
+        }
+    }
+
     impl From<crate::governance::GovernanceError> for Error {
         fn from(err: crate::governance::GovernanceError) -> Self {
             Error::GovernanceError(err)
+        }
+    }
+
+    impl From<crate::upgrade::UpgradeError> for Error {
+        fn from(err: crate::upgrade::UpgradeError) -> Self {
+            Error::UpgradeError(err)
         }
     }
 
@@ -428,6 +453,51 @@ mod don_fiapo {
         /// Sistema de controle de whales (100 maiores carteiras)
         whale_exclusion_list: Vec<AccountId>,
         whale_exclusion_threshold: u128,
+        
+        // === ICO/NFT SYSTEM FIELDS (flattened) ===
+        /// Configurações dos tipos de NFT
+        ico_nft_configs: Vec<crate::ico::NFTConfig>,
+        /// Próximo ID de NFT
+        ico_next_nft_id: u64,
+        /// Timestamp de início da mineração
+        ico_mining_start_timestamp: u64,
+        /// Timestamp de fim da mineração
+        ico_mining_end_timestamp: u64,
+        /// Estatísticas do ICO
+        ico_stats: crate::ico::ICOStats,
+        /// Mapeamento de NFTs por ID
+        ico_nfts: Mapping<u64, crate::ico::NFTData>,
+        /// Mapeamento de IDs de NFTs por proprietário
+        ico_nfts_by_owner: Mapping<AccountId, Vec<u64>>,
+        /// Hashes de pagamento já utilizados
+        ico_used_payment_hashes: Mapping<String, u64>,
+        /// Configurações IPFS
+        ico_ipfs_configs: Vec<crate::ico::IPFSConfig>,
+        /// Gateway IPFS padrão
+        ico_default_ipfs_gateway: String,
+        /// ICO ativo
+        ico_is_active: bool,
+        /// Mineração ativa
+        ico_mining_active: bool,
+        
+        // === EVOLUTION & RARITY SYSTEM FIELDS ===
+        /// Gerenciador do sistema de evolução
+        evolution_manager: crate::nft_evolution::EvolutionManager,
+        /// Gerenciador do sistema de raridade visual
+        rarity_manager: crate::nft_rarity::RarityManager,
+        
+        // === FREE MINT COOLDOWN SYSTEM ===
+        /// Cooldown period for free mints in milliseconds (0 = disabled, 86400000 = 24h)
+        free_mint_cooldown_ms: u64,
+        /// Last free mint timestamp per wallet
+        last_free_mint: Mapping<AccountId, u64>,
+        
+        /// Ranking system instance
+        ranking_system: crate::ranking_system::RankingSystem,
+        /// Staking manager instance
+        staking_manager: crate::staking::StakingManager,
+        /// Marketplace manager instance
+        marketplace: crate::marketplace::MarketplaceManager,
     }
 
     impl DonFiapo {
@@ -469,7 +539,7 @@ mod don_fiapo {
                 min_apy: 7, max_apy: 70, burn_threshold_per_apy_point: 1500 * 10u128.pow(18), apy_increment: 1, staking_type: String::from("Don Fiapo")
             });
 
-            let instance = Self {
+            let mut instance = Self {
                 symbol,
                 name,
                 total_supply: initial_supply,
@@ -486,7 +556,7 @@ mod don_fiapo {
                 // Oracle Multi-Sig initialization
                 oracle_multisig: crate::oracle_multisig::OracleMultiSig::new(
                     initial_oracles, 
-                    2, // Default threshold: 2 confirmations
+                    1, // Default threshold: 1 confirmation for initial deploy
                 )?,
 
                 burn_manager: crate::burn::BurnManager::new(),
@@ -562,8 +632,38 @@ mod don_fiapo {
                 // Rewards Init
                 rewards_distribution: RewardDistribution::default(),
                 rewards_last_distribution: 0,
+
+                // ICO/NFT Init (flattened)
+                ico_nft_configs: crate::ico::get_default_nft_configs(),
+                ico_next_nft_id: 1,
+                ico_mining_start_timestamp: 0,
+                ico_mining_end_timestamp: 0,
+                ico_stats: crate::ico::ICOStats::default(),
+                ico_nfts: Mapping::default(),
+                ico_nfts_by_owner: Mapping::default(),
+                ico_used_payment_hashes: Mapping::default(),
+                ico_ipfs_configs: crate::ico::get_default_ipfs_configs(),
+                ico_default_ipfs_gateway: String::from("https://ipfs.io/ipfs/"),
+                ico_is_active: true,
+                ico_mining_active: false,
+                
+                // Evolution & Rarity Init
+                evolution_manager: crate::nft_evolution::EvolutionManager::new(),
+                rarity_manager: crate::nft_rarity::RarityManager::new(),
+                
+                // Free Mint Cooldown Init (0 = disabled for testing, 86400000 = 24h)
+                free_mint_cooldown_ms: 0,
+                last_free_mint: Mapping::default(),
+
+                // Novas instâncias de sistema
+                ranking_system: crate::ranking_system::RankingSystem::new(),
+                staking_manager: crate::staking::StakingManager::new(),
+                marketplace: crate::marketplace::MarketplaceManager::new(),
             };
             
+            // Inicializar ranking configs padrao
+            instance.ranking_system.initialize_default_configs().map_err(|_| Error::InvalidOperation)?;
+
             // Emitir evento de criação
             Self::env().emit_event(Transfer {
                 from: None,
@@ -822,6 +922,14 @@ mod don_fiapo {
                 if let Some(rewards_wallet) = self.rewards_wallet {
                     let rewards_balance = self.balance_of(rewards_wallet);
                     self.balances.insert(rewards_wallet, &rewards_balance.saturating_add(rewards_amount));
+                }
+            }
+            
+            // Distribuir para team wallet (CRÍTICO para receitas do time)
+            if team_amount > 0 {
+                if let Some(team_wallet) = self.team_wallet {
+                    let team_balance = self.balance_of(team_wallet);
+                    self.balances.insert(team_wallet, &team_balance.saturating_add(team_amount));
                 }
             }
             
@@ -1282,6 +1390,28 @@ mod don_fiapo {
         pub fn is_paused(&self) -> bool {
             self.is_paused
         }
+
+        /// Ativa ou desativa o ICO (apenas owner)
+        #[ink(message)]
+        pub fn set_ico_active(&mut self, active: bool) -> Result<(), Error> {
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(Error::NotOwner);
+            }
+            
+            self.ico_is_active = active;
+            
+            // Atualizar stats também
+            self.ico_stats.ico_active = active;
+            
+            Ok(())
+        }
+
+        /// Verifica se o ICO está ativo
+        #[ink(message)]
+        pub fn is_ico_active(&self) -> bool {
+            self.ico_is_active
+        }
         
         /// Retorna as carteiras especiais do sistema
         #[ink(message)]
@@ -1687,7 +1817,31 @@ mod don_fiapo {
                fiapo_payment
             ).map_err(|_| Error::InvalidOperation)
         }
-        
+
+        // ======================================================================
+        // GETTERS PARA FRONTEND (DEPARA)
+        // ======================================================================
+
+        /// Obtém a configuração de um tipo de staking
+        #[ink(message)]
+        pub fn get_staking_config(&self, staking_type: StakingType) -> Option<crate::staking::StakingConfig> {
+            self.staking_manager.get_config(&staking_type).ok().cloned()
+        }
+
+        /// Obtém os dados de um ranking específico (pega o último executado)
+        #[ink(message)]
+        pub fn get_ranking_data(&self, ranking_type: RankingType) -> Vec<WalletRankingInfo> {
+            self.ranking_system.get_latest_ranking(&ranking_type)
+                .map(|r| r.winners)
+                .unwrap_or_default()
+        }
+
+        /// Obtém estatísticas globais de governança
+        #[ink(message)]
+        pub fn get_governance_stats(&self) -> GovernanceStats {
+            self.governance.get_stats()
+        }
+
         /// Vota em proposta de governança
         #[ink(message)]
         pub fn vote_on_governance_proposal(
@@ -1735,6 +1889,949 @@ mod don_fiapo {
              ).map_err(|_| Error::InvalidOperation)
         }
 
+        // ========== ICO/NFT SYSTEM ==========
+
+        /// Verifica se todos as NFTs da ICO foram vendidas (Captação encerrada)
+        #[ink(message)]
+        pub fn are_all_nfts_sold(&self) -> bool {
+            self.check_ico_all_sold()
+        }
+
+        fn check_ico_all_sold(&self) -> bool {
+            for config in &self.ico_nft_configs {
+                if config.minted < config.max_supply {
+                    return false;
+                }
+            }
+            true
+        }
+
+        fn internal_escrow_nft(&mut self, token_id: u64, owner: AccountId) -> Result<(), Error> {
+            let mut nft = self.ico_nfts.get(&token_id).ok_or(Error::TokenNotFound)?;
+            if nft.owner != owner {
+                return Err(Error::Unauthorized);
+            }
+            
+            // Transfer para o contrato
+            nft.owner = self.env().account_id();
+            self.ico_nfts.insert(&token_id, &nft);
+            
+            // Atualizar listas de proprietário
+            let mut owner_nfts = self.ico_nfts_by_owner.get(&owner).unwrap_or_default();
+            if let Some(pos) = owner_nfts.iter().position(|&id| id == token_id) {
+                owner_nfts.remove(pos);
+            }
+            self.ico_nfts_by_owner.insert(&owner, &owner_nfts);
+            
+            let mut contract_nfts = self.ico_nfts_by_owner.get(&self.env().account_id()).unwrap_or_default();
+            contract_nfts.push(token_id);
+            self.ico_nfts_by_owner.insert(&self.env().account_id(), &contract_nfts);
+
+            Ok(())
+        }
+
+        fn internal_nft_transfer_from_escrow(&mut self, token_id: u64, to: AccountId) -> Result<(), Error> {
+            let mut nft = self.ico_nfts.get(&token_id).ok_or(Error::TokenNotFound)?;
+            
+            // O contrato deve ser o proprietário
+            if nft.owner != self.env().account_id() {
+                return Err(Error::InvalidOperation);
+            }
+
+            // Atualizar proprietário
+            nft.owner = to;
+            self.ico_nfts.insert(&token_id, &nft);
+
+            // Atualizar listas
+            let mut contract_nfts = self.ico_nfts_by_owner.get(&self.env().account_id()).unwrap_or_default();
+            if let Some(pos) = contract_nfts.iter().position(|&id| id == token_id) {
+                contract_nfts.remove(pos);
+            }
+            self.ico_nfts_by_owner.insert(&self.env().account_id(), &contract_nfts);
+
+            let mut to_nfts = self.ico_nfts_by_owner.get(&to).unwrap_or_default();
+            to_nfts.push(token_id);
+            self.ico_nfts_by_owner.insert(&to, &to_nfts);
+
+            Ok(())
+        }
+
+        /// Minta um novo NFT
+        #[ink(message)]
+        pub fn mint_nft(
+            &mut self,
+            nft_type: u8,
+            lunes_balance: u128,
+            _payment_proof: Option<crate::ico::PaymentProof>,
+        ) -> Result<u64, Error> {
+            if self.is_paused {
+                return Err(Error::SystemPaused);
+            }
+            if !self.ico_is_active {
+                return Err(Error::InvalidOperation);
+            }
+            
+            let caller = self.env().caller();
+            let current_time = self.env().block_timestamp();
+            
+            // Verificar configuração do tier
+            let config = self.ico_nft_configs.get(nft_type as usize)
+                .ok_or(Error::InvalidInput)?
+                .clone();
+            
+            // Verificar supply
+            if config.minted >= config.max_supply {
+                return Err(Error::InvalidOperation);
+            }
+            
+            // Para NFT gratuito verificar limite e cooldown
+            if nft_type == 0 {
+                // Verificar cooldown (se habilitado)
+                if self.free_mint_cooldown_ms > 0 {
+                    if let Some(last_mint) = self.last_free_mint.get(caller) {
+                        let elapsed = current_time.saturating_sub(last_mint);
+                        if elapsed < self.free_mint_cooldown_ms {
+                            return Err(Error::InvalidOperation); // Cooldown not elapsed
+                        }
+                    }
+                }
+                
+                let user_nfts = self.ico_nfts_by_owner.get(caller).unwrap_or_default();
+                let free_count = user_nfts.iter()
+                    .filter(|&&id| {
+                        self.ico_nfts.get(id)
+                            .map(|n| n.nft_type == crate::ico::NFTType::Free)
+                            .unwrap_or(false)
+                    })
+                    .count();
+                if free_count >= 5 {
+                    return Err(Error::InvalidOperation);
+                }
+                // Verificar saldo LUNES para mint adicional
+                if free_count > 0 && lunes_balance < 10 * 10u128.pow(8) {
+                    return Err(Error::InsufficientBalance);
+                }
+                
+                // Atualizar timestamp do último mint gratuito
+                self.last_free_mint.insert(caller, &current_time);
+            }
+            
+            // Converter tipo para enum
+            let nft_type_enum = match nft_type {
+                0 => crate::ico::NFTType::Free,
+                1 => crate::ico::NFTType::Tier2,
+                2 => crate::ico::NFTType::Tier3,
+                3 => crate::ico::NFTType::Tier4,
+                4 => crate::ico::NFTType::Tier5,
+                5 => crate::ico::NFTType::Tier6,
+                6 => crate::ico::NFTType::Tier7,
+                _ => return Err(Error::InvalidInput),
+            };
+            
+            // Criar NFT
+            let nft_id = self.ico_next_nft_id;
+            let nft_data = crate::ico::NFTData {
+                id: nft_id,
+                nft_type: nft_type_enum,
+                owner: caller,
+                created_at: current_time,
+                tokens_mined: 0,
+                tokens_claimed: 0,
+                last_mining_timestamp: current_time,
+                active: true,
+                visual_rarity: crate::nft_rarity::VisualRarity::Common,
+                evolution_count: 0,
+                mining_bonus_bps: 0,
+                evolved_from: Vec::new(),
+            };
+            
+            // Salvar NFT
+            self.ico_nfts.insert(nft_id, &nft_data);
+            
+            // Adicionar à lista do usuário
+            let mut user_nfts = self.ico_nfts_by_owner.get(caller).unwrap_or_default();
+            user_nfts.push(nft_id);
+            self.ico_nfts_by_owner.insert(caller, &user_nfts);
+            
+            // Atualizar configuração
+            if let Some(cfg) = self.ico_nft_configs.get_mut(nft_type as usize) {
+                cfg.minted = cfg.minted.saturating_add(1);
+            }
+            
+            // Atualizar estatísticas
+            self.ico_next_nft_id = nft_id.saturating_add(1);
+            self.ico_stats.total_nfts_minted = self.ico_stats.total_nfts_minted.saturating_add(1);
+            if nft_type > 0 {
+                self.ico_stats.total_raised_usdt_cents = self.ico_stats.total_raised_usdt_cents.saturating_add(config.price_usdt_cents);
+            }
+            
+            Ok(nft_id)
+        }
+
+        /// Resgata tokens minerados de um NFT
+        #[ink(message)]
+        pub fn claim_nft_tokens(&mut self, nft_id: u64) -> Result<u128, Error> {
+            if self.is_paused {
+                return Err(Error::SystemPaused);
+            }
+            
+            let caller = self.env().caller();
+            let nft = self.ico_nfts.get(nft_id).ok_or(Error::TokenNotFound)?;
+            
+            if nft.owner != caller {
+                return Err(Error::Unauthorized);
+            }
+            if !nft.active {
+                return Err(Error::InvalidOperation);
+            }
+            
+            // Calcular tokens minerados
+            let current_time = self.env().block_timestamp();
+            let config = self.ico_nft_configs.get(self._nft_type_to_index(&nft.nft_type))
+                .ok_or(Error::InvalidInput)?;
+            
+            let days_elapsed = if self.ico_mining_active && self.ico_mining_start_timestamp > 0 {
+                let mining_time = current_time.saturating_sub(self.ico_mining_start_timestamp);
+                (mining_time / (24 * 60 * 60 * 1000)).min(112) as u128
+            } else {
+                0
+            };
+            
+            let total_mined = days_elapsed.saturating_mul(config.daily_mining_rate);
+            let claimable = total_mined.saturating_sub(nft.tokens_claimed);
+            
+            if claimable > 0 {
+                // Atualizar NFT
+                let mut updated_nft = nft.clone();
+                updated_nft.tokens_claimed = updated_nft.tokens_claimed.saturating_add(claimable);
+                updated_nft.tokens_mined = total_mined;
+                self.ico_nfts.insert(nft_id, &updated_nft);
+                
+                // Transferir tokens
+                if let Some(staking_wallet) = self.staking_wallet {
+                    let staking_balance = self.balance_of(staking_wallet);
+                    if staking_balance >= claimable {
+                        self.balances.insert(staking_wallet, &staking_balance.saturating_sub(claimable));
+                        let caller_balance = self.balance_of(caller);
+                        self.balances.insert(caller, &caller_balance.saturating_add(claimable));
+                    }
+                }
+            }
+            
+            Ok(claimable)
+        }
+
+        /// Retorna tokens resgatáveis de um NFT
+        #[ink(message)]
+        pub fn get_claimable_nft_tokens(&self, nft_id: u64) -> Result<u128, Error> {
+            let nft = self.ico_nfts.get(nft_id).ok_or(Error::TokenNotFound)?;
+            
+            let current_time = self.env().block_timestamp();
+            let config = self.ico_nft_configs.get(self._nft_type_to_index(&nft.nft_type))
+                .ok_or(Error::InvalidInput)?;
+            
+            let days_elapsed = if self.ico_mining_active && self.ico_mining_start_timestamp > 0 {
+                let mining_time = current_time.saturating_sub(self.ico_mining_start_timestamp);
+                (mining_time / (24 * 60 * 60 * 1000)).min(112) as u128
+            } else {
+                0
+            };
+            
+            let total_mined = days_elapsed.saturating_mul(config.daily_mining_rate);
+            Ok(total_mined.saturating_sub(nft.tokens_claimed))
+        }
+
+        /// Retorna NFTs de um usuário
+        #[ink(message)]
+        pub fn get_user_nfts(&self, owner: AccountId) -> Vec<crate::ico::NFTData> {
+            let nft_ids = self.ico_nfts_by_owner.get(owner).unwrap_or_default();
+            nft_ids.iter()
+                .filter_map(|id| self.ico_nfts.get(*id))
+                .collect()
+        }
+
+        /// Retorna URI do token (IPFS)
+        #[ink(message)]
+        pub fn token_uri(&self, nft_id: u64) -> Result<String, Error> {
+            let nft = self.ico_nfts.get(nft_id).ok_or(Error::TokenNotFound)?;
+            let tier_index = self._nft_type_to_index(&nft.nft_type);
+            
+            if let Some(ipfs_config) = self.ico_ipfs_configs.get(tier_index) {
+                Ok(format!("{}{}", ipfs_config.gateway_url, ipfs_config.metadata_hash))
+            } else {
+                Err(Error::TokenNotFound)
+            }
+        }
+
+        /// Retorna as configurações dos NFTs (incluindo contagem de mints)
+        #[ink(message)]
+        pub fn get_ico_nft_configs(&self) -> Vec<crate::ico::NFTConfig> {
+            self.ico_nft_configs.clone()
+        }
+
+        /// Retorna estatísticas gerais do ICO
+        #[ink(message)]
+        pub fn get_ico_stats(&self) -> crate::ico::ICOStats {
+            self.ico_stats.clone()
+        }
+
+        /// Retorna dados de um NFT específico (para leaderboard/explorer)
+        #[ink(message)]
+        pub fn get_nft(&self, nft_id: u64) -> Option<crate::ico::NFTData> {
+            self.ico_nfts.get(nft_id)
+        }
+
+        // ============================================================================
+        // EVOLUTION SYSTEM ENDPOINTS
+        // ============================================================================
+
+        /// Verifica se NFTs podem ser evoluídos
+        /// Retorna o tier resultante se válido, ou erro se não
+        #[ink(message)]
+        pub fn can_evolve(&self, nft_ids: Vec<u64>) -> Result<u8, Error> {
+            let caller = self.env().caller();
+            
+            // Validar que temos NFTs suficientes
+            if nft_ids.len() < 2 {
+                return Err(Error::InvalidValue);
+            }
+            
+            // Coletar tiers dos NFTs
+            let mut tiers: Vec<u8> = Vec::new();
+            for nft_id in &nft_ids {
+                let nft = self.ico_nfts.get(*nft_id).ok_or(Error::TokenNotFound)?;
+                
+                // Verificar propriedade
+                if nft.owner != caller {
+                    return Err(Error::Unauthorized);
+                }
+                
+                // Verificar se está ativo
+                if !nft.active {
+                    return Err(Error::TokenNotFound);
+                }
+                
+                tiers.push(self._nft_type_to_index(&nft.nft_type) as u8);
+            }
+            
+            // Delegar para evolution_manager
+            self.evolution_manager.can_evolve(&tiers)
+                .map_err(|_| Error::InvalidValue)
+        }
+
+        /// Evolui NFTs - queima os NFTs de entrada e cria um NFT superior
+        #[ink(message)]
+        pub fn evolve_nfts(&mut self, nft_ids: Vec<u64>) -> Result<u64, Error> {
+            // Proteção contra reentrancy
+            if self.reentrancy_locked {
+                return Err(Error::ReentrancyDetected);
+            }
+            self.reentrancy_locked = true;
+            
+            let caller = self.env().caller();
+            let current_time = self.env().block_timestamp();
+            
+            // Validar evolução
+            let result_tier = self.can_evolve(nft_ids.clone())?;
+            
+            // Coletar dados antes de queimar
+            let first_nft = self.ico_nfts.get(nft_ids[0]).ok_or(Error::TokenNotFound)?;
+            let _source_tier = self._nft_type_to_index(&first_nft.nft_type);
+            
+            // Acumular bônus existentes dos NFTs sendo queimados
+            let mut accumulated_bonus: u16 = 0;
+            for nft_id in &nft_ids {
+                if let Some(nft) = self.ico_nfts.get(*nft_id) {
+                    accumulated_bonus = accumulated_bonus.saturating_add(nft.mining_bonus_bps);
+                }
+            }
+            
+            // Queimar NFTs de origem
+            for nft_id in &nft_ids {
+                // Marcar como inativo
+                if let Some(mut nft) = self.ico_nfts.get(*nft_id) {
+                    nft.active = false;
+                    self.ico_nfts.insert(*nft_id, &nft);
+                }
+                
+                // Remover da lista do proprietário
+                if let Some(mut owner_nfts) = self.ico_nfts_by_owner.get(caller) {
+                    owner_nfts.retain(|id| id != nft_id);
+                    self.ico_nfts_by_owner.insert(caller, &owner_nfts);
+                }
+            }
+            
+            // Criar novo NFT evoluído
+            let new_nft_id = self.ico_next_nft_id;
+            self.ico_next_nft_id = self.ico_next_nft_id.saturating_add(1);
+            
+            // Calcular bônus total (acumulado + novo bônus de evolução)
+            let evolution_bonus = self.evolution_manager.config.evolution_bonus_bps;
+            let total_bonus = accumulated_bonus.saturating_add(evolution_bonus);
+            
+            // Determinar tipo do novo NFT
+            let new_nft_type = self._index_to_nft_type(result_tier as usize);
+            
+            // Gerar raridade visual para o novo NFT
+            let visual_rarity = self.rarity_manager.generate_rarity(new_nft_id, current_time);
+            
+            // Criar NFT evoluído
+            let evolved_nft = crate::ico::NFTData {
+                id: new_nft_id,
+                nft_type: new_nft_type,
+                owner: caller,
+                created_at: current_time,
+                tokens_mined: 0,
+                tokens_claimed: 0,
+                last_mining_timestamp: current_time,
+                active: true,
+                visual_rarity,
+                evolution_count: 1,
+                mining_bonus_bps: total_bonus,
+                evolved_from: nft_ids.clone(),
+            };
+            
+            // Salvar novo NFT
+            self.ico_nfts.insert(new_nft_id, &evolved_nft);
+            
+            // Adicionar à lista do proprietário
+            let mut owner_nfts = self.ico_nfts_by_owner.get(caller).unwrap_or_default();
+            owner_nfts.push(new_nft_id);
+            self.ico_nfts_by_owner.insert(caller, &owner_nfts);
+            
+            // Atualizar estatísticas de evolução
+            self.evolution_manager.record_evolution(nft_ids.len() as u64);
+            
+            // Liberar lock de reentrancy
+            self.reentrancy_locked = false;
+            
+            Ok(new_nft_id)
+        }
+
+        /// Retorna estatísticas do sistema de evolução
+        #[ink(message)]
+        pub fn get_evolution_stats(&self) -> crate::nft_evolution::EvolutionManager {
+            self.evolution_manager.clone()
+        }
+
+        /// Retorna atributos visuais de um NFT
+        #[ink(message)]
+        pub fn get_visual_attributes(&self, nft_id: u64) -> Option<crate::nft_rarity::NFTVisualAttributes> {
+            let nft = self.ico_nfts.get(nft_id)?;
+            Some(crate::nft_rarity::NFTVisualAttributes {
+                rarity: nft.visual_rarity.clone(),
+                tier: self._nft_type_to_index(&nft.nft_type) as u8,
+                evolution_count: nft.evolution_count,
+                mining_bonus_bps: nft.mining_bonus_bps,
+            })
+        }
+
+        /// Retorna estatísticas de distribuição de raridade
+        #[ink(message)]
+        pub fn get_rarity_stats(&self) -> crate::nft_rarity::RarityManager {
+            self.rarity_manager.clone()
+        }
+
+        // ========== FREE MINT COOLDOWN ADMIN FUNCTIONS ==========
+
+        /// Define o período de cooldown para free mints (apenas owner)
+        /// Use 0 para desabilitar (testes), 86400000 para 24h (produção)
+        #[ink(message)]
+        pub fn set_free_mint_cooldown(&mut self, cooldown_ms: u64) -> Result<(), Error> {
+            if self.env().caller() != self.owner {
+                return Err(Error::NotOwner);
+            }
+            self.free_mint_cooldown_ms = cooldown_ms;
+            Ok(())
+        }
+
+        /// Retorna o período de cooldown atual para free mints (em ms)
+        #[ink(message)]
+        pub fn get_free_mint_cooldown(&self) -> u64 {
+            self.free_mint_cooldown_ms
+        }
+
+        /// Retorna o cooldown restante para uma carteira (em ms, 0 = pode mintar)
+        #[ink(message)]
+        pub fn get_remaining_cooldown(&self, wallet: AccountId) -> u64 {
+            if self.free_mint_cooldown_ms == 0 {
+                return 0;
+            }
+            
+            match self.last_free_mint.get(wallet) {
+                Some(last_mint) => {
+                    let current_time = self.env().block_timestamp();
+                    let elapsed = current_time.saturating_sub(last_mint);
+                    if elapsed >= self.free_mint_cooldown_ms {
+                        0
+                    } else {
+                        self.free_mint_cooldown_ms.saturating_sub(elapsed)
+                    }
+                }
+                None => 0, // Nunca mintou, pode mintar
+            }
+        }
+
+        /// Reseta o cooldown de uma carteira (apenas owner - para testes)
+        #[ink(message)]
+        pub fn reset_cooldown(&mut self, wallet: AccountId) -> Result<(), Error> {
+            if self.env().caller() != self.owner {
+                return Err(Error::NotOwner);
+            }
+            self.last_free_mint.remove(wallet);
+            Ok(())
+        }
+
+
+        /// Inicia a mineração (owner only)
+        #[ink(message)]
+        pub fn start_nft_mining(&mut self) -> Result<(), Error> {
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(Error::NotOwner);
+            }
+            
+            let current_time = self.env().block_timestamp();
+            self.ico_mining_start_timestamp = current_time;
+            self.ico_mining_end_timestamp = current_time.saturating_add(112 * 24 * 60 * 60 * 1000);
+            self.ico_mining_active = true;
+            self.ico_stats.mining_active = true;
+            Ok(())
+        }
+
+        /// Retorna a versão atual do contrato
+        #[ink(message)]
+        pub fn get_current_version(&self) -> String {
+            self.current_version.clone()
+        }
+
+        /// Propõe um novo upgrade (apenas governança)
+        #[ink(message)]
+        pub fn propose_upgrade(
+            &mut self,
+            new_code_hash: Vec<u8>,
+            description: String,
+            version: String,
+        ) -> Result<u64, Error> {
+            let caller = self.env().caller();
+            // Verificar permissão no sistema de governança ou se é owner
+            // Simplificado: apenas owner/admin por enquanto ou sistema de governança se implementado
+            // Como self.governance é complexo, vamos usar verificação simples de authorized/owner
+            if caller != self.owner && !self.team_wallet.map_or(false, |w| w == caller) {
+                 return Err(Error::Unauthorized);
+            }
+
+            if !self.upgrades_enabled {
+                return Err(Error::UpgradeError(crate::upgrade::UpgradeError::Unauthorized));
+            }
+
+            // Verificar se já existe proposta ativa
+            // Como flattened, verificamos se upgrade_current_proposal_id aponta para algo Proposed/Approved
+            if self.upgrade_current_proposal_id != 0 {
+                if let Some(proposal) = self.upgrade_history.get(self.upgrade_current_proposal_id) {
+                     if !proposal.executed && proposal.status != crate::upgrade::UpgradeStatus::Cancelled {
+                         return Err(Error::UpgradeError(crate::upgrade::UpgradeError::UpgradeInProgress));
+                     }
+                }
+            }
+
+            // Validação
+            if new_code_hash.len() != 32 {
+                return Err(Error::UpgradeError(crate::upgrade::UpgradeError::InvalidCodeHash));
+            }
+
+            let current_time = self.env().block_timestamp();
+            let proposal_id = self.upgrade_next_proposal_id;
+
+            let proposal = crate::upgrade::UpgradeProposal {
+                id: proposal_id,
+                proposer: caller,
+                new_code_hash,
+                description,
+                version,
+                created_at: current_time,
+                execution_time: current_time + self.upgrade_timelock_period,
+                status: crate::upgrade::UpgradeStatus::Proposed,
+                executed: false,
+            };
+
+            self.upgrade_current_proposal_id = proposal_id;
+            self.upgrade_history.insert(proposal_id, &proposal);
+            self.upgrade_next_proposal_id += 1;
+
+            // Emitir evento (se houver, ou ignorar por enquanto)
+            Ok(proposal_id)
+        }
+
+        /// Aprova um upgrade proposto (apenas governança)
+        #[ink(message)]
+        pub fn approve_upgrade(&mut self) -> Result<(), Error> {
+             let caller = self.env().caller();
+             if caller != self.owner && !self.team_wallet.map_or(false, |w| w == caller) {
+                 return Err(Error::Unauthorized);
+             }
+
+             let mut proposal = self.upgrade_history.get(self.upgrade_current_proposal_id)
+                 .ok_or(Error::UpgradeError(crate::upgrade::UpgradeError::UpgradeInProgress))?;
+
+             if proposal.status != crate::upgrade::UpgradeStatus::Proposed {
+                 return Err(Error::UpgradeError(crate::upgrade::UpgradeError::ValidationFailed));
+             }
+
+             proposal.status = crate::upgrade::UpgradeStatus::Approved;
+             self.upgrade_history.insert(proposal.id, &proposal);
+             Ok(())
+        }
+
+        /// Executa o upgrade (após timelock)
+        #[ink(message)]
+        pub fn execute_upgrade(&mut self) -> Result<(), Error> {
+             let caller = self.env().caller();
+             if caller != self.owner && !self.team_wallet.map_or(false, |w| w == caller) {
+                 return Err(Error::Unauthorized);
+             }
+
+             let mut proposal = self.upgrade_history.get(self.upgrade_current_proposal_id)
+                 .ok_or(Error::UpgradeError(crate::upgrade::UpgradeError::UpgradeInProgress))?;
+
+             if proposal.status != crate::upgrade::UpgradeStatus::Approved {
+                 return Err(Error::UpgradeError(crate::upgrade::UpgradeError::ValidationFailed));
+             }
+             
+             if proposal.executed {
+                 return Err(Error::UpgradeError(crate::upgrade::UpgradeError::UpgradeInProgress)); // Already executed
+             }
+
+             let current_time = self.env().block_timestamp();
+             if current_time < proposal.execution_time {
+                 return Err(Error::UpgradeError(crate::upgrade::UpgradeError::TimelockNotExpired));
+             }
+
+             // Executar
+             proposal.executed = true;
+             proposal.status = crate::upgrade::UpgradeStatus::Executed;
+             self.current_version = proposal.version.clone();
+             
+             // Atualizar histórico ANTES do set_code_hash (segurança)
+             self.upgrade_history.insert(proposal.id, &proposal);
+
+             // SET CODE HASH
+             let code_hash = proposal.new_code_hash.clone();
+             let hash_array: [u8; 32] = code_hash.try_into()
+                 .map_err(|_| Error::UpgradeError(crate::upgrade::UpgradeError::InvalidCodeHash))?;
+             let hash = ink::primitives::Hash::from(hash_array);
+             
+             self.env().set_code_hash(&hash)
+                 .map_err(|_| Error::UpgradeError(crate::upgrade::UpgradeError::InvalidCodeHash))?;
+
+             Ok(())
+        }
+
+        /// Cancela upgrade
+        #[ink(message)]
+        pub fn cancel_upgrade(&mut self) -> Result<(), Error> {
+             let caller = self.env().caller();
+             if caller != self.owner && !self.team_wallet.map_or(false, |w| w == caller) {
+                 return Err(Error::Unauthorized);
+             }
+
+             let mut proposal = self.upgrade_history.get(self.upgrade_current_proposal_id)
+                 .ok_or(Error::UpgradeError(crate::upgrade::UpgradeError::UpgradeInProgress))?;
+
+             if proposal.status == crate::upgrade::UpgradeStatus::Executed {
+                 return Err(Error::UpgradeError(crate::upgrade::UpgradeError::RollbackNotAllowed));
+             }
+
+             proposal.status = crate::upgrade::UpgradeStatus::Cancelled;
+             self.upgrade_history.insert(proposal.id, &proposal);
+             self.upgrade_current_proposal_id = 0; // Reset
+             Ok(())
+        }
+
+        /// Helper interno para converter NFTType para índice
+        fn _nft_type_to_index(&self, nft_type: &crate::ico::NFTType) -> usize {
+            match nft_type {
+                crate::ico::NFTType::Free => 0,
+                crate::ico::NFTType::Tier2 => 1,
+                crate::ico::NFTType::Tier3 => 2,
+                crate::ico::NFTType::Tier4 => 3,
+                crate::ico::NFTType::Tier5 => 4,
+                crate::ico::NFTType::Tier6 => 5,
+                crate::ico::NFTType::Tier7 => 6,
+            }
+        }
+
+        /// Helper interno para converter índice para NFTType
+        fn _index_to_nft_type(&self, index: usize) -> crate::ico::NFTType {
+            match index {
+                0 => crate::ico::NFTType::Free,
+                1 => crate::ico::NFTType::Tier2,
+                2 => crate::ico::NFTType::Tier3,
+                3 => crate::ico::NFTType::Tier4,
+                4 => crate::ico::NFTType::Tier5,
+                5 => crate::ico::NFTType::Tier6,
+                _ => crate::ico::NFTType::Tier7, // 6+ -> Tier7 (max)
+            }
+        }
+
+        // ========== MARKETPLACE SYSTEM ==========
+
+        /// Coloca um NFT à venda direta
+        #[ink(message)]
+        pub fn list_nft_for_sale(&mut self, token_id: u64, price: u128) -> Result<(), Error> {
+            let caller = self.env().caller();
+            self.internal_escrow_nft(token_id, caller)?;
+            self.marketplace.list_for_sale(caller, token_id, price)?;
+            Ok(())
+        }
+
+        /// Coloca um NFT em leilão
+        #[ink(message)]
+        pub fn list_nft_for_auction(&mut self, token_id: u64, min_price: u128, duration: u64) -> Result<(), Error> {
+            let caller = self.env().caller();
+            let current_time = self.env().block_timestamp();
+            self.internal_escrow_nft(token_id, caller)?;
+            self.marketplace.list_for_auction(caller, token_id, min_price, duration, current_time)?;
+            Ok(())
+        }
+        
+        /// Compra um NFT em venda direta
+        #[ink(message, payable)]
+        pub fn buy_nft(&mut self, token_id: u64) -> Result<(), Error> {
+            if !self.check_ico_all_sold() {
+                return Err(Error::MarketplaceError(crate::marketplace::MarketplaceError::ICOStillActive));
+            }
+
+            let transferred = self.env().transferred_value();
+            let listing = self.marketplace.complete_purchase(token_id)?;
+
+            if transferred < listing.price {
+                return Err(Error::MarketplaceError(crate::marketplace::MarketplaceError::PriceTooLow));
+            }
+
+            let (seller_amount, team_fee, staking_fee) = self.marketplace.calculate_fees(listing.price);
+            
+            // Realizar pagamentos
+            self.env().transfer(listing.seller, seller_amount).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+            
+            if let Some(team_wallet) = self.team_wallet {
+                self.env().transfer(team_wallet, team_fee).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+            }
+            if let Some(staking_wallet) = self.staking_wallet {
+                self.env().transfer(staking_wallet, staking_fee).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+            }
+            
+            // Devolver troco
+            let change = transferred.saturating_sub(listing.price);
+            if change > 0 {
+                self.env().transfer(self.env().caller(), change).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+            }
+
+            // Transferir NFT do escrow para o comprador
+            self.internal_nft_transfer_from_escrow(token_id, self.env().caller())?;
+            
+            Ok(())
+        }
+
+        /// Dá um lance em um leilão
+        #[ink(message, payable)]
+        pub fn bid_nft(&mut self, token_id: u64) -> Result<(), Error> {
+            if !self.check_ico_all_sold() {
+                return Err(Error::MarketplaceError(crate::marketplace::MarketplaceError::ICOStillActive));
+            }
+
+            let transferred = self.env().transferred_value();
+            let current_time = self.env().block_timestamp();
+            
+            let (prev_bidder, prev_bid) = self.marketplace.place_bid(self.env().caller(), token_id, transferred, current_time)?;
+
+            // Reembolsar licitante anterior
+            if let Some(bidder) = prev_bidder {
+                self.env().transfer(bidder, prev_bid).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+            }
+            
+            Ok(())
+        }
+
+        /// Cancela uma listagem e recupera o NFT
+        #[ink(message)]
+        pub fn cancel_listing(&mut self, token_id: u64) -> Result<(), Error> {
+            let caller = self.env().caller();
+            let listing = self.marketplace.cancel_listing(caller, token_id)?;
+            
+            // Reembolsar maior lance se for leilão
+            if listing.is_auction && listing.highest_bidder.is_some() {
+                 self.env().transfer(listing.highest_bidder.unwrap(), listing.highest_bid).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+            }
+
+            // Devolver NFT
+            self.internal_nft_transfer_from_escrow(token_id, caller)?;
+            Ok(())
+        }
+
+        /// Finaliza um leilão encerrado
+        #[ink(message)]
+        pub fn settle_auction(&mut self, token_id: u64) -> Result<(), Error> {
+            let current_time = self.env().block_timestamp();
+            let listing = self.marketplace.settle_auction(token_id, current_time)?;
+
+            if let Some(winner) = listing.highest_bidder {
+                let (seller_amount, team_fee, staking_fee) = self.marketplace.calculate_fees(listing.highest_bid);
+                
+                // Realizar pagamentos
+                self.env().transfer(listing.seller, seller_amount).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+                if let Some(team_wallet) = self.team_wallet {
+                    self.env().transfer(team_wallet, team_fee).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+                }
+                if let Some(staking_wallet) = self.staking_wallet {
+                    self.env().transfer(staking_wallet, staking_fee).map_err(|_| Error::MarketplaceError(crate::marketplace::MarketplaceError::TransferFailed))?;
+                }
+
+                // Transferir NFT para o vencedor
+                self.internal_nft_transfer_from_escrow(token_id, winner)?;
+            } else {
+                // Devolver NFT para o vendedor se não houve lances
+                self.internal_nft_transfer_from_escrow(token_id, listing.seller)?;
+            }
+
+            Ok(())
+        }
+
+        /// Obtém os IDs de todas as listagens ativas
+        #[ink(message)]
+        pub fn get_active_listings(&self) -> Vec<u64> {
+            self.marketplace.active_listing_ids.clone()
+        }
+
+        /// Obtém detalhes de uma listagem
+        #[ink(message)]
+        pub fn get_listing(&self, token_id: u64) -> Option<Listing> {
+            self.marketplace.listings.get(&token_id)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[ink::test]
+        fn test_mainnet_constructor_params() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let admin = accounts.alice; 
+            
+            let initial_supply = 300_000_000_000 * 10u128.pow(8);
+            
+            // Simular chamada do construtor
+            let contract = DonFiapo::new(
+                String::from("Don Fiapo"),
+                String::from("FIAPO"),
+                initial_supply,
+                admin, // burn_wallet
+                admin, // team_wallet
+                admin, // staking_wallet
+                admin, // treasury_wallet
+                vec![admin], // oracle_authorized
+            );
+            
+            assert!(contract.is_ok(), "Constructor failed");
+        }
+
+        #[ink::test]
+        fn test_marketplace_listing_escrow() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let owner = accounts.alice;
+            let initial_supply = 100 * 10u128.pow(8);
+            
+            let mut contract = DonFiapo::new(
+                "Don Fiapo".into(), "FIAPO".into(), initial_supply,
+                owner, owner, owner, owner, vec![owner]
+            ).unwrap();
+
+            // Mock an NFT for the owner
+            let token_id = 1;
+            let current_time = 1000;
+            ink::env::test::set_block_timestamp::<ink::env::DefaultEnvironment>(current_time);
+            
+            let nft = crate::ico::NFTData {
+                id: token_id,
+                nft_type: crate::ico::NFTType::Tier2,
+                owner,
+                created_at: current_time,
+                tokens_mined: 0,
+                tokens_claimed: 0,
+                last_mining_timestamp: current_time,
+                active: true,
+                visual_rarity: crate::nft_rarity::VisualRarity::Common,
+                evolution_count: 0,
+                mining_bonus_bps: 0,
+                evolved_from: Vec::new(),
+            };
+            contract.ico_nfts.insert(token_id, &nft);
+            contract.ico_nfts_by_owner.insert(owner, &vec![token_id]);
+
+            // List NFT
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(owner);
+            contract.list_nft_for_sale(token_id, 500).unwrap();
+
+            // Verify escrow: Contract should be the owner
+            let updated_nft = contract.ico_nfts.get(token_id).unwrap();
+            let contract_address = ink::env::test::callee::<ink::env::DefaultEnvironment>();
+            assert_eq!(updated_nft.owner, contract_address);
+
+            // Cancel listing
+            contract.cancel_listing(token_id).unwrap();
+
+            // Verify return: Owner should be alice again
+            let final_nft = contract.ico_nfts.get(token_id).unwrap();
+            assert_eq!(final_nft.owner, owner);
+        }
+
+        #[ink::test]
+        fn test_marketplace_buy_flow() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let admin = accounts.alice;
+            let buyer = accounts.bob;
+            let initial_supply = 1000 * 10u128.pow(8);
+            
+            let mut contract = DonFiapo::new(
+                "Don Fiapo".into(), "FIAPO".into(), initial_supply,
+                admin, admin, admin, admin, vec![admin]
+            ).unwrap();
+
+            // 1. Setup NFT and mark ICO as sold out
+            let token_id = 10;
+            let nft = crate::ico::NFTData {
+                id: token_id, nft_type: crate::ico::NFTType::Tier2, owner: admin,
+                created_at: 0, tokens_mined: 0, tokens_claimed: 0,
+                last_mining_timestamp: 0, active: true,
+                visual_rarity: crate::nft_rarity::VisualRarity::Common,
+                evolution_count: 0, mining_bonus_bps: 0, evolved_from: Vec::new(),
+            };
+            contract.ico_nfts.insert(token_id, &nft);
+            contract.ico_nfts_by_owner.insert(admin, &vec![token_id]);
+
+            // Set all configs to "sold out"
+            for config in &mut contract.ico_nft_configs {
+                config.minted = config.max_supply;
+            }
+
+            // 2. Admin lists NFT
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(admin);
+            contract.list_nft_for_sale(token_id, 1000).unwrap();
+
+            // 3. Buyer buys NFT
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(buyer);
+            ink::env::test::set_value_transferred::<ink::env::DefaultEnvironment>(1000);
+            
+            contract.buy_nft(token_id).unwrap();
+
+            // 4. Verify results
+            let purchased_nft = contract.ico_nfts.get(token_id).unwrap();
+            assert_eq!(purchased_nft.owner, buyer);
+            
+            let listing = contract.get_listing(token_id).unwrap();
+            assert!(!listing.is_active);
+        }
     }
 }
 
@@ -1759,6 +2856,7 @@ pub mod ico;
 pub mod nft_evolution;
 pub mod nft_rarity;
 pub mod ranking_system;
+pub mod marketplace;
 pub mod integration_manager;
 pub mod dashboard;
 pub mod gamification;

@@ -2,9 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Crown, Minus, Plus, CreditCard, Wallet, ArrowLeft, Check, Info, Loader2, Copy, ExternalLink } from "lucide-react";
+import { Crown, Minus, Plus, CreditCard, Wallet, ArrowLeft, Check, Info, Loader2, Copy, ExternalLink, Clock } from "lucide-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
@@ -49,12 +49,49 @@ export default function MintPage() {
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"usdt" | "usdc">("usdt");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
   const [paymentStep, setPaymentStep] = useState<"idle" | "paying" | "verifying" | "success">("idle");
   const [isLunesModalOpen, setIsLunesModalOpen] = useState(false);
 
   const { lunesConnected, lunesAddress } = useWalletStore();
   const { connected: solanaConnected, publicKey } = useWallet();
   const { sendUSDT, sendUSDC, isReady: solanaReady } = useSolana();
+
+  // Cooldown State
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [checkingCooldown, setCheckingCooldown] = useState(false);
+
+  // Check cooldown when Free Tier selected or Wallet connects
+
+  useEffect(() => {
+    async function checkCooldown() {
+      if (selectedTier.id !== 0 || !lunesAddress) {
+        setCooldownRemaining(0);
+        return;
+      }
+
+      setCheckingCooldown(true);
+      try {
+        const contract = await import('@/lib/api/contract');
+        const remaining = await contract.getRemainingCooldown(lunesAddress);
+        setCooldownRemaining(remaining);
+      } catch (e) {
+        console.error("Failed to check cooldown", e);
+      } finally {
+        setCheckingCooldown(false);
+      }
+    }
+
+    checkCooldown();
+  }, [selectedTier.id, lunesAddress]);
+
+  // Format milliseconds to hours and minutes
+  const formatCooldown = (ms: number) => {
+    const hours = Math.ceil(ms / (1000 * 60 * 60));
+    const minutes = Math.ceil((ms % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
 
   const {
     status,
@@ -133,25 +170,55 @@ export default function MintPage() {
 
   // Handle free mint
   const handleFreeMint = async () => {
-    if (!lunesConnected) {
+    if (!lunesConnected || !lunesAddress) {
       addToast("error", "Connect Wallet", "Connect your Lunes wallet to claim a free NFT.");
       setIsLunesModalOpen(true);
       return;
     }
 
     // Free mint - tier 0 with $0 price (direct contract call, no Oracle needed)
+    setIsMinting(true);
     try {
       const freeTier = API_CONFIG.nftTiers[0];
-      addToast("info", "Minting Free NFT", `Minting your ${freeTier.shortName} NFT...`);
+      addToast("info", "Minting NFT...", "Please confirm the transaction in your wallet and wait for blockchain confirmation.");
 
-      // Import contract module and call mintNFT directly
+      // Import contract module
       const contract = await import('@/lib/api/contract');
-      const result = await contract.mintNFT(lunesAddress!, 0, 1); // tier 0 = free, quantity 1
 
-      addToast("success", "NFT Minted!", `You received a ${freeTier.shortName} NFT! Transaction Hash: ${result}`);
+      // Query native LUNES balance for contract validation
+      let lunesBalance = BigInt(0);
+      try {
+        lunesBalance = await contract.getNativeBalance(lunesAddress);
+        console.log('[Mint] Native LUNES balance:', lunesBalance.toString());
+      } catch (balanceError) {
+        console.warn('[Mint] Could not fetch LUNES balance, proceeding with 0:', balanceError);
+      }
+
+      // Call mintNFT with tier 0 = free, actual LUNES balance, no proof
+      const result = await contract.mintNFT(lunesAddress, 0, lunesBalance, null);
+
+      addToast("success", "NFT Minted!", `You received a ${freeTier.shortName} NFT! Transaction Hash: ${result.slice(0, 6)}...${result.slice(-6)}`);
+      setPaymentStep("success");
     } catch (error) {
       console.error("[Mint] Free mint error:", error);
-      addToast("error", "Mint Failed", error instanceof Error ? error.message : "Failed to mint free NFT");
+      const errorMessage = error instanceof Error ? error.message : "Failed to mint free NFT";
+
+      // Provide more helpful error messages
+      if (errorMessage.includes("balance too low") || errorMessage.includes("Inability to pay")) {
+        addToast(
+          "error",
+          "Insufficient LUNES for Gas Fees",
+          "Your wallet needs native LUNES tokens to pay for transaction fees. Get LUNES from an exchange or the Lunes faucet."
+        );
+      } else if (errorMessage.includes("InvalidOperation")) {
+        addToast("error", "Mint Failed", "You may have reached the free NFT limit (5 per wallet).");
+      } else if (errorMessage.includes("User rejected") || errorMessage.includes("Cancelled")) {
+        addToast("info", "Transaction Cancelled", "You cancelled the transaction.");
+      } else {
+        addToast("error", "Mint Failed", errorMessage);
+      }
+    } finally {
+      setIsMinting(false);
     }
   };
 
@@ -380,19 +447,29 @@ export default function MintPage() {
                   <Button
                     size="xl"
                     className="w-full glow-gold"
-                    disabled={isProcessingPayment}
                     onClick={totalPrice === 0 ? handleFreeMint : handlePaidMint}
+                    disabled={isProcessingPayment || isMinting || (totalPrice === 0 && cooldownRemaining > 0)}
                   >
                     {isProcessingPayment ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         {paymentStep === "paying" ? "Confirm in Wallet..." : "Verifying Payment..."}
                       </>
-                    ) : (
+                    ) : isMinting ? (
                       <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Minting Your NFT...
+                      </>
+                    ) : totalPrice === 0 && cooldownRemaining > 0 ? (
+                      <span className="flex items-center justify-center text-yellow-500">
+                        <Clock className="w-5 h-5 mr-2" />
+                        Cooldown: {formatCooldown(cooldownRemaining)}
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center">
                         <CreditCard className="w-5 h-5 mr-2" />
                         {totalPrice === 0 ? "Claim Free NFT" : `Pay $${totalPrice} & Mint`}
-                      </>
+                      </span>
                     )}
                   </Button>
                 )}

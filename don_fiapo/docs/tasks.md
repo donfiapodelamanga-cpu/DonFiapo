@@ -1,6 +1,0 @@
-- [ ] **Taxa de Entrada em Staking:** Refatorar o cálculo para implementar a lógica escalonada (10% para até 1.000 FIAPO, 5% para 1.001-10.000, etc.). (Responsável: AI, Prioridade: Alta)
-- [ ] **Distribuição de Taxas:** Implementar a lógica de distribuição para TODAS as taxas e penalidades (Entrada em Staking, Saque de Juros, Penalidades, Cancelamento) para as carteiras corretas (Equipe, Staking, Recompensas, Queima). (Responsável: AI, Prioridade: Alta)
-- [ ] **Parâmetros de Staking:** Ajustar os APYs e frequências de pagamento para todas as modalidades (Don Burn, Don Lunes, Don Fiapo) para corresponder aos requisitos. (Responsável: AI, Prioridade: Média)
-- [ ] **Sistema de Ranking:** Expandir o `rewards.rs` para incluir as categorias de ranking faltantes (volume de queima, volume de transações, número de stakings, número de afiliados). (Responsável: AI, Prioridade: Alta)
-- [ ] **Fundo do Sorteio:** Refinar a lógica em `lottery.rs` e `lib.rs` para agregar 5% de todas as fontes de taxas para o prêmio do sorteio. (Responsável: AI, Prioridade: Média)
-- [ ] **Integração Solana:** Desenvolver a integração completa com o oráculo/ponte de Solana para verificação de pagamentos de taxas em USDT. (Responsável: AI, Prioridade: Alta) 

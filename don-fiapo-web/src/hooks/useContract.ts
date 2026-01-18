@@ -246,7 +246,10 @@ export function useNFTs() {
   const { lunesAddress, lunesConnected } = useWalletStore();
 
   const fetchNFTs = useCallback(async () => {
+    console.log('[useNFTs] fetchNFTs called', { lunesConnected, lunesAddress });
+
     if (!lunesConnected || !lunesAddress) {
+      console.warn('[useNFTs] Wallet not connected, skipping fetch');
       setNfts([]);
       return;
     }
@@ -255,11 +258,14 @@ export function useNFTs() {
     setError(null);
 
     try {
+      console.log('[useNFTs] Calling getUserNFTs for address:', lunesAddress);
       const contract = await loadContract();
       if (!contract) throw new Error('Contract not available');
       const userNfts = await contract.getUserNFTs(lunesAddress);
+      console.log('[useNFTs] Got NFTs:', userNfts);
       setNfts(userNfts);
     } catch (err) {
+      console.error('[useNFTs] Error fetching NFTs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch NFTs');
     } finally {
       setLoading(false);

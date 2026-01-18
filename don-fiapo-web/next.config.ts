@@ -41,20 +41,27 @@ const nextConfig: NextConfig = {
     });
     // Fix octal escape sequences in node_modules that cause runtime errors
     config.module.rules.push({
-      test: /\.m?js$/,
+      test: /\.(m|c)?js$/,
       include: /node_modules/,
       use: {
         loader: 'string-replace-loader',
         options: {
           multiple: [
-            // Replace \00 (octal) with \x00 (hex) - fixes VRF proving string
+            // Replace \00 (octal) with \x00 (hex)
+            { search: '\\\\0(?![0-9])', replace: '\\\\x00', flags: 'g' },
             { search: '\\\\00', replace: '\\\\x00', flags: 'g' },
-            // Replace padEnd with null char - various patterns from @solana/kit and @stellar packages
-            { search: '\\.padEnd\\(([^,]+),\\s*"\\\\0"\\)', replace: '.padEnd($1, String.fromCharCode(0))', flags: 'g' },
-            { search: "\\.padEnd\\(([^,]+),\\s*'\\\\0'\\)", replace: '.padEnd($1, String.fromCharCode(0))', flags: 'g' },
-            // Catch any remaining "\0" or '\0' patterns as function arguments
-            { search: ',\\s*"\\\\0"\\)', replace: ', String.fromCharCode(0))', flags: 'g' },
-            { search: ",\\s*'\\\\0'\\)", replace: ', String.fromCharCode(0))', flags: 'g' },
+            // Replace \01-\07 (octal) with \x01-\x07 (hex) to fix strict mode/template string errors
+            { search: '\\\\01', replace: '\\\\x01', flags: 'g' },
+            { search: '\\\\02', replace: '\\\\x02', flags: 'g' },
+            { search: '\\\\03', replace: '\\\\x03', flags: 'g' },
+            { search: '\\\\04', replace: '\\\\x04', flags: 'g' },
+            { search: '\\\\05', replace: '\\\\x05', flags: 'g' },
+            { search: '\\\\06', replace: '\\\\x06', flags: 'g' },
+            { search: '\\\\07', replace: '\\\\x07', flags: 'g' },
+            // Replace padEnd with null char
+            { search: '\\.padEnd\\(([^,]+),\\s*["\']\\\\0["\']\\)', replace: '.padEnd($1, String.fromCharCode(0))', flags: 'g' },
+            // Match loose \0 argument
+            { search: ',\\s*["\']\\\\0["\']\\)', replace: ', String.fromCharCode(0))', flags: 'g' },
           ],
         },
       },

@@ -198,3 +198,39 @@ h6 {
     opacity: 1;
   }
 }
+
+/* Custom slider styles for airdrop calculator */
+.slider-thumb-golden::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--golden);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(201, 166, 91, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb-golden::-webkit-slider-thumb:hover {
+  background: var(--golden-deep);
+  box-shadow: 0 0 15px rgba(201, 166, 91, 0.5);
+  transform: scale(1.1);
+}
+
+.slider-thumb-golden::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--golden);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 10px rgba(201, 166, 91, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb-golden::-moz-range-thumb:hover {
+  background: var(--golden-deep);
+  box-shadow: 0 0 15px rgba(201, 166, 91, 0.5);
+  transform: scale(1.1);
+}

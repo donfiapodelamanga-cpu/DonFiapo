@@ -4,7 +4,7 @@
  * Handles communication with the Don Fiapo affiliate system
  */
 
-import { initializeContract } from './contract';
+import { initializeContract, getGasLimit, parseNum, parseBigInt } from './contract';
 
 // ============ Types ============
 
@@ -125,23 +125,29 @@ export async function getAffiliateInfo(address: string): Promise<AffiliateInfo> 
       };
     }
 
-    // Check if method exists in ABI
-    if (typeof contract.query.getAffiliateData !== 'function') {
-      console.log('[Affiliate] Method not in ABI, using mock data');
-      return {
-        ...MOCK_AFFILIATE_INFO,
-        referralCode: `REF-${address.slice(0, 8).toUpperCase()}`,
-      };
-    }
-
-    const { result, output } = await contract.query.getAffiliateData(
+    const { result, output } = await contract.query.getAffiliateInfo(
       contract.address,
-      { gasLimit: -1 },
+      getGasLimit(contract.api),
       address
     );
 
     if (result.isOk && output) {
-      return parseAffiliateInfo(output.toJSON(), address);
+      const data = output.toHuman() as any;
+      if (data) {
+        return {
+          referralCode: data.referralCode || data.referral_code || `REF-${address.slice(0, 8).toUpperCase()}`,
+          referredBy: data.referredBy || data.referred_by || null,
+          totalReferrals: parseNum(data.totalReferrals || data.total_referrals),
+          directReferrals: parseNum(data.totalReferrals), // Simplified mapping
+          secondLevelReferrals: 0,
+          totalEarnings: parseBigInt(data.totalEarnings || data.total_earnings),
+          pendingRewards: BigInt(0), // Would need separate query
+          currentBoostBps: 0,
+          tier: getTierFromReferrals(parseNum(data.totalReferrals)),
+          isActive: true,
+          registrationDate: Date.now(),
+        };
+      }
     }
 
     return {
@@ -179,8 +185,19 @@ export async function getReferrals(_address: string): Promise<ReferralRecord[]> 
  * Get affiliate leaderboard
  */
 export async function getAffiliateLeaderboard(limit: number = 10): Promise<AffiliateLeaderboard[]> {
-  // NOTE: getAffiliateLeaderboard method doesn't exist in contract yet
-  // Using static mock data
+  const { getRankingByType } = await import('./ranking');
+  const ranking = await getRankingByType('Affiliates');
+
+  if (ranking && ranking.winners.length > 0) {
+    return ranking.winners.slice(0, limit).map((w, i) => ({
+      rank: i + 1,
+      address: w.address,
+      referralCount: w.affiliateCount || 0,
+      totalEarnings: w.rewardAmount || BigInt(0),
+      tier: getTierFromReferrals(w.affiliateCount || 0)
+    }));
+  }
+
   return MOCK_LEADERBOARD.slice(0, limit);
 }
 

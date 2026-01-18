@@ -210,7 +210,7 @@ pub struct VestingStakingConfig {
 }
 
 /// Estatísticas do ICO
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct ICOStats {
     /// Total de NFTs mintados
@@ -231,7 +231,35 @@ pub struct ICOStats {
     pub mining_active: bool,
 }
 
+/// Retorna configurações padrão dos tipos de NFT
+pub fn get_default_nft_configs() -> Vec<NFTConfig> {
+    vec![
+        NFTConfig { price_usdt_cents: 0, max_supply: 10_000, minted: 0, tokens_per_nft: 560 * 10u128.pow(8), daily_mining_rate: 5 * 10u128.pow(8), active: true },
+        NFTConfig { price_usdt_cents: 1000, max_supply: 50_000, minted: 0, tokens_per_nft: 5_600 * 10u128.pow(8), daily_mining_rate: 50 * 10u128.pow(8), active: true },
+        NFTConfig { price_usdt_cents: 3000, max_supply: 40_000, minted: 0, tokens_per_nft: 16_800 * 10u128.pow(8), daily_mining_rate: 150 * 10u128.pow(8), active: true },
+        NFTConfig { price_usdt_cents: 5500, max_supply: 30_000, minted: 0, tokens_per_nft: 33_600 * 10u128.pow(8), daily_mining_rate: 300 * 10u128.pow(8), active: true },
+        NFTConfig { price_usdt_cents: 10000, max_supply: 20_000, minted: 0, tokens_per_nft: 56_000 * 10u128.pow(8), daily_mining_rate: 500 * 10u128.pow(8), active: true },
+        NFTConfig { price_usdt_cents: 25000, max_supply: 5_000, minted: 0, tokens_per_nft: 134_400 * 10u128.pow(8), daily_mining_rate: 1200 * 10u128.pow(8), active: true },
+        NFTConfig { price_usdt_cents: 50000, max_supply: 2_000, minted: 0, tokens_per_nft: 280_000 * 10u128.pow(8), daily_mining_rate: 2500 * 10u128.pow(8), active: true },
+    ]
+}
+
+/// Retorna configurações IPFS padrão para cada tier de NFT
+pub fn get_default_ipfs_configs() -> Vec<IPFSConfig> {
+    let gateway = String::from("https://ipfs.io/ipfs/");
+    vec![
+        IPFSConfig { image_hash: String::from("bafybeiegeqvx36cqwjnuexq5rqimd4gtzitnc6havjdxixvrsrnhnugwie"), metadata_hash: String::from("bafkreialowx7hkvxs43pzep3dnnli7u47rdz5hdzjag3suf6lchr2xrsfy"), gateway_url: gateway.clone() },
+        IPFSConfig { image_hash: String::from("bafybeia6hp4i42r22l7rotv536bawcmb3jbm2zxqpuifti464hhjaa7qt4"), metadata_hash: String::from("bafkreiaqq6fqo34o5da7qc7m3ibluh7cvchf6xbt6lkyp65gnncdwak5jy"), gateway_url: gateway.clone() },
+        IPFSConfig { image_hash: String::from("bafybeicalundyfevl3lwcje2cwrwsxk6rfaihi7ufaxlnxebr6vy6qwmay"), metadata_hash: String::from("bafkreigp7z6enxowwzsiarpcxboutxxpbyb7f2roqgb35hxqxeob3f2epa"), gateway_url: gateway.clone() },
+        IPFSConfig { image_hash: String::from("bafybeid7nxupxhudefbvd36nd45nd3cxfqiybzrbaor2infnjq3hoalanm"), metadata_hash: String::from("bafkreidn5klyignb7y6skguanaixee2tnhi32tyfehsufn2paqvcuspuwu"), gateway_url: gateway.clone() },
+        IPFSConfig { image_hash: String::from("bafybeidaesu4zssaeh2upn7tpe664iqn2v5tr6focmrrd753sxnkitissa"), metadata_hash: String::from("bafkreigyljgp6pt3ukb3xghngurb6akdkvbqp7l4geqxtp7btneruqtyhe"), gateway_url: gateway.clone() },
+        IPFSConfig { image_hash: String::from("bafybeicydbtys4etbit3xyyn2jcovcntoqjkrwyfvoh7si6ykh7is3skdu"), metadata_hash: String::from("bafkreienipvdroutcqyf2gmf4zm7a2ttoewooam5wtjl7cmpfqqp3urzwi"), gateway_url: gateway.clone() },
+        IPFSConfig { image_hash: String::from("bafybeifjhbupjwplkknvixya223saxdcn2zkhrmir7o7xrbzhywlp5irce"), metadata_hash: String::from("bafkreidg7cyym2ggwrywbdbx45mvnjfufnd25qjpvymmbmqne4dfkmj4uy"), gateway_url: gateway },
+    ]
+}
+
 /// Gerenciador principal do ICO
+#[derive(Debug)]
 pub struct ICOManager {
     /// Configurações dos tipos de NFT
     pub nft_configs: Vec<NFTConfig>,
@@ -641,9 +669,9 @@ impl ICOManager {
         // Armazenar atributos visuais separadamente
         let visual_attrs = NFTVisualAttributes {
             rarity: rarity_result.rarity,
-            attributes: rarity_result.attributes,
-            seed_hash: rarity_result.roll_value as u64,
-            revealed: true,
+            tier: self.nft_type_to_tier(&nft_type),
+            evolution_count: 0,
+            mining_bonus_bps: 0,
         };
         self.nft_visual_attributes.insert(&nft_id, &visual_attrs);
         
@@ -1222,9 +1250,9 @@ impl ICOManager {
         // Armazenar atributos visuais
         let visual_attrs = NFTVisualAttributes {
             rarity: rarity_result.rarity,
-            attributes: rarity_result.attributes,
-            seed_hash: rarity_result.roll_value as u64,
-            revealed: true,
+            tier: self.nft_type_to_tier(&new_nft_data.nft_type),
+            evolution_count: new_evolution_count,
+            mining_bonus_bps: bonus_bps,
         };
         self.nft_visual_attributes.insert(&new_nft_id, &visual_attrs);
         

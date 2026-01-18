@@ -20,7 +20,8 @@ pub struct FeeCalculationResult {
 
 /// Gerenciador para o CÁLCULO de taxas.
 /// Este struct é stateless e apenas contém a lógica de cálculo.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct FeeCalculator;
 
 impl FeeCalculator {

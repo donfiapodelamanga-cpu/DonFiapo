@@ -6,6 +6,7 @@
   "nav": {
     "home": "Home",
     "ico": "ICO/NFTs",
+    "marketplace": "Marketplace",
     "staking": "Staking",
     "simulations": "Simulations",
     "tokenomics": "Tokenomics",
@@ -59,19 +60,36 @@
     "subtitle": "The Royal Path to Glory",
     "phase1": {
       "title": "Phase 1 — The Coronation",
-      "items": ["Token Launch", "Website", "Whitepaper", "Memes"]
+      "items": [
+        "Token Launch",
+        "Website",
+        "Whitepaper",
+        "Memes"
+      ]
     },
     "phase2": {
       "title": "Phase 2 — Kingdom Conquest",
-      "items": ["Airdrops", "DEX Listings", "\"From Fiapo to King\" Campaign"]
+      "items": [
+        "Airdrops",
+        "DEX Listings",
+        "\"From Fiapo to King\" Campaign"
+      ]
     },
     "phase3": {
       "title": "Phase 3 — The Meme Empire",
-      "items": ["Gamified Staking", "NFTs", "$OSSIN Token"]
+      "items": [
+        "Gamified Staking",
+        "NFTs",
+        "$OSSIN Token"
+      ]
     },
     "phase4": {
       "title": "Phase 4 — Global Domination",
-      "items": ["Merch", "\"Royal Fiapo Race\" Game", "Partnerships"]
+      "items": [
+        "Merch",
+        "\"Royal Fiapo Race\" Game",
+        "Partnerships"
+      ]
     }
   },
   "comparison": {

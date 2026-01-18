@@ -25,8 +25,8 @@ echo -e "${BLUE}======================================${NC}"
 echo -e "${BLUE}   Don Fiapo Fresh Deploy Script     ${NC}"
 echo -e "${BLUE}======================================${NC}"
 
-# Load environment - use set -a to export all variables  
-if [ -f "oracle-service/.env" ]; then
+# Load environment from root .env
+if [ -f ".env" ]; then
     # Read .env line by line, ignoring comments and empty lines
     while IFS= read -r line || [ -n "$line" ]; do
         # Skip comments and empty lines
@@ -34,8 +34,8 @@ if [ -f "oracle-service/.env" ]; then
         [[ -z "$line" ]] && continue
         # Export the variable
         export "$line" 2>/dev/null || true
-    done < "oracle-service/.env"
-    echo -e "${GREEN}✓ Loaded environment from oracle-service/.env${NC}"
+    done < ".env"
+    echo -e "${GREEN}✓ Loaded environment from .env${NC}"
 fi
 
 # Configuration
@@ -102,12 +102,13 @@ UPLOAD_RESULT=$(cargo contract upload \
     --url "$LUNES_RPC" \
     --suri "$DEPLOYER_SEED" \
     --skip-confirm \
+    --execute \
     target/ink/don_fiapo_contract.contract 2>&1)
 
 echo "$UPLOAD_RESULT"
 
-# Extract code hash from output
-CODE_HASH=$(echo "$UPLOAD_RESULT" | grep -oP 'Code hash: \K[0-9a-fA-Fx]+' || echo "")
+# Extract code hash from output (macOS compatible)
+CODE_HASH=$(echo "$UPLOAD_RESULT" | grep -oE '0x[0-9a-fA-F]+' | head -1 || echo "")
 
 if [ -z "$CODE_HASH" ]; then
     echo -e "${YELLOW}Code might already be uploaded. Proceeding with instantiation...${NC}"
@@ -117,13 +118,21 @@ echo ""
 echo -e "${YELLOW}Step 5: Instantiating contract...${NC}"
 
 # Instantiate the contract
-# The 'new' constructor takes admin account as argument
+# The 'new' constructor takes: name, symbol, initial_supply, burn_wallet, team_wallet, staking_wallet, rewards_wallet, initial_oracles
+INITIAL_SUPPLY="30000000000000000000" # 300 billion * 10^8 decimals
+
 INSTANTIATE_RESULT=$(cargo contract instantiate \
     --url "$LUNES_RPC" \
     --suri "$DEPLOYER_SEED" \
     --constructor new \
-    --args "$TEAM_WALLET" \
+    --args '"Don Fiapo"' '"FIAPO"' "$INITIAL_SUPPLY" \
+        "$TEAM_WALLET" \
+        "$TEAM_WALLET" \
+        "$TEAM_WALLET" \
+        "$TEAM_WALLET" \
+        "[\"$TEAM_WALLET\"]" \
     --skip-confirm \
+    --execute \
     target/ink/don_fiapo_contract.contract 2>&1)
 
 echo "$INSTANTIATE_RESULT"

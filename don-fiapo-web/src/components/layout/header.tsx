@@ -8,9 +8,11 @@ import { Menu, X, Crown, Loader2 } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { WalletButton } from "@/components/wallet";
 
+// Navigation items definition
 const navItems = [
   { href: "/", key: "home" },
   { href: "/ico", key: "ico" },
+  { href: "/marketplace", key: "marketplace" },
   { href: "/staking", key: "staking" },
   { href: "/simulations", key: "simulations" },
   { href: "/tokenomics", key: "tokenomics" },
@@ -53,7 +55,10 @@ export function Header() {
                 className="object-contain"
               />
             </div>
-            <span className="text-xl font-bold font-display text-golden hidden sm:block">
+            <span
+              className="text-xl font-bold font-display text-golden hidden sm:block"
+              suppressHydrationWarning
+            >
               Don Fiapo
             </span>
           </Link>

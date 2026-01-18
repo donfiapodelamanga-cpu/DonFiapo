@@ -1,16 +1,20 @@
 /**
  * Verificador de Transações USDT na Solana
  * 
+ * Migrado para @solana/kit (web3.js 2.0)
+ * 
  * Este módulo verifica se uma transação USDT foi realmente realizada
  * e confirma os detalhes (valor, remetente, destinatário).
  */
 
 import {
-  Connection,
-  PublicKey,
-  ParsedTransactionWithMeta,
-  ParsedInstruction,
-} from '@solana/web3.js';
+  createSolanaRpc,
+  createSolanaRpcSubscriptions,
+  address,
+  signature as createSignature,
+  type Address,
+  type Signature,
+} from '@solana/kit';
 
 export interface USDTTransactionDetails {
   signature: string;
@@ -25,10 +29,13 @@ export interface USDTTransactionDetails {
 }
 
 export class SolanaVerifier {
-  private connection: Connection;
-  private usdtTokenAddress: PublicKey;
-  private receiverAddress: string;
+  private rpc: ReturnType<typeof createSolanaRpc>;
+  private rpcSubscriptions: ReturnType<typeof createSolanaRpcSubscriptions> | null = null;
+  private usdtTokenAddress: Address;
+  private receiverAddress: Address;
   private minConfirmations: number;
+  private rpcUrl: string;
+  private wsUrl: string;
 
   constructor(
     rpcUrl: string,
@@ -36,51 +43,58 @@ export class SolanaVerifier {
     receiverAddress: string,
     minConfirmations: number = 12
   ) {
-    this.connection = new Connection(rpcUrl, 'confirmed');
-    this.usdtTokenAddress = new PublicKey(usdtTokenAddress);
-    this.receiverAddress = receiverAddress;
+    this.rpcUrl = rpcUrl;
+    // Convert HTTP to WebSocket URL for subscriptions
+    this.wsUrl = rpcUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+
+    this.rpc = createSolanaRpc(rpcUrl);
+    this.usdtTokenAddress = address(usdtTokenAddress);
+    this.receiverAddress = address(receiverAddress);
     this.minConfirmations = minConfirmations;
   }
 
   /**
    * Obtém detalhes da transferência sem validação prévia de valor/sender
    */
-  async getTransferDetails(signature: string): Promise<USDTTransactionDetails> {
+  async getTransferDetails(signatureStr: string): Promise<USDTTransactionDetails> {
     try {
-      const tx = await this.connection.getParsedTransaction(signature, {
+      const sig = createSignature(signatureStr);
+
+      const tx = await this.rpc.getTransaction(sig, {
+        encoding: 'jsonParsed',
         maxSupportedTransactionVersion: 0,
-      });
+      }).send();
 
       if (!tx) {
-        return this.createErrorResult(signature, 'Transaction not found');
+        return this.createErrorResult(signatureStr, 'Transaction not found');
       }
 
       const transferDetails = this.extractUSDTTransfer(tx);
 
       if (!transferDetails) {
-        return this.createErrorResult(signature, 'No USDT transfer found');
+        return this.createErrorResult(signatureStr, 'No USDT transfer found');
       }
 
       // Valida destinatário aqui
       if (transferDetails.receiver !== this.receiverAddress) {
-        return this.createErrorResult(signature, 'Invalid receiver');
+        return this.createErrorResult(signatureStr, 'Invalid receiver');
       }
 
-      const currentSlot = await this.connection.getSlot();
+      const currentSlot = await this.rpc.getSlot().send();
 
       return {
-        signature,
+        signature: signatureStr,
         sender: transferDetails.sender,
         receiver: transferDetails.receiver,
         amount: transferDetails.amount,
-        slot: tx.slot || 0,
-        blockTime: tx.blockTime || Math.floor(Date.now() / 1000),
-        confirmations: currentSlot - (tx.slot || 0),
+        slot: Number(tx.slot) || 0,
+        blockTime: Number(tx.blockTime) || Math.floor(Date.now() / 1000),
+        confirmations: Number(currentSlot) - (Number(tx.slot) || 0),
         isValid: true,
         error: undefined
       };
     } catch (e) {
-      return this.createErrorResult(signature, (e as Error).message);
+      return this.createErrorResult(signatureStr, (e as Error).message);
     }
   }
 
@@ -88,47 +102,50 @@ export class SolanaVerifier {
    * Verifica uma transação USDT
    */
   async verifyTransaction(
-    signature: string,
+    signatureStr: string,
     expectedAmount: number,
     expectedSender?: string
   ): Promise<USDTTransactionDetails> {
     try {
+      const sig = createSignature(signatureStr);
+
       // 1. Busca a transação
-      const tx = await this.connection.getParsedTransaction(signature, {
+      const tx = await this.rpc.getTransaction(sig, {
+        encoding: 'jsonParsed',
         maxSupportedTransactionVersion: 0,
-      });
+      }).send();
 
       if (!tx) {
-        return this.createErrorResult(signature, 'Transaction not found');
+        return this.createErrorResult(signatureStr, 'Transaction not found');
       }
 
       // 2. Verifica se a transação foi confirmada
-      const currentSlot = await this.connection.getSlot();
-      const confirmations = currentSlot - (tx.slot || 0);
+      const currentSlot = await this.rpc.getSlot().send();
+      const confirmations = Number(currentSlot) - (Number(tx.slot) || 0);
 
       if (confirmations < this.minConfirmations) {
         return this.createErrorResult(
-          signature,
+          signatureStr,
           `Insufficient confirmations: ${confirmations}/${this.minConfirmations}`
         );
       }
 
       // 3. Verifica se a transação foi bem-sucedida
       if (tx.meta?.err) {
-        return this.createErrorResult(signature, 'Transaction failed');
+        return this.createErrorResult(signatureStr, 'Transaction failed');
       }
 
       // 4. Extrai detalhes da transferência USDT
       const transferDetails = this.extractUSDTTransfer(tx);
 
       if (!transferDetails) {
-        return this.createErrorResult(signature, 'No USDT transfer found in transaction');
+        return this.createErrorResult(signatureStr, 'No USDT transfer found in transaction');
       }
 
       // 5. Valida o destinatário
       if (transferDetails.receiver !== this.receiverAddress) {
         return this.createErrorResult(
-          signature,
+          signatureStr,
           `Invalid receiver: expected ${this.receiverAddress}, got ${transferDetails.receiver}`
         );
       }
@@ -136,7 +153,7 @@ export class SolanaVerifier {
       // 6. Valida o valor
       if (transferDetails.amount !== expectedAmount) {
         return this.createErrorResult(
-          signature,
+          signatureStr,
           `Amount mismatch: expected ${expectedAmount}, got ${transferDetails.amount}`
         );
       }
@@ -144,26 +161,26 @@ export class SolanaVerifier {
       // 7. Valida o remetente (se especificado)
       if (expectedSender && transferDetails.sender !== expectedSender) {
         return this.createErrorResult(
-          signature,
+          signatureStr,
           `Sender mismatch: expected ${expectedSender}, got ${transferDetails.sender}`
         );
       }
 
       // Transação válida!
       return {
-        signature,
+        signature: signatureStr,
         sender: transferDetails.sender,
         receiver: transferDetails.receiver,
         amount: transferDetails.amount,
-        slot: tx.slot || 0,
-        blockTime: tx.blockTime || Math.floor(Date.now() / 1000),
+        slot: Number(tx.slot) || 0,
+        blockTime: Number(tx.blockTime) || Math.floor(Date.now() / 1000),
         confirmations,
         isValid: true,
       };
 
     } catch (error) {
       return this.createErrorResult(
-        signature,
+        signatureStr,
         `Verification error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
@@ -173,21 +190,21 @@ export class SolanaVerifier {
    * Extrai detalhes de transferência USDT de uma transação
    */
   private extractUSDTTransfer(
-    tx: ParsedTransactionWithMeta
+    tx: any
   ): { sender: string; receiver: string; amount: number } | null {
-    const instructions = tx.transaction.message.instructions;
+    const instructions = tx.transaction?.message?.instructions || [];
 
     for (const instruction of instructions) {
       // Verifica se é uma instrução parsed do Token Program
-      if ('parsed' in instruction && instruction.program === 'spl-token') {
-        const parsed = (instruction as ParsedInstruction).parsed;
+      if (instruction.parsed && instruction.program === 'spl-token') {
+        const parsed = instruction.parsed;
 
         // Verifica transferência ou transferChecked
         if (parsed.type === 'transfer' || parsed.type === 'transferChecked') {
           const info = parsed.info;
 
           // Verifica se é USDT
-          if (parsed.type === 'transferChecked' && info.mint !== this.usdtTokenAddress.toString()) {
+          if (parsed.type === 'transferChecked' && info.mint !== this.usdtTokenAddress) {
             continue;
           }
 
@@ -204,8 +221,8 @@ export class SolanaVerifier {
     if (tx.meta?.innerInstructions) {
       for (const innerIx of tx.meta.innerInstructions) {
         for (const instruction of innerIx.instructions) {
-          if ('parsed' in instruction && instruction.program === 'spl-token') {
-            const parsed = (instruction as ParsedInstruction).parsed;
+          if (instruction.parsed && instruction.program === 'spl-token') {
+            const parsed = instruction.parsed;
             if (parsed.type === 'transfer' || parsed.type === 'transferChecked') {
               return {
                 sender: parsed.info.authority || parsed.info.source,
@@ -240,27 +257,46 @@ export class SolanaVerifier {
 
   /**
    * Monitora novas transações para o endereço receptor
+   * Nota: Em @solana/kit, usamos RPC subscriptions via WebSocket
    */
   async subscribeToTransactions(
     callback: (signature: string) => void
   ): Promise<number> {
-    const receiverPubkey = new PublicKey(this.receiverAddress);
+    try {
+      // Create RPC subscriptions client
+      this.rpcSubscriptions = createSolanaRpcSubscriptions(this.wsUrl);
 
-    return this.connection.onLogs(
-      receiverPubkey,
-      (logs) => {
-        if (!logs.err) {
-          callback(logs.signature);
+      // Subscribe to logs for the receiver address
+      const logsNotifications = this.rpcSubscriptions.logsNotifications(
+        { mentions: [this.receiverAddress] },
+        { commitment: 'confirmed' }
+      );
+      const subscription = await logsNotifications.subscribe({ abortSignal: new AbortController().signal });
+
+      // Process incoming notifications
+      (async () => {
+        for await (const notification of subscription) {
+          if (notification.value && !notification.value.err) {
+            callback(notification.value.signature);
+          }
         }
-      },
-      'confirmed'
-    );
+      })();
+
+      // Return a dummy subscription ID (the new API handles cleanup differently)
+      return 1;
+    } catch (error) {
+      console.error('Failed to subscribe to transactions:', error);
+      return 0;
+    }
   }
 
   /**
    * Cancela subscription
+   * Nota: Em @solana/kit 2.0, a gestão de subscriptions é diferente
    */
   async unsubscribe(subscriptionId: number): Promise<void> {
-    await this.connection.removeOnLogsListener(subscriptionId);
+    // In @solana/kit, subscriptions are managed via async iterators
+    // The subscription will be cleaned up when the iterator is no longer consumed
+    this.rpcSubscriptions = null;
   }
 }

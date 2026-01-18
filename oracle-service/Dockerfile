@@ -1,18 +1,18 @@
 # Build Stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies for better-sqlite3 (python, make, g++)
 RUN apk add --no-cache python3 make g++
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY . .
 RUN npm run build
 
 # Production Stage
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 
 # Install runtime dependencies if needed (none for pure node/sqlite mostly, but better-sqlite3 needs bindings)
@@ -22,6 +22,9 @@ RUN apk add --no-cache python3 make g++
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
+
+# Copy ABI file to dist folder
+COPY --from=builder /app/src/don_fiapo.json ./dist/
 
 # Environment variables should be passed at runtime, but setting defaults for safety
 ENV NODE_ENV=production

@@ -70,7 +70,7 @@ export function useEvolution() {
 
   // Toggle NFT selection
   const toggleNFTSelection = useCallback((
-    tokenId: number, 
+    tokenId: number,
     nftType: number,
     allNFTs: Array<{ tokenId: number; nftType: number }>
   ) => {
@@ -159,14 +159,14 @@ export function useEvolution() {
     try {
       // Dynamic import to avoid SSR issues
       const contract = await import('@/lib/api/contract');
-      
+
       // First check if evolution is possible
-      const check = await contract.canEvolveNFTs(state.selectedNFTs);
+      const check = await contract.canEvolveNFTs(state.selectedNFTs, lunesAddress);
       if (!check.canEvolve) {
-        setState(prev => ({ 
-          ...prev, 
-          isLoading: false, 
-          error: check.error || 'Evolution not possible' 
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: check.error || 'Evolution not possible'
         }));
         return null;
       }
@@ -185,10 +185,10 @@ export function useEvolution() {
       return result;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Evolution failed';
-      setState(prev => ({ 
-        ...prev, 
-        isLoading: false, 
-        error: errorMessage 
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage
       }));
       return null;
     }
@@ -254,7 +254,7 @@ export function useEvolutionAndRarityStats() {
 
   const fetchStats = useCallback(async () => {
     if (typeof window === 'undefined') return;
-    
+
     setLoading(true);
     try {
       const contract = await import('@/lib/api/contract');

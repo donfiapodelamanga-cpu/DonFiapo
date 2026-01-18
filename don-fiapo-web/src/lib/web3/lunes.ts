@@ -6,14 +6,10 @@ import type { InjectedAccountWithMeta, InjectedExtension } from '@polkadot/exten
 import type { PolkadotWalletProvider } from '@/lib/stores/wallet-store';
 
 // Lunes Network configuration
+// Lunes Network configuration
 export const LUNES_CONFIG = {
   name: 'Lunes Network',
-  rpc: [
-    'wss://ws.lunes.io',
-    'wss://ws-lunes-main-01.lunes.io',
-    'wss://ws-lunes-main-02.lunes.io',
-    'wss://ws-archive.lunes.io'
-  ],
+  rpc: ['ws://127.0.0.1:9944'],
   symbol: 'LUNES',
   decimals: 8,
   ss58Format: 42,
@@ -21,11 +17,12 @@ export const LUNES_CONFIG = {
 
 // Contract addresses
 export const CONTRACTS = {
-  FIAPO_TOKEN: '5...', // Replace with actual contract address
-  STAKING: '5...',
-  ICO: '5...',
-  AIRDROP: '5...',
-  AFFILIATE: '5...',
+  FIAPO_TOKEN: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
+  // All functionalities (staking, ICO, airdrop, affiliate) are in the main contract
+  STAKING: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
+  ICO: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
+  AIRDROP: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
+  AFFILIATE: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
 };
 
 // Wallet extension IDs

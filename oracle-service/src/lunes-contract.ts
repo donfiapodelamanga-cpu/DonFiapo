@@ -49,7 +49,7 @@ export class LunesContractClient {
   private oraclePair: any = null;
 
   constructor(
-    private readonly rpcUrl: string,
+    private readonly rpcUrls: string[],
     private readonly contractAddress: string,
     private readonly oracleSeed: string
   ) { }
@@ -64,9 +64,9 @@ export class LunesContractClient {
       return;
     }
 
-    console.log(`Conectando à rede Lunes: ${this.rpcUrl}`);
+    console.log(`Conectando à rede Lunes: ${this.rpcUrls.join(', ')}`);
 
-    const provider = new WsProvider(this.rpcUrl);
+    const provider = new WsProvider(this.rpcUrls);
     this.api = await ApiPromise.create({ provider });
 
     // Inicializa keyring com a conta do oracle
