@@ -483,6 +483,8 @@ mod don_fiapo {
         // === EVOLUTION & RARITY SYSTEM FIELDS ===
         /// Gerenciador do sistema de evolução
         evolution_manager: crate::nft_evolution::EvolutionManager,
+        /// Mapeamento de última evolução por usuário para cooldown
+        last_evolution_time: Mapping<AccountId, u64>,
         /// Gerenciador do sistema de raridade visual
         rarity_manager: crate::nft_rarity::RarityManager,
         
@@ -646,6 +648,7 @@ mod don_fiapo {
                 ico_default_ipfs_gateway: String::from("https://ipfs.io/ipfs/"),
                 ico_is_active: true,
                 ico_mining_active: false,
+                last_evolution_time: Mapping::default(),
                 
                 // Evolution & Rarity Init
                 evolution_manager: crate::nft_evolution::EvolutionManager::new(),
@@ -2058,6 +2061,26 @@ mod don_fiapo {
                 cfg.minted = cfg.minted.saturating_add(1);
             }
             
+            // 7. Distribuir Prestige Bonus para Mint
+            let total_created_idx = nft_type as usize;
+            self.ico_stats.total_created_per_type[total_created_idx] = self.ico_stats.total_created_per_type[total_created_idx].saturating_add(1);
+            
+            let total_created = self.ico_stats.total_created_per_type[total_created_idx];
+            let max_supply = config.max_supply;
+            
+            let prestige_bonus = self.evolution_manager.get_prestige_bonus(nft_type as u8, total_created, max_supply);
+            if prestige_bonus > 0 {
+                let current_balance = self.balances.get(caller).unwrap_or(0);
+                self.balances.insert(caller, &current_balance.saturating_add(prestige_bonus));
+                self.total_supply = self.total_supply.saturating_add(prestige_bonus);
+                
+                self.env().emit_event(Transfer {
+                    from: None,
+                    to: Some(caller),
+                    value: prestige_bonus,
+                });
+            }
+            
             // Atualizar estatísticas
             self.ico_next_nft_id = nft_id.saturating_add(1);
             self.ico_stats.total_nfts_minted = self.ico_stats.total_nfts_minted.saturating_add(1);
@@ -2214,9 +2237,19 @@ mod don_fiapo {
                 tiers.push(self._nft_type_to_index(&nft.nft_type) as u8);
             }
             
-            // Delegar para evolution_manager
-            self.evolution_manager.can_evolve(&tiers)
-                .map_err(|_| Error::InvalidValue)
+            // 1. Delegar validação de regras de tier para evolution_manager
+            let result = self.evolution_manager.can_evolve(&tiers).map_err(|_| Error::InvalidValue)?;
+
+            // 2. Verificar Cooldown
+            if let Some(last_time) = self.last_evolution_time.get(caller) {
+                let current_time = self.env().block_timestamp();
+                let cooldown = self.evolution_manager.config.cooldown_period;
+                if current_time < last_time.saturating_add(cooldown) {
+                    return Err(Error::InvalidOperation); // Ou adicionar Error::CooldownActive se preferir
+                }
+            }
+
+            Ok(result)
         }
 
         /// Evolui NFTs - queima os NFTs de entrada e cria um NFT superior
@@ -2231,54 +2264,70 @@ mod don_fiapo {
             let caller = self.env().caller();
             let current_time = self.env().block_timestamp();
             
-            // Validar evolução
+            // 1. Validar evolução (inclui regras de tier e cooldown)
             let result_tier = self.can_evolve(nft_ids.clone())?;
             
-            // Coletar dados antes de queimar
+            // 2. Coletar dados antes de queimar e aplicar bônus
             let first_nft = self.ico_nfts.get(nft_ids[0]).ok_or(Error::TokenNotFound)?;
-            let _source_tier = self._nft_type_to_index(&first_nft.nft_type);
+            let source_nft_type = first_nft.nft_type.clone();
+            let source_tier_idx = self._nft_type_to_index(&source_nft_type) as u8;
             
-            // Acumular bônus existentes dos NFTs sendo queimados
             let mut accumulated_bonus: u16 = 0;
             for nft_id in &nft_ids {
                 if let Some(nft) = self.ico_nfts.get(*nft_id) {
                     accumulated_bonus = accumulated_bonus.saturating_add(nft.mining_bonus_bps);
+                    
+                    // 3. Registrar Queima (Dynamic Supply Adjustment: Burn decrement)
+                    // Diminui max_supply e minted do tier de origem
+                    let tier_idx = self._nft_type_to_index(&nft.nft_type);
+                    if let Some(config) = self.ico_nft_configs.get_mut(tier_idx) {
+                        config.max_supply = config.max_supply.saturating_sub(1);
+                        config.minted = config.minted.saturating_sub(1);
+                    }
+
+                    // Marcar NFT como inativo
+                    let mut updated_nft = nft.clone();
+                    updated_nft.active = false;
+                    self.ico_nfts.insert(*nft_id, &updated_nft);
+                    
+                    // Remover da lista do proprietário
+                    if let Some(mut owner_nfts) = self.ico_nfts_by_owner.get(caller) {
+                        owner_nfts.retain(|id| id != nft_id);
+                        self.ico_nfts_by_owner.insert(caller, &owner_nfts);
+                    }
                 }
             }
             
-            // Queimar NFTs de origem
-            for nft_id in &nft_ids {
-                // Marcar como inativo
-                if let Some(mut nft) = self.ico_nfts.get(*nft_id) {
-                    nft.active = false;
-                    self.ico_nfts.insert(*nft_id, &nft);
-                }
-                
-                // Remover da lista do proprietário
-                if let Some(mut owner_nfts) = self.ico_nfts_by_owner.get(caller) {
-                    owner_nfts.retain(|id| id != nft_id);
-                    self.ico_nfts_by_owner.insert(caller, &owner_nfts);
-                }
+            // 4. Registrar Criação (Dynamic Supply Adjustment: Upgrade increment)
+            let new_nft_type = self._index_to_nft_type(result_tier as usize);
+            let target_tier_idx = result_tier as usize;
+            
+            // Aumentar supply do tier de destino
+            if let Some(config) = self.ico_nft_configs.get_mut(target_tier_idx) {
+                config.max_supply = config.max_supply.saturating_add(1);
+                config.minted = config.minted.saturating_add(1);
             }
             
-            // Criar novo NFT evoluído
+            // Atualizar estatísticas de evolução (total_created)
+            self.ico_stats.evolved_per_type[target_tier_idx] = self.ico_stats.evolved_per_type[target_tier_idx].saturating_add(1);
+            self.ico_stats.total_created_per_type[target_tier_idx] = self.ico_stats.total_created_per_type[target_tier_idx].saturating_add(1);
+            
+            let total_created = self.ico_stats.total_created_per_type[target_tier_idx];
+            let target_config = self.ico_nft_configs.get(target_tier_idx).ok_or(Error::InvalidValue)?;
+            let max_supply = target_config.max_supply;
+
+            // 5. Criar novo NFT evoluído
             let new_nft_id = self.ico_next_nft_id;
             self.ico_next_nft_id = self.ico_next_nft_id.saturating_add(1);
             
-            // Calcular bônus total (acumulado + novo bônus de evolução)
             let evolution_bonus = self.evolution_manager.config.evolution_bonus_bps;
             let total_bonus = accumulated_bonus.saturating_add(evolution_bonus);
             
-            // Determinar tipo do novo NFT
-            let new_nft_type = self._index_to_nft_type(result_tier as usize);
-            
-            // Gerar raridade visual para o novo NFT
             let visual_rarity = self.rarity_manager.generate_rarity(new_nft_id, current_time);
             
-            // Criar NFT evoluído
             let evolved_nft = crate::ico::NFTData {
                 id: new_nft_id,
-                nft_type: new_nft_type,
+                nft_type: new_nft_type.clone(),
                 owner: caller,
                 created_at: current_time,
                 tokens_mined: 0,
@@ -2291,18 +2340,44 @@ mod don_fiapo {
                 evolved_from: nft_ids.clone(),
             };
             
-            // Salvar novo NFT
             self.ico_nfts.insert(new_nft_id, &evolved_nft);
             
-            // Adicionar à lista do proprietário
             let mut owner_nfts = self.ico_nfts_by_owner.get(caller).unwrap_or_default();
             owner_nfts.push(new_nft_id);
             self.ico_nfts_by_owner.insert(caller, &owner_nfts);
-            
-            // Atualizar estatísticas de evolução
+
+            // 6. Distribuir Burn Reward (Tokens $FIAPO)
+            let burn_reward = self.evolution_manager.get_burn_reward(source_tier_idx);
+            if burn_reward > 0 {
+                let current_balance = self.balances.get(caller).unwrap_or(0);
+                self.balances.insert(caller, &current_balance.saturating_add(burn_reward));
+                self.total_supply = self.total_supply.saturating_add(burn_reward);
+                
+                self.env().emit_event(Transfer {
+                    from: None,
+                    to: Some(caller),
+                    value: burn_reward,
+                });
+            }
+
+            // 7. Distribuir Prestige Bonus
+            let prestige_bonus = self.evolution_manager.get_prestige_bonus(result_tier, total_created, max_supply);
+            if prestige_bonus > 0 {
+                let current_balance = self.balances.get(caller).unwrap_or(0);
+                self.balances.insert(caller, &current_balance.saturating_add(prestige_bonus));
+                self.total_supply = self.total_supply.saturating_add(prestige_bonus);
+                
+                self.env().emit_event(Transfer {
+                    from: None,
+                    to: Some(caller),
+                    value: prestige_bonus,
+                });
+            }
+
+            // 8. Atualizar Cooldown e Estatísticas
+            self.last_evolution_time.insert(caller, &current_time);
             self.evolution_manager.record_evolution(nft_ids.len() as u64);
             
-            // Liberar lock de reentrancy
             self.reentrancy_locked = false;
             
             Ok(new_nft_id)

@@ -64,6 +64,8 @@ interface NFTData {
   mintedAt: number;
   minedTokens: bigint;
   claimedTokens: bigint;
+  lastMiningTimestamp: number;
+  miningBonusBps: number;
 }
 
 interface AirdropStatus {
@@ -79,11 +81,12 @@ interface AffiliateInfo {
   totalEarnings: bigint;
 }
 
-// Lazy load contract module to avoid SSR issues
 const loadContract = async () => {
   if (typeof window === 'undefined') return null;
   return import('@/lib/api/contract');
 };
+
+import type { ICOStats } from '@/lib/api/contract';
 
 /**
  * Hook for token balance
@@ -625,3 +628,34 @@ export function useAirdropStats() {
   };
 }
 
+/**
+ * Hook for global ICO statistics (Prestige Bonus tracking)
+ */
+export function useICOStats() {
+  const [stats, setStats] = useState<ICOStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const contract = await loadContract();
+      if (!contract) return;
+      const icoStats = await contract.getICOStats();
+      setStats(icoStats);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch ICO stats');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    stats,
+    loading,
+    error,
+    fetchStats,
+  };
+}

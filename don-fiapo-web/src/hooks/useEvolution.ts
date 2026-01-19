@@ -35,6 +35,9 @@ export interface EvolutionPreview {
   nextTierImage: string;
   bonusPercent: number;
   nftCount: number;
+  requiredCount: number;
+  burnReward: number;
+  prestigeBonus?: { first: number; last: number };
 }
 
 export function useEvolution() {
@@ -122,7 +125,7 @@ export function useEvolution() {
   const getEvolutionPreview = useCallback((
     allNFTs: Array<{ tokenId: number; nftType: number }>
   ): EvolutionPreview | null => {
-    if (state.selectedNFTs.length < 2) return null;
+    if (state.selectedNFTs.length === 0) return null;
 
     const firstSelectedId = state.selectedNFTs[0];
     const firstSelected = allNFTs.find(n => n.tokenId === firstSelectedId);
@@ -139,18 +142,25 @@ export function useEvolution() {
       nextTierImage: nextTier.image,
       bonusPercent: API_CONFIG.evolution.bonusPerEvolution,
       nftCount: state.selectedNFTs.length,
+      requiredCount: (currentTier as any).evolutionRequirement || 2,
+      burnReward: (currentTier as any).burnReward || 0,
+      prestigeBonus: (nextTier as any).prestigeBonus,
     };
   }, [state.selectedNFTs]);
 
   // Execute evolution
-  const executeEvolution = useCallback(async () => {
+  const executeEvolution = useCallback(async (allNFTs: Array<{ tokenId: number; nftType: number }>) => {
     if (!lunesAddress) {
       setState(prev => ({ ...prev, error: 'Wallet not connected' }));
       return null;
     }
 
-    if (state.selectedNFTs.length < 2) {
-      setState(prev => ({ ...prev, error: 'Select at least 2 NFTs to evolve' }));
+    const preview = getEvolutionPreview(allNFTs);
+    if (!preview || preview.nftCount < preview.requiredCount) {
+      setState(prev => ({
+        ...prev,
+        error: `Select exactly ${preview?.requiredCount || 2} NFTs to evolve`
+      }));
       return null;
     }
 
@@ -241,8 +251,9 @@ export function useNFTVisualAttributes(nftId: number | null) {
   return { attributes, loading, fetchAttributes };
 }
 
-// Hook for fetching global stats
+// Hook for fetching global stats and user history
 export function useEvolutionAndRarityStats() {
+  const { lunesAddress } = useWalletStore();
   const [stats, setStats] = useState<{
     evolution: { totalEvolutions: number; totalBurned: number };
     rarity: { common: number; uncommon: number; rare: number; epic: number; legendary: number; total: number };
@@ -250,6 +261,7 @@ export function useEvolutionAndRarityStats() {
     evolution: { totalEvolutions: 0, totalBurned: 0 },
     rarity: { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0, total: 0 },
   });
+  const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchStats = useCallback(async () => {
@@ -258,20 +270,23 @@ export function useEvolutionAndRarityStats() {
     setLoading(true);
     try {
       const contract = await import('@/lib/api/contract');
-      const [evolutionStats, rarityStats] = await Promise.all([
+      const [evolutionStats, rarityStats, userHistory] = await Promise.all([
         contract.getEvolutionStats(),
         contract.getRarityStats(),
+        lunesAddress ? contract.getUserEvolutions(lunesAddress) : Promise.resolve([]),
       ]);
+
       setStats({
         evolution: evolutionStats,
         rarity: rarityStats,
       });
+      setHistory(userHistory);
     } catch (e) {
       console.error('Failed to fetch stats:', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lunesAddress]);
 
-  return { stats, loading, fetchStats };
+  return { stats, history, loading, fetchStats };
 }

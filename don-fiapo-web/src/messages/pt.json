@@ -172,7 +172,16 @@
     "mining": "Dashboard de Mineração",
     "tokensMined": "Tokens Minerados",
     "daysRemaining": "Dias Restantes",
-    "claimTokens": "Resgatar Tokens"
+    "claimTokens": "Resgatar Tokens",
+    "prestige": {
+      "title": "Bônus de Prestígio",
+      "desc": "Limitado aos 100 primeiros pioneiros ou 10 últimos sobreviventes de cada nível!",
+      "earlyAdopter": "Você ainda pode ganhar o bônus de pioneiro de {amount} $FIAPO (Faltam {remaining} vagas!)",
+      "lastSurvivor": "As vagas dos 100 primeiros já esgotaram, mas você ainda ganha o prêmio se for um dos 10 últimos!",
+      "congrats": "Bônus de Prestígio Ganho!",
+      "congratsDesc": "Você é um dos 100 primeiros a alcançar este nível! 🎉",
+      "potential": "+ Bônus de Prestígio Potencial: {amount} FIAPO!"
+    }
   },
   "airdrop": {
     "title": "Airdrop Realengo",

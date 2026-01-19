@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "@/lib/navigation";
 import { useWalletStore } from "@/lib/stores";
-import { useNFTs } from "@/hooks/useContract";
+import { useNFTs, useICOStats } from "@/hooks/useContract";
 import { useEvolution, type VisualRarity } from "@/hooks/useEvolution";
 import { API_CONFIG, getRarityConfig } from "@/lib/api/config";
 import { useToast } from "@/components/ui/toast";
@@ -38,14 +38,16 @@ export default function MyNFTsPage() {
   // Use evolution hook
   const evolution = useEvolution();
   const evolutionPreview = evolution.getEvolutionPreview(nfts);
+  const { stats: icoStats, fetchStats: fetchICOStats } = useICOStats();
   const { addToast } = useToast();
   const [selectedForListing, setSelectedForListing] = useState<any | null>(null);
 
   useEffect(() => {
     if (lunesConnected && lunesAddress) {
       fetchNFTs();
+      fetchICOStats();
     }
-  }, [lunesConnected, lunesAddress, fetchNFTs]);
+  }, [lunesConnected, lunesAddress, fetchNFTs, fetchICOStats]);
 
   // Fetch visual rarities for all NFTs
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function MyNFTsPage() {
   const handleEvolve = async () => {
     addToast("info", "Evolution Started", "Processing your NFT evolution...");
 
-    const result = await evolution.executeEvolution();
+    const result = await evolution.executeEvolution(nfts);
     if (result) {
       const newTierName = API_CONFIG.nftTiers[result.newTier]?.shortName || 'NFT';
       addToast(
@@ -80,8 +82,9 @@ export default function MyNFTsPage() {
         "Evolution Complete! 🎉",
         `Your NFTs evolved into a ${newTierName} with +${result.bonusBps / 100}% mining bonus!`
       );
-      // Refresh NFTs after successful evolution
+      // Refresh NFTs and stats after successful evolution
       await fetchNFTs();
+      await fetchICOStats();
     } else if (evolution.error) {
       addToast("error", "Evolution Failed", evolution.error);
     }
@@ -141,8 +144,20 @@ export default function MyNFTsPage() {
                     className="bg-card p-8 rounded-xl max-w-md text-center"
                     onClick={e => e.stopPropagation()}
                   >
-                    <PartyPopper className="w-16 h-16 text-golden mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-golden mb-2">Evolution Complete!</h2>
+
+                    {/* Prestige Bonus Celebration in Modal */}
+                    {evolution.result && icoStats && icoStats.totalCreatedPerType && icoStats.totalCreatedPerType[evolution.result.newTier] !== undefined && icoStats.totalCreatedPerType[evolution.result.newTier] <= 100 && (
+                      <div className="mb-4 p-3 bg-purple-500/20 border border-purple-500/30 rounded-lg flex flex-col items-center gap-1 animate-pulse">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                          <span className="text-sm font-bold text-purple-300">{t('prestige.congrats')}</span>
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <p className="text-[10px] text-purple-200">{t('prestige.congratsDesc')}</p>
+                      </div>
+                    )}
+
                     <p className="text-muted-foreground mb-4">
                       Your NFTs have been evolved into a new {API_CONFIG.nftTiers[evolution.result.newTier]?.shortName || 'NFT'}!
                     </p>
@@ -183,22 +198,51 @@ export default function MyNFTsPage() {
                     <div>
                       <h3 className="font-bold text-lg">Evolution Mode</h3>
                       <p className="text-sm text-muted-foreground">
-                        Select 2+ NFTs of the same type to evolve
+                        {evolutionPreview
+                          ? `Select ${evolutionPreview.requiredCount} NFTs of the same type to evolve (${evolution.selectedNFTs.length}/${evolutionPreview.requiredCount} selected)`
+                          : 'Select NFTs of the same type to evolve'}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="px-3 py-1 bg-purple-500/20 rounded-full text-sm">
-                      {evolution.selectedNFTs.length} selected
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${evolutionPreview && evolution.selectedNFTs.length === evolutionPreview.requiredCount ? 'bg-green-500/20 text-green-400' : 'bg-purple-500/20'}`}>
+                      {evolution.selectedNFTs.length} {evolutionPreview ? `/ ${evolutionPreview.requiredCount}` : ''} selected
                     </span>
 
                     {evolutionPreview && (
-                      <div className="flex items-center gap-2 px-3 py-1 bg-golden/20 rounded-full">
-                        <TrendingUp className="w-4 h-4 text-golden" />
-                        <span className="text-sm">
-                          {evolutionPreview.currentTierName} → {evolutionPreview.nextTierName} (+{evolutionPreview.bonusPercent}% mining)
-                        </span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-golden/20 rounded-full">
+                          <TrendingUp className="w-4 h-4 text-golden" />
+                          <span className="text-sm">
+                            {evolutionPreview.currentTierName} → {evolutionPreview.nextTierName} (+{evolutionPreview.bonusPercent}% mining)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 rounded-full">
+                          <PartyPopper className="w-4 h-4 text-green-500" />
+                          <span className="text-sm text-green-400">
+                            Reward: {evolutionPreview.burnReward} FIAPO
+                          </span>
+                        </div>
+                        {icoStats && evolutionPreview && (
+                          <div className="mt-1">
+                            {/* Helper to find next tier index */}
+                            {(() => {
+                              const nextTierId = API_CONFIG.nftTiers.findIndex(t => t.shortName === evolutionPreview.nextTierName);
+                              if (nextTierId !== -1 && (icoStats.totalCreatedPerType[nextTierId] || 0) < 100) {
+                                return (
+                                  <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
+                                    <Sparkles className="w-4 h-4 text-purple-400" />
+                                    <span className="text-xs text-purple-300 font-medium">
+                                      {t('prestige.potential', { amount: new Intl.NumberFormat().format(evolutionPreview.prestigeBonus?.first || 0) })}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -211,9 +255,9 @@ export default function MyNFTsPage() {
                     </Button>
 
                     <Button
-                      disabled={evolution.selectedNFTs.length < 2 || !evolutionPreview || evolution.isLoading}
+                      disabled={!evolutionPreview || evolution.selectedNFTs.length < evolutionPreview.requiredCount || evolution.isLoading}
                       size="sm"
-                      className="bg-gradient-to-r from-purple-500 to-golden"
+                      className="bg-gradient-to-r from-purple-500 to-golden shadow-lg shadow-purple-500/20 disabled:opacity-30"
                       onClick={handleEvolve}
                     >
                       {evolution.isLoading ? (
@@ -221,7 +265,12 @@ export default function MyNFTsPage() {
                       ) : (
                         <Sparkles className="w-4 h-4 mr-1" />
                       )}
-                      {evolution.isLoading ? 'Evolving...' : 'Evolve NFTs'}
+                      {evolution.isLoading
+                        ? 'Evolving...'
+                        : (evolutionPreview && evolution.selectedNFTs.length < evolutionPreview.requiredCount)
+                          ? `Select ${evolutionPreview.requiredCount} NFTs`
+                          : 'Evolve NFTs'
+                      }
                     </Button>
                   </div>
                 </div>

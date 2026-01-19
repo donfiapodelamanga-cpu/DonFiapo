@@ -74,5 +74,22 @@ while IFS='=' read -r key value; do
     esac
 done < "$ROOT_ENV"
 
+# Sincroniza Metadados do Contrato (ABI)
+echo -e "${YELLOW}📄 Sincronizando metadados do contrato (ABI)...${NC}"
+METADATA_SRC="$ROOT_DIR/don_fiapo/target/ink/don_fiapo_contract.json"
+WEB3_META_DEST="$ROOT_DIR/don-fiapo-web/src/lib/web3/don_fiapo_contract.json"
+API_META_DEST="$ROOT_DIR/don-fiapo-web/src/lib/api/don_fiapo_contract.json"
+API_META_ALT_DEST="$ROOT_DIR/don-fiapo-web/src/lib/api/contract-metadata.json"
+
+if [ -f "$METADATA_SRC" ]; then
+    cp "$METADATA_SRC" "$WEB3_META_DEST"
+    cp "$METADATA_SRC" "$API_META_DEST"
+    cp "$METADATA_SRC" "$API_META_ALT_DEST"
+    echo -e "${GREEN}✅ Metadados sincronizados! (3 locais)${NC}"
+else
+    echo -e "${YELLOW}⚠️  Aviso: Metadados não encontrados em $METADATA_SRC${NC}"
+    echo -e "   Execute 'cd don_fiapo && cargo contract build' primeiro."
+fi
+
 echo -e "${GREEN}✅ Variáveis sincronizadas com sucesso!${NC}"
 echo -e "   Arquivo: $WEB_ENV"

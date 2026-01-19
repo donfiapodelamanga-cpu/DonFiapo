@@ -11,6 +11,7 @@ import { API_CONFIG } from "@/lib/api/config";
 import { formatNumber } from "@/lib/utils/format";
 import { getICOStats, getIcoNftConfigs, type ICOStats } from "@/lib/api/contract";
 import { useEffect, useState } from "react";
+import { useWalletStore } from "@/lib/stores";
 
 // Use NFT tiers from config
 const initialNftTiers = API_CONFIG.nftTiers.map((tier, index) => ({
@@ -23,6 +24,7 @@ export default function ICOPage() {
   const t = useTranslations("ico");
   const [stats, setStats] = useState<ICOStats | null>(null);
   const [nftTiers, setNftTiers] = useState(initialNftTiers);
+  const { lunesConnected } = useWalletStore();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -57,7 +59,7 @@ export default function ICOPage() {
       }
     };
     fetchStats();
-  }, []);
+  }, [lunesConnected]);
 
   // Use fetched total if available, otherwise 0
   const totalMinted = stats ? stats.totalNftsMinted : 0;

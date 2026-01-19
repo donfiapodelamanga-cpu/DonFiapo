@@ -229,6 +229,10 @@ pub struct ICOStats {
     pub ico_active: bool,
     /// Mineração ativa
     pub mining_active: bool,
+    /// Total de NFTs gerados por evolução por tipo (índice mapeado pelo enum NFTType)
+    pub evolved_per_type: [u32; 7],
+    /// Total de NFTs criados (Mint + Evolução) para controle de prestígio
+    pub total_created_per_type: [u32; 7],
 }
 
 /// Retorna configurações padrão dos tipos de NFT
@@ -316,6 +320,8 @@ impl ICOManager {
                 unique_participants: 0,
                 ico_active: true,
                 mining_active: false,
+                evolved_per_type: [0; 7],
+                total_created_per_type: [0; 7],
             },
             nfts_by_owner: Mapping::default(),
             nfts: Mapping::default(),
@@ -590,6 +596,50 @@ impl ICOManager {
         Ok(claimable)
     }
 
+    /// Registra a queima de um NFT ajustando o supply dinâmico
+    /// 
+    /// # Regra de Negócio:
+    /// Reduz `max_supply` e `minted` para preservar escassez e metas de venda.
+    pub fn record_nft_burn(&mut self, nft_type: &NFTType) {
+        let _tier_idx = self.nft_type_to_tier(nft_type) as usize;
+        
+        if let Some(config) = self.get_nft_config_mut(nft_type) {
+            // Reduz o teto total (Escassez) e o contador de mintados (Proteção de Receita)
+            config.max_supply = config.max_supply.saturating_sub(1);
+            config.minted = config.minted.saturating_sub(1);
+        }
+    }
+
+    /// Registra um novo NFT gerado via evolução
+    /// 
+    /// # Regra de Negócio:
+    /// Aumenta `max_supply` e `minted` para registrar a unidade gerada sem afetar a cota de venda.
+    pub fn record_evolution_mint(&mut self, nft_type: &NFTType) {
+        let tier_idx = self.nft_type_to_tier(nft_type) as usize;
+        
+        if let Some(config) = self.get_nft_config_mut(nft_type) {
+            // Aumenta o teto total e o contador de mintados para registrar a nova unidade
+            config.max_supply = config.max_supply.saturating_add(1);
+            config.minted = config.minted.saturating_add(1);
+        }
+        
+        // Atualiza estatísticas de evolução
+        if tier_idx < 7 {
+            self.stats.evolved_per_type[tier_idx] = self.stats.evolved_per_type[tier_idx].saturating_add(1);
+            self.stats.total_created_per_type[tier_idx] = self.stats.total_created_per_type[tier_idx].saturating_add(1);
+        }
+    }
+
+    /// Retorna o total criado (Mint + Evolução) de um determinado tipo
+    pub fn get_total_created(&self, nft_type: &NFTType) -> u32 {
+        let tier_idx = self.nft_type_to_tier(nft_type) as usize;
+        if tier_idx < 7 {
+            self.stats.total_created_per_type[tier_idx]
+        } else {
+            0
+        }
+    }
+
     /// Cria um novo NFT
     /// 
     /// # Segurança
@@ -686,6 +736,11 @@ impl ICOManager {
         // Atualizar configuração do tipo de NFT
         if let Some(config_mut) = self.get_nft_config_mut(&nft_type) {
             config_mut.minted = config_mut.minted.saturating_add(1);
+        }
+        
+        // Atualizar estatística de criação total para bônus de prestígio
+        if nft_tier < 7 {
+            self.stats.total_created_per_type[nft_tier as usize] = self.stats.total_created_per_type[nft_tier as usize].saturating_add(1);
         }
         
         // Atualizar estatísticas

@@ -73,6 +73,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'ipfs.io' },
       { protocol: 'https', hostname: 'gateway.pinata.cloud' },
     ],
+    qualities: [75, 90],
   },
 };
 

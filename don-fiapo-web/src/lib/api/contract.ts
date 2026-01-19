@@ -33,6 +33,14 @@ export const parseNum = (val: any): number => {
   return 0;
 };
 
+export const parseArray = (val: any): any[] => {
+  if (Array.isArray(val)) return val;
+  if (val && typeof val === 'object') {
+    return Object.values(val);
+  }
+  return [];
+};
+
 /**
  * Check if we should attempt connection
  */
@@ -218,6 +226,10 @@ export async function initializeContract(): Promise<ContractPromise | null> {
     api = connectedApi;
 
     // Load the contract
+    const abiMessages = (CONTRACT_ABI as any).spec?.messages || [];
+    console.log(`[Contract] Initializing with address: ${API_CONFIG.contracts.donFiapo}`);
+    console.log(`[Contract] ABI contains ${abiMessages.length} messages. Has get_ico_stats? ${!!abiMessages.find((m: any) => m.label === 'get_ico_stats')}`);
+
     contract = new ContractPromiseClass(
       api,
       CONTRACT_ABI as any,
@@ -412,6 +424,8 @@ export async function getUserNFTs(address: string): Promise<{
   mintedAt: number;
   minedTokens: bigint;
   claimedTokens: bigint;
+  lastMiningTimestamp: number;
+  miningBonusBps: number;
 }[]> {
   const contractInstance = await initializeContract();
   if (!contractInstance) return [];
@@ -482,6 +496,8 @@ export async function getUserNFTs(address: string): Promise<{
         mintedAt: parseNum(nft.created_at || nft.createdAt || nft.mintedAt || nft.minted_at),
         minedTokens: parseBigInt(nft.tokens_mined || nft.tokensMined || nft.minedTokens || nft.mined_tokens),
         claimedTokens: parseBigInt(nft.tokens_claimed || nft.tokensClaimed || nft.claimedTokens || nft.claimed_tokens),
+        lastMiningTimestamp: parseNum(nft.last_mining_timestamp || nft.lastMiningTimestamp || nft.last_update || 0),
+        miningBonusBps: parseNum(nft.mining_bonus_bps || nft.miningBonusBps || 0),
       };
     });
   }
@@ -693,6 +709,8 @@ export interface ICOStats {
   uniqueParticipants: number;
   icoActive: boolean;
   miningActive: boolean;
+  evolvedPerType: number[];
+  totalCreatedPerType: number[];
 }
 
 /**
@@ -709,21 +727,28 @@ export async function getICOStats(): Promise<ICOStats | null> {
     );
 
     if (result.isOk && output) {
-      const data = output.toHuman() as any;
-      console.log('[Contract] ICO Stats Raw:', JSON.stringify(data, null, 2));
+      const rawData = output.toHuman() as any;
+      console.log('[Contract] ICO Stats Raw Data:', JSON.stringify(rawData, null, 2));
 
-      // Helper to cleanup number formatting (remove commas)
-      const cleanNum = (val: string | number) => typeof val === 'string' ? val.replace(/,/g, '') : val;
+      // Handle nested Ok result
+      const data = (rawData && typeof rawData === 'object' && 'Ok' in rawData) ? rawData.Ok : rawData;
+
+      if (!data) {
+        console.warn('[Contract] No data found in ICO stats response');
+        return null;
+      }
 
       return {
-        totalNftsMinted: parseInt(cleanNum(data?.totalNftsMinted || data?.total_nfts_minted || '0').toString()),
-        totalRaisedUsdtCents: BigInt(cleanNum(data?.totalRaisedUsdtCents || data?.total_raised_usdt_cents || '0').toString()),
-        totalTokensMined: BigInt(cleanNum(data?.totalTokensMined || data?.total_tokens_mined || '0').toString()),
-        totalTokensVesting: BigInt(cleanNum(data?.totalTokensVesting || data?.total_tokens_vesting || '0').toString()),
-        totalVestingStaked: BigInt(cleanNum(data?.totalVestingStaked || data?.total_vesting_staked || '0').toString()),
-        uniqueParticipants: parseInt(cleanNum(data?.uniqueParticipants || data?.unique_participants || '0').toString()),
-        icoActive: !!(data?.icoActive || data?.ico_active),
-        miningActive: !!(data?.miningActive || data?.mining_active),
+        totalNftsMinted: parseNum(data.totalNftsMinted || data.total_nfts_minted || '0'),
+        totalRaisedUsdtCents: parseBigInt(data.totalRaisedUsdtCents || data.total_raised_usdt_cents || '0'),
+        totalTokensMined: parseBigInt(data.totalTokensMined || data.total_tokens_mined || '0'),
+        totalTokensVesting: parseBigInt(data.totalTokensVesting || data.total_tokens_vesting || '0'),
+        totalVestingStaked: parseBigInt(data.totalVestingStaked || data.total_vesting_staked || '0'),
+        uniqueParticipants: parseNum(data.uniqueParticipants || data.unique_participants || '0'),
+        icoActive: !!(data.icoActive || data.ico_active),
+        miningActive: !!(data.miningActive || data.mining_active),
+        evolvedPerType: parseArray(data.evolvedPerType || data.evolved_per_type).map((v: any) => parseNum(v)),
+        totalCreatedPerType: parseArray(data.totalCreatedPerType || data.total_created_per_type).map((v: any) => parseNum(v)),
       };
     }
   } catch (error) {
@@ -1279,9 +1304,12 @@ export async function getEvolutionStats(): Promise<{ totalEvolutions: number; to
 
     if (result.isOk && output) {
       const data = output.toHuman() as any;
+      console.log('[Contract] Evolution Stats Raw:', data);
+
+      const stats = data?.Ok || data;
       return {
-        totalEvolutions: parseInt(data?.[0] || 0),
-        totalBurned: parseInt(data?.[1] || 0),
+        totalEvolutions: parseNum(stats?.totalEvolutions || stats?.total_evolutions || 0),
+        totalBurned: parseNum(stats?.totalNftsBurned || stats?.total_nfts_burned || 0),
       };
     }
   } catch (e) {
@@ -1315,13 +1343,18 @@ export async function getRarityStats(): Promise<{
 
     if (result.isOk && output) {
       const data = output.toHuman() as any;
+      console.log('[Contract] Rarity Stats Raw:', data);
+
+      const stats = data?.Ok || data;
+      const counts = stats?.rarityCounts || stats?.rarity_counts || {};
+
       return {
-        common: parseInt(data?.[0] || 0),
-        uncommon: parseInt(data?.[1] || 0),
-        rare: parseInt(data?.[2] || 0),
-        epic: parseInt(data?.[3] || 0),
-        legendary: parseInt(data?.[4] || 0),
-        total: parseInt(data?.[5] || 0),
+        common: parseNum(counts?.common || 0),
+        uncommon: parseNum(counts?.uncommon || 0),
+        rare: parseNum(counts?.rare || 0),
+        epic: parseNum(counts?.epic || 0),
+        legendary: parseNum(counts?.legendary || 0),
+        total: parseNum(stats?.totalRolls || stats?.total_rolls || 0),
       };
     }
   } catch (e) {
@@ -1329,6 +1362,55 @@ export async function getRarityStats(): Promise<{
   }
 
   return { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0, total: 0 };
+}
+
+export interface EvolutionRecord {
+  id: number;
+  owner: string;
+  burnedNftIds: number[];
+  sourceTier: number;
+  resultNftId: number;
+  resultTier: number;
+  bonusAppliedBps: number;
+  timestamp: number;
+}
+
+/**
+ * Get user evolution history
+ */
+export async function getUserEvolutions(address: string): Promise<EvolutionRecord[]> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) return [];
+
+  try {
+    const { result, output } = await contractInstance.query.getUserEvolutions(
+      contractInstance.address,
+      getGasLimit(contractInstance.api),
+      address
+    );
+
+    if (result.isOk && output) {
+      const data = output.toHuman() as any;
+      const records = data?.Ok || data || [];
+
+      if (Array.isArray(records)) {
+        return records.map((record: any) => ({
+          id: parseNum(record.id),
+          owner: record.owner,
+          burnedNftIds: (record.burnedNftIds || record.burned_nft_ids || []).map((id: any) => parseNum(id)),
+          sourceTier: parseNum(record.sourceTier || record.source_tier),
+          resultNftId: parseNum(record.resultNftId || record.result_nft_id),
+          resultTier: parseNum(record.resultTier || record.result_tier),
+          bonusAppliedBps: parseNum(record.bonusAppliedBps || record.bonus_applied_bps),
+          timestamp: parseNum(record.timestamp),
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to fetch user evolutions:', e);
+  }
+
+  return [];
 }
 
 /**

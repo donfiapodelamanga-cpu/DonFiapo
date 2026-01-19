@@ -1,7 +1,7 @@
 
 import { ApiPromise, WsProvider } from '@polkadot/api';
 
-const RPC_URL = 'wss://ws.lunes.io';
+const RPC_URL = 'ws://127.0.0.1:9944';
 const TARGET_ADDRESS = '5Hb7quTKJ9WmKDJQcHC8SMriuzBMwgEDJR2YPHnMXwkTAAyQ';
 
 async function main() {

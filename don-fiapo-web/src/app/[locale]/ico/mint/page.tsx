@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Crown, Minus, Plus, CreditCard, Wallet, ArrowLeft, Check, Info, Loader2, Copy, ExternalLink, Clock } from "lucide-react";
+import { Crown, Minus, Plus, CreditCard, Wallet, ArrowLeft, Check, Info, Loader2, Copy, ExternalLink, Clock, Sparkles, Flame } from "lucide-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Link } from "@/lib/navigation";
 import { useWalletStore } from "@/lib/stores";
 import { useMintNFT } from "@/hooks/usePayment";
 import { useSolana } from "@/hooks/useSolana";
+import { useICOStats } from "@/hooks/useContract";
 import { useToast } from "@/components/ui/toast";
 import { API_CONFIG } from "@/lib/api/config";
 import { ConnectWalletModal } from "@/components/wallet/connect-wallet-modal";
@@ -56,6 +57,13 @@ export default function MintPage() {
   const { lunesConnected, lunesAddress } = useWalletStore();
   const { connected: solanaConnected, publicKey } = useWallet();
   const { sendUSDT, sendUSDC, isReady: solanaReady } = useSolana();
+
+  // ICO Stats for Prestige Bonus
+  const { stats: icoStats, fetchStats: fetchICOStats } = useICOStats();
+
+  useEffect(() => {
+    fetchICOStats();
+  }, [fetchICOStats]);
 
   // Cooldown State
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
@@ -151,6 +159,7 @@ export default function MintPage() {
 
       setPaymentStep("success");
       addToast("success", "NFT Minted!", "Your Royal NFT is now mining FIAPO!");
+      fetchICOStats(); // Refresh stats to show updated counts
 
     } catch (err) {
       console.error("Mint error:", err);
@@ -199,6 +208,7 @@ export default function MintPage() {
 
       addToast("success", "NFT Minted!", `You received a ${freeTier.shortName} NFT! Transaction Hash: ${result.slice(0, 6)}...${result.slice(-6)}`);
       setPaymentStep("success");
+      fetchICOStats(); // Refresh stats
     } catch (error) {
       console.error("[Mint] Free mint error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to mint free NFT";
@@ -295,8 +305,16 @@ export default function MintPage() {
                             {tier.price === 0 ? "FREE" : `$${tier.price}`}
                           </span>
                         </div>
-                        <div className="text-xs text-green-500 font-medium">
-                          +{formatNumber(tier.miningRate)} FIAPO/day
+                        <div className="flex justify-between items-center">
+                          <div className="text-xs text-green-500 font-medium">
+                            +{formatNumber(tier.miningRate)} FIAPO/day
+                          </div>
+                          {icoStats && icoStats.totalCreatedPerType && icoStats.totalCreatedPerType[tier.id] !== undefined && icoStats.totalCreatedPerType[tier.id] <= 100 && (
+                            <div className="bg-purple-500/20 text-purple-400 text-[10px] px-1.5 py-0.5 rounded border border-purple-500/30 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              {t('prestige.title')}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -329,8 +347,38 @@ export default function MintPage() {
                   </div>
                   <div className="p-4">
                     <p className="text-sm text-muted-foreground mb-1">Selected</p>
-                    <p className="text-lg font-bold leading-tight">{selectedTier.name}</p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-lg font-bold leading-tight">{selectedTier.name}</p>
+                      {icoStats && icoStats.totalCreatedPerType && icoStats.totalCreatedPerType[selectedTier.id] !== undefined && icoStats.totalCreatedPerType[selectedTier.id] <= 100 && (
+                        <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-1 rounded-full border border-purple-500/30 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          {t('prestige.title')}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-green-500 mt-1">+{formatNumber(selectedTier.miningRate)} FIAPO/day</p>
+
+                    {/* Prestige Bonus Info Alert */}
+                    {icoStats && (
+                      <div className="mt-3 p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px]">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Flame className="w-3 h-3 text-purple-400" />
+                          <span className="font-bold text-purple-300">{t('prestige.title')}</span>
+                        </div>
+                        <p className="text-purple-200/70">
+                          {icoStats.totalCreatedPerType && icoStats.totalCreatedPerType[selectedTier.id] !== undefined ? (
+                            icoStats.totalCreatedPerType[selectedTier.id] < 100
+                              ? t('prestige.earlyAdopter', {
+                                amount: formatNumber((API_CONFIG.nftTiers[selectedTier.id] as any).prestigeBonus?.first || 0),
+                                remaining: 100 - icoStats.totalCreatedPerType[selectedTier.id]
+                              })
+                              : t('prestige.lastSurvivor')
+                          ) : (
+                            "Esperando dados do contrato..."
+                          )}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -420,8 +468,29 @@ export default function MintPage() {
                     <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
                       <Check className="w-8 h-8 text-green-500" />
                     </div>
-                    <p className="text-xl font-bold text-green-500">NFT Minted Successfully!</p>
-                    <p className="text-sm text-muted-foreground">Your NFT is now mining FIAPO tokens</p>
+                    <div className="space-y-1">
+                      <p className="text-xl font-bold text-green-500">NFT Minted Successfully!</p>
+                      <p className="text-sm text-muted-foreground">Your NFT is now mining FIAPO tokens</p>
+                    </div>
+
+                    {/* Prestige Bonus Celebration */}
+                    {icoStats && icoStats.totalCreatedPerType[selectedTier.id] <= 100 && (
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="p-4 bg-purple-500/20 border-2 border-purple-500/50 rounded-2xl flex flex-col items-center gap-2 animate-pulse"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-purple-400" />
+                          <span className="text-lg font-black text-purple-300 uppercase tracking-tight">
+                            {t('prestige.congrats')}
+                          </span>
+                          <Sparkles className="w-5 h-5 text-purple-400" />
+                        </div>
+                        <p className="text-purple-200 text-xs font-medium">{t('prestige.congratsDesc')}</p>
+                      </motion.div>
+                    )}
+
                     <Button asChild className="w-full">
                       <Link href="/ico/my-nfts">View My NFTs</Link>
                     </Button>

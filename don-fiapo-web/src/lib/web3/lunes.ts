@@ -17,12 +17,12 @@ export const LUNES_CONFIG = {
 
 // Contract addresses
 export const CONTRACTS = {
-  FIAPO_TOKEN: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
+  FIAPO_TOKEN: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
   // All functionalities (staking, ICO, airdrop, affiliate) are in the main contract
-  STAKING: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
-  ICO: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
-  AIRDROP: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
-  AFFILIATE: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5FV12QM7rjZXqPfqkM85Ds5aZpFgdTtgkaBwqPWNisYPKSMi',
+  STAKING: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
+  ICO: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
+  AIRDROP: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
+  AFFILIATE: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
 };
 
 // Wallet extension IDs

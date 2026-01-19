@@ -172,7 +172,16 @@
     "mining": "Mining Dashboard",
     "tokensMined": "Tokens Mined",
     "daysRemaining": "Days Remaining",
-    "claimTokens": "Claim Tokens"
+    "claimTokens": "Claim Tokens",
+    "prestige": {
+      "title": "Prestige Bonus",
+      "desc": "Limited to the first 100 early adopters or last 10 survivors per tier!",
+      "earlyAdopter": "You can still earn the early adopter bonus of {amount} $FIAPO ({remaining} slots left!)",
+      "lastSurvivor": "Slots for the first 100 are gone, but you can still win if you are one of the last 10!",
+      "congrats": "Prestige Bonus Earned!",
+      "congratsDesc": "You are one of the first 100 to reach this level! 🎉",
+      "potential": "+ Potential Prestige Bonus: {amount} FIAPO!"
+    }
   },
   "airdrop": {
     "title": "Royal Airdrop",

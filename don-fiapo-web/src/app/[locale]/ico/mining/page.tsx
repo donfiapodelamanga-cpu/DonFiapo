@@ -2,9 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { useEffect } from "react";
-import { Crown, Pickaxe, Clock, Coins, TrendingUp, Gift, ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Crown, Pickaxe, Clock, Coins, TrendingUp, Gift, ArrowLeft, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Link } from "@/lib/navigation";
 import { useWalletStore } from "@/lib/stores";
@@ -23,15 +24,72 @@ const tierInfo: Record<number, { name: string; image: string }> = {
   6: { name: "Royal", image: "👑" },
 };
 
+// Real-time counter component for "falling coins" effect
+const MiningCounter = ({
+  baseValue,
+  lastUpdate,
+  dailyRate,
+  bonusBps = 0,
+  maxTotal,
+  decimals = 4,
+  className = ""
+}: {
+  baseValue: number;
+  lastUpdate: number;
+  dailyRate: number;
+  bonusBps?: number;
+  maxTotal: number;
+  decimals?: number;
+  className?: string;
+}) => {
+    const [displayValue, setDisplayValue] = useState(baseValue);
+  const [initialRenderTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (dailyRate <= 0) {
+      setDisplayValue(baseValue);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const now = Date.now();
+      // Use lastUpdate if available, otherwise use the time the component was mounted.
+      const startTime = lastUpdate > 0 ? lastUpdate : initialRenderTime;
+      const elapsedMs = Math.max(0, now - startTime);
+
+      // Calculate accrual with bonus (bps is /10000)
+      const multiplier = 1 + (bonusBps / 10000);
+      const msRate = (dailyRate * multiplier) / (24 * 60 * 60 * 1000);
+      const accrued = elapsedMs * msRate;
+
+      const current = Math.min(maxTotal, baseValue + accrued);
+      setDisplayValue(current);
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [baseValue, lastUpdate, dailyRate, bonusBps, maxTotal, initialRenderTime]);
+
+  return (
+    <span className={`font-mono tabular-nums ${className}`}>
+      {displayValue.toLocaleString(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      })}
+    </span>
+  );
+};
+
 export default function MiningPage() {
   const t = useTranslations("ico");
   const { addToast } = useToast();
   const { lunesConnected, lunesAddress } = useWalletStore();
-  const { nfts, loading, claimMinedTokens } = useNFTs();
+  const { nfts, loading, fetchNFTs, claimMinedTokens } = useNFTs();
 
   useEffect(() => {
-    // NFTs are already loaded from the hook
-  }, []);
+    if (lunesConnected) {
+      fetchNFTs();
+    }
+  }, [lunesConnected, fetchNFTs]);
 
   // Calculate totals from real NFT data
   const totalMined = nfts.reduce((acc, nft) => acc + Number(nft.minedTokens), 0) / 10 ** API_CONFIG.token.decimals;
@@ -41,13 +99,13 @@ export default function MiningPage() {
     return acc + rate;
   }, 0);
   const claimableAmount = totalMined - totalClaimed;
-  
+
   // Calculate average days remaining (112 days total mining period)
-  const avgDaysRemaining = nfts.length > 0 
+  const avgDaysRemaining = nfts.length > 0
     ? Math.max(0, Math.round(nfts.reduce((acc, nft) => {
-        const daysSinceMint = Math.floor((Date.now() - nft.mintedAt) / (1000 * 60 * 60 * 24));
-        return acc + Math.max(0, API_CONFIG.miningDuration - daysSinceMint);
-      }, 0) / nfts.length))
+      const daysSinceMint = Math.floor((Date.now() - nft.mintedAt) / (1000 * 60 * 60 * 24));
+      return acc + Math.max(0, API_CONFIG.miningDuration - daysSinceMint);
+    }, 0) / nfts.length))
     : 0;
 
   const handleClaimAll = async () => {
@@ -102,22 +160,65 @@ export default function MiningPage() {
               transition={{ delay: 0.1 }}
               className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
             >
-              {[
-                { icon: Coins, label: "Total Mined", value: totalMined >= 1000 ? `${(totalMined / 1000).toFixed(1)}K` : totalMined.toFixed(0), color: "text-golden" },
-                { icon: TrendingUp, label: "Daily Rate", value: totalDaily.toLocaleString(), color: "text-green-500" },
-                { icon: Clock, label: "Days Left", value: avgDaysRemaining.toString(), color: "text-blue-400" },
-                { icon: Gift, label: "Claimable", value: claimableAmount >= 1000 ? `${(claimableAmount / 1000).toFixed(1)}K` : claimableAmount.toFixed(0), color: "text-purple-500" },
-              ].map((stat, i) => (
-                <Card key={i} className="bg-card">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                      <span className="text-sm text-muted-foreground">{stat.label}</span>
-                    </div>
-                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              <Card className="bg-card">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Coins className="w-5 h-5 text-golden" />
+                    <span className="text-sm text-muted-foreground">Total Mined</span>
+                  </div>
+                  <div className="text-2xl font-bold text-golden">
+                    {nfts.length > 0 ? (
+                      <MiningCounter
+                        baseValue={nfts.reduce((acc, nft) => acc + (Number(nft.minedTokens) / 10 ** API_CONFIG.token.decimals), 0)}
+                        lastUpdate={Math.min(...nfts.map(n => n.lastMiningTimestamp || Date.now()))}
+                        dailyRate={totalDaily}
+                        maxTotal={nfts.reduce((acc, nft) => acc + (API_CONFIG.nftTiers[nft.nftType]?.totalMining || 0), 0)}
+                        decimals={2}
+                      />
+                    ) : "0"}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    <span className="text-sm text-muted-foreground">Daily Rate</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-500">{totalDaily.toLocaleString()}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Clock className="w-5 h-5 text-blue-400" />
+                    <span className="text-sm text-muted-foreground">Days Left</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-400">{avgDaysRemaining}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Gift className="w-5 h-5 text-purple-500" />
+                    <span className="text-sm text-muted-foreground">Vested/Claimable</span>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-500">
+                    {nfts.length > 0 ? (
+                      <MiningCounter
+                        baseValue={claimableAmount}
+                        lastUpdate={Math.min(...nfts.map(n => n.lastMiningTimestamp || Date.now()))}
+                        dailyRate={totalDaily}
+                        maxTotal={nfts.reduce((acc, nft) => acc + (API_CONFIG.nftTiers[nft.nftType]?.totalMining || 0), 0) - totalClaimed}
+                        decimals={2}
+                      />
+                    ) : "0"}
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
 
             {/* Claim Card */}
@@ -131,14 +232,38 @@ export default function MiningPage() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>
-                      <p className="text-muted-foreground mb-1">Available to Claim</p>
-                      <p className="text-4xl font-bold text-golden">{claimableAmount.toLocaleString()} FIAPO</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Mining ends in ~{avgDaysRemaining} days
+                      <div className="text-muted-foreground mb-1 flex items-center gap-2">
+                        Earned (Vesting Locked)
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] rounded-full font-bold uppercase tracking-wider border border-purple-500/30 flex items-center gap-1 cursor-help">
+                                112 Days Vesting
+                                <Info className="w-3 h-3" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Tokens mined are subject to a 112-day linear vesting period.<br />You can claim your vested tokens at any time.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div className="text-4xl font-bold text-golden">
+                        <MiningCounter
+                          baseValue={claimableAmount}
+                          lastUpdate={Math.min(...nfts.map(n => n.lastMiningTimestamp || Date.now()))}
+                          dailyRate={totalDaily}
+                          maxTotal={nfts.reduce((acc, nft) => acc + (API_CONFIG.nftTiers[nft.nftType]?.totalMining || 0), 0) - totalClaimed}
+                          decimals={4}
+                        />
+                        <span className="ml-2 text-xl">FIAPO</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Mining active • Tokens are released daily into your vesting balance
                       </p>
                     </div>
-                    <Button 
-                      size="xl" 
+                    <Button
+                      size="xl"
                       className="glow-gold"
                       onClick={handleClaimAll}
                       disabled={claimableAmount <= 0 || loading}
@@ -161,7 +286,7 @@ export default function MiningPage() {
               transition={{ delay: 0.3 }}
             >
               <h2 className="text-2xl font-bold text-golden mb-6">Your Mining NFTs</h2>
-              
+
               {nfts.length === 0 ? (
                 <Card className="bg-card">
                   <CardContent className="pt-6 text-center py-12">
@@ -182,7 +307,7 @@ export default function MiningPage() {
                     const claimedTokens = Number(nft.claimedTokens) / 10 ** API_CONFIG.token.decimals;
                     const claimable = minedTokens - claimedTokens;
                     const progress = Math.min(100, (minedTokens / totalTokens) * 100);
-                    
+
                     return (
                       <motion.div
                         key={nft.tokenId}
@@ -210,7 +335,16 @@ export default function MiningPage() {
                               </div>
                               <div className="bg-background rounded-xl p-3">
                                 <p className="text-xs text-muted-foreground">Total Mined</p>
-                                <p className="font-bold">{minedTokens.toLocaleString()}</p>
+                                <div className="font-bold flex items-center gap-1">
+                                  <MiningCounter
+                                    baseValue={minedTokens}
+                                    lastUpdate={nft.lastMiningTimestamp || Date.now()}
+                                    dailyRate={miningRate}
+                                    bonusBps={nft.miningBonusBps}
+                                    maxTotal={totalTokens}
+                                    decimals={4}
+                                  />
+                                </div>
                               </div>
                             </div>
                             <div>
@@ -224,8 +358,8 @@ export default function MiningPage() {
                             </div>
                           </CardContent>
                           <CardFooter>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               className="w-full"
                               disabled={claimable <= 0 || loading}
                               onClick={() => handleClaimSingle(nft.tokenId, claimable)}

@@ -28,18 +28,44 @@ pub struct EvolutionConfig {
     pub is_active: bool,
     /// Taxa em USDT para evolução (em centavos, 0 = grátis)
     pub evolution_fee_cents: u64,
+    /// Período de cooldown entre evoluções (em segundos)
+    pub cooldown_period: u64,
 }
 
 impl Default for EvolutionConfig {
     fn default() -> Self {
         Self {
-            min_nfts_required: 2,
+            min_nfts_required: 2, // Geral, será sobrescrito por lógica de tier
             evolution_bonus_bps: 1000, // 10%
             is_active: true,
             evolution_fee_cents: 0,
+            cooldown_period: 7200, // 2 horas (conforme solicitado pelo usuário)
         }
     }
 }
+
+/// Recompensas de queima ($FIAPO com 8 decimais)
+pub const BURN_REWARDS: [u128; 7] = [
+    100 * 10u128.pow(8),      // Tier 0 -> 1: 100 $FIAPO
+    500 * 10u128.pow(8),      // Tier 1 -> 2: 500 $FIAPO
+    600 * 10u128.pow(8),      // Tier 2 -> 3: 600 $FIAPO
+    800 * 10u128.pow(8),      // Tier 3 -> 4: 800 $FIAPO
+    1_000 * 10u128.pow(8),    // Tier 4 -> 5: 1.000 $FIAPO
+    50_000 * 10u128.pow(8),   // Tier 5 -> 6: 50.000 $FIAPO
+    100_000 * 10u128.pow(8),  // Tier 6 (Max): 100.000 $FIAPO
+];
+
+/// Bônus de Prestígio ($FIAPO com 8 decimais)
+/// [Tier][BonusType] -> 0: Early Adopter (100), 1: Last Survivor (10)
+pub const PRESTIGE_BONUSES: [[u128; 2]; 7] = [
+    [100 * 10u128.pow(8), 100 * 10u128.pow(8)],             // Tier 0
+    [10_000 * 10u128.pow(8), 10_000 * 10u128.pow(8)],       // Tier 1
+    [100_000 * 10u128.pow(8), 100_000 * 10u128.pow(8)],     // Tier 2
+    [150_000 * 10u128.pow(8), 150_000 * 10u128.pow(8)],     // Tier 3
+    [200_000 * 10u128.pow(8), 200_000 * 10u128.pow(8)],     // Tier 4
+    [300_000 * 10u128.pow(8), 300_000 * 10u128.pow(8)],     // Tier 5
+    [1_000_000 * 10u128.pow(8), 1_000_000 * 10u128.pow(8)], // Tier 6
+];
 
 /// Dados de um NFT evoluído
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
@@ -103,6 +129,8 @@ pub enum EvolutionError {
     NFTNotActive,
     /// Pagamento de taxa necessário
     PaymentRequired,
+    /// Período de espera (cooldown) ainda ativo
+    CooldownActive,
     /// Erro interno
     InternalError,
 }
@@ -171,15 +199,18 @@ impl EvolutionManager {
             return Err(EvolutionError::SystemNotActive);
         }
 
-        // 2. Mínimo de NFTs
-        if nft_tiers.len() < self.config.min_nfts_required as usize {
-            return Err(EvolutionError::InsufficientNFTs);
-        }
-
-        // 3. Todos do mesmo tipo
+        // 2. Todos do mesmo tipo
         let first_tier = nft_tiers.first().ok_or(EvolutionError::InsufficientNFTs)?;
         if !nft_tiers.iter().all(|t| t == first_tier) {
             return Err(EvolutionError::NFTTypeMismatch);
+        }
+
+        // 3. Mínimo de NFTs específico por Tier
+        // Tier 0 (Free) exige 5 NFTs conforme novas regras de tokenomics
+        // Tiers 1+ respeitam a configuração min_nfts_required (default 2)
+        let required = if *first_tier == 0 { 5 } else { self.config.min_nfts_required };
+        if nft_tiers.len() < required as usize {
+            return Err(EvolutionError::InsufficientNFTs);
         }
 
         // 4. Não pode ser tier máximo
@@ -189,6 +220,34 @@ impl EvolutionManager {
 
         // Retorna o tier resultante (próximo tier)
         Ok(first_tier + 1)
+    }
+
+    /// Retorna o valor de Burn Reward para um determinado tier
+    pub fn get_burn_reward(&self, source_tier: u8) -> u128 {
+        if (source_tier as usize) < BURN_REWARDS.len() {
+            BURN_REWARDS[source_tier as usize]
+        } else {
+            0
+        }
+    }
+
+    /// Retorna o bônus de prestígio se aplicável
+    pub fn get_prestige_bonus(&self, tier: u8, total_created: u32, max_supply: u32) -> u128 {
+        if (tier as usize) >= PRESTIGE_BONUSES.len() {
+            return 0;
+        }
+
+        // 100 Primeiros
+        if total_created <= 100 {
+            return PRESTIGE_BONUSES[tier as usize][0];
+        }
+
+        // 10 Últimos (se max_supply for atingido ou quase)
+        if total_created > max_supply.saturating_sub(10) && total_created <= max_supply {
+            return PRESTIGE_BONUSES[tier as usize][1];
+        }
+
+        0
     }
 
     /// Calcula o bônus de mining para um NFT evoluído
@@ -272,11 +331,23 @@ mod tests {
     // -------------------------------------------------------------------------
 
     #[test]
-    fn test_can_evolve_success_two_nfts() {
+    fn test_can_evolve_success_two_nfts_tier1() {
         let manager = EvolutionManager::new();
         
-        // 2 NFTs do tier 0 (Free) devem evoluir para tier 1
-        let nft_tiers = vec![0, 0];
+        // 2 NFTs do tier 1 (Pickaxe) devem evoluir para tier 2
+        let nft_tiers = vec![1, 1];
+        let result = manager.can_evolve(&nft_tiers);
+        
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 2); // Tier resultante
+    }
+
+    #[test]
+    fn test_can_evolve_success_five_nfts_tier0() {
+        let manager = EvolutionManager::new();
+        
+        // 5 NFTs do tier 0 (Shovel) devem evoluir para tier 1
+        let nft_tiers = vec![0, 0, 0, 0, 0];
         let result = manager.can_evolve(&nft_tiers);
         
         assert!(result.is_ok());
@@ -454,6 +525,7 @@ mod tests {
             evolution_bonus_bps: 1500, // 15%
             is_active: true,
             evolution_fee_cents: 500, // $5.00
+            cooldown_period: 86400,
         };
         
         manager.update_config(new_config.clone());
@@ -467,15 +539,15 @@ mod tests {
     fn test_can_evolve_with_custom_min_nfts() {
         let mut manager = EvolutionManager::new();
         
-        // Alterar para exigir 3 NFTs mínimo
+        // Alterar para exigir 3 NFTs mínimo (Testaremos com Tier 1 para não usar a regra de Tier 0)
         manager.config.min_nfts_required = 3;
         
         // 2 NFTs agora falha
-        let nft_tiers = vec![0, 0];
+        let nft_tiers = vec![1, 1];
         assert_eq!(manager.can_evolve(&nft_tiers), Err(EvolutionError::InsufficientNFTs));
         
         // 3 NFTs funciona
-        let nft_tiers = vec![0, 0, 0];
+        let nft_tiers = vec![1, 1, 1];
         assert!(manager.can_evolve(&nft_tiers).is_ok());
     }
 
@@ -487,8 +559,8 @@ mod tests {
     fn test_evolve_all_tiers() {
         let manager = EvolutionManager::new();
         
-        // Tier 0 -> 1
-        assert_eq!(manager.can_evolve(&vec![0, 0]).unwrap(), 1);
+        // Tier 0 -> 1 (Exige 5)
+        assert_eq!(manager.can_evolve(&vec![0, 0, 0, 0, 0]).unwrap(), 1);
         
         // Tier 1 -> 2
         assert_eq!(manager.can_evolve(&vec![1, 1]).unwrap(), 2);

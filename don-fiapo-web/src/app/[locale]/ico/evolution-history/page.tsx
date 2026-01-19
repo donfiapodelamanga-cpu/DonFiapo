@@ -4,11 +4,11 @@ import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { 
-  ArrowLeft, 
-  Flame, 
-  ArrowRight, 
-  Calendar, 
+import {
+  ArrowLeft,
+  Flame,
+  ArrowRight,
+  Calendar,
   TrendingUp,
   Sparkles,
   Crown,
@@ -20,58 +20,15 @@ import { Link } from "@/lib/navigation";
 import { useWalletStore } from "@/lib/stores";
 import { API_CONFIG, getRarityConfig } from "@/lib/api/config";
 import { useEvolutionAndRarityStats } from "@/hooks/useEvolution";
-
-// Mock evolution history data (in production, this would come from the contract)
-interface EvolutionRecord {
-  id: number;
-  timestamp: number;
-  burnedNftIds: number[];
-  burnedTier: number;
-  resultNftId: number;
-  resultTier: number;
-  bonusBps: number;
-  rarity: string;
-}
-
-// Mock data for demo
-const mockEvolutionHistory: EvolutionRecord[] = [
-  {
-    id: 1,
-    timestamp: Date.now() - 86400000 * 2,
-    burnedNftIds: [101, 102],
-    burnedTier: 1,
-    resultNftId: 201,
-    resultTier: 2,
-    bonusBps: 1000,
-    rarity: 'rare',
-  },
-  {
-    id: 2,
-    timestamp: Date.now() - 86400000 * 5,
-    burnedNftIds: [45, 67, 89],
-    burnedTier: 0,
-    resultNftId: 150,
-    resultTier: 1,
-    bonusBps: 1000,
-    rarity: 'uncommon',
-  },
-];
+import type { EvolutionRecord } from "@/lib/api/contract";
 
 export default function EvolutionHistoryPage() {
   const t = useTranslations("ico");
   const { lunesConnected } = useWalletStore();
-  const { stats, loading: statsLoading, fetchStats } = useEvolutionAndRarityStats();
-  const [evolutionHistory, setEvolutionHistory] = useState<EvolutionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { stats, history: evolutionHistory, loading: statsLoading, fetchStats } = useEvolutionAndRarityStats();
 
   useEffect(() => {
     fetchStats();
-    // In production, fetch actual evolution history from contract
-    // For now, use mock data
-    setTimeout(() => {
-      setEvolutionHistory(mockEvolutionHistory);
-      setLoading(false);
-    }, 1000);
   }, [fetchStats]);
 
   const formatDate = (timestamp: number) => {
@@ -91,9 +48,9 @@ export default function EvolutionHistoryPage() {
           <ArrowLeft className="w-4 h-4" /> Back to My NFTs
         </Link>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-bold font-display text-golden mb-4">
@@ -120,7 +77,7 @@ export default function EvolutionHistoryPage() {
               <p className="text-sm text-muted-foreground">Total Evolutions</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-red-500/10 to-purple-500/10 border-red-500/30">
             <CardContent className="pt-6 text-center">
               <TrendingUp className="w-8 h-8 text-red-500 mx-auto mb-2" />
@@ -130,7 +87,7 @@ export default function EvolutionHistoryPage() {
               <p className="text-sm text-muted-foreground">NFTs Burned</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-yellow-500/10 to-golden/10 border-yellow-500/30">
             <CardContent className="pt-6 text-center">
               <Sparkles className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
@@ -140,7 +97,7 @@ export default function EvolutionHistoryPage() {
               <p className="text-sm text-muted-foreground">Legendary NFTs</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/30">
             <CardContent className="pt-6 text-center">
               <Crown className="w-8 h-8 text-purple-500 mx-auto mb-2" />
@@ -178,7 +135,7 @@ export default function EvolutionHistoryPage() {
                   const config = getRarityConfig(key);
                   const total = stats.rarity.total || 1;
                   const percentage = (count / total) * 100;
-                  
+
                   return (
                     <div key={key} className="flex items-center gap-3">
                       <span className={`w-24 text-sm font-medium ${config.color}`}>
@@ -223,7 +180,7 @@ export default function EvolutionHistoryPage() {
                   <p className="text-muted-foreground mb-4">Connect your wallet to view evolution history</p>
                   <Button>Connect Wallet</Button>
                 </div>
-              ) : loading ? (
+              ) : statsLoading ? (
                 <div className="text-center py-12">
                   <Loader2 className="w-12 h-12 text-golden mx-auto animate-spin mb-4" />
                   <p className="text-muted-foreground">Loading evolution history...</p>
@@ -239,10 +196,9 @@ export default function EvolutionHistoryPage() {
               ) : (
                 <div className="space-y-4">
                   {evolutionHistory.map((record, index) => {
-                    const burnedTierConfig = API_CONFIG.nftTiers[record.burnedTier];
+                    const burnedTierConfig = API_CONFIG.nftTiers[record.sourceTier];
                     const resultTierConfig = API_CONFIG.nftTiers[record.resultTier];
-                    const rarityConfig = getRarityConfig(record.rarity);
-                    
+
                     return (
                       <motion.div
                         key={record.id}
@@ -284,17 +240,12 @@ export default function EvolutionHistoryPage() {
                           </div>
                           <div>
                             <p className="font-medium">{resultTierConfig?.shortName}</p>
-                            <p className="text-xs text-green-500">+{record.bonusBps / 100}% bonus</p>
+                            <p className="text-xs text-green-500">+{record.bonusAppliedBps / 100}% bonus</p>
                           </div>
                         </div>
 
-                        {/* Rarity Badge */}
-                        <span className={`px-3 py-1 ${rarityConfig.bgColor} ${rarityConfig.color} text-xs font-medium rounded-full ml-auto`}>
-                          {rarityConfig.name}
-                        </span>
-
                         {/* Date */}
-                        <div className="text-right text-sm text-muted-foreground hidden md:block">
+                        <div className="text-right text-sm text-muted-foreground ml-auto hidden md:block">
                           <Calendar className="w-4 h-4 inline mr-1" />
                           {formatDate(record.timestamp)}
                         </div>
