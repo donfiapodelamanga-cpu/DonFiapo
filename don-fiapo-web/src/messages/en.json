@@ -236,7 +236,22 @@
     "singlePlayer": "Single Player",
     "spin": {
       "title": "Royal Wheel of Fortune",
-      "description": "Spin the wheel to win incredible prizes, including the Don's treasure."
+      "description": "Spin the wheel to win incredible prizes, including the Don's treasure.",
+      "youHave": "You have",
+      "spinsLeft": "spins left",
+      "lastPrize": "Last Prize:",
+      "buySpins": "Buy Spins",
+      "spinBtn": "SPIN",
+      "spinSingular": "Spin",
+      "spinsPlural": "Spins",
+      "payment": {
+        "title": "Confirm Purchase",
+        "description": "You are about to purchase a spin package for the Royal Wheel of Fortune.",
+        "package": "Package:",
+        "disclaimer": "The amount will be debited from your connected wallet. Ensure you have sufficient balance.",
+        "cancel": "Cancel",
+        "confirm": "Confirm Payment"
+      }
     },
     "tug": {
       "title": "Tug of War",

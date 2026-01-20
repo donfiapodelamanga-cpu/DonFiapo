@@ -107,6 +107,8 @@ mod fiapo_lottery {
     pub struct FiapoLottery {
         /// Contrato Core
         core_contract: AccountId,
+        /// Contrato Oracle (autorizado a chamar buy_tickets_for)
+        oracle_contract: Option<AccountId>,
         /// Owner
         owner: AccountId,
         /// Configuração mensal
@@ -125,6 +127,10 @@ mod fiapo_lottery {
         monthly_fund: Balance,
         /// Fundo acumulado anual
         annual_fund: Balance,
+        /// Tickets por usuário para o próximo sorteio
+        user_tickets: Mapping<AccountId, u32>,
+        /// Lista de participantes do próximo sorteio
+        participants: Vec<AccountId>,
     }
 
     impl FiapoLottery {
@@ -135,6 +141,7 @@ mod fiapo_lottery {
             
             Self {
                 core_contract,
+                oracle_contract: None,
                 owner: caller,
                 monthly_config: LotteryConfig::default(),
                 christmas_config: LotteryConfig {
@@ -149,6 +156,8 @@ mod fiapo_lottery {
                 last_christmas: 0,
                 monthly_fund: 0,
                 annual_fund: 0,
+                user_tickets: Mapping::default(),
+                participants: Vec::new(),
             }
         }
 
@@ -212,6 +221,55 @@ mod fiapo_lottery {
             }
             self.annual_fund = self.annual_fund.saturating_add(amount);
             Ok(())
+        }
+
+        // ==================== Ticket Functions ====================
+
+        /// Compra tickets para um usuário (chamado pelo Oracle)
+        #[ink(message)]
+        pub fn buy_tickets_for(&mut self, user: AccountId, quantity: u32) -> Result<(), LotteryError> {
+            let caller = self.env().caller();
+
+            // Apenas Oracle pode chamar
+            if Some(caller) != self.oracle_contract {
+                return Err(LotteryError::Unauthorized);
+            }
+
+            if quantity == 0 {
+                return Err(LotteryError::NotEnoughParticipants);
+            }
+
+            // Adiciona tickets ao usuário
+            let current_tickets = self.user_tickets.get(user).unwrap_or(0);
+            if current_tickets == 0 {
+                // Novo participante
+                self.participants.push(user);
+            }
+            self.user_tickets.insert(user, &(current_tickets + quantity));
+
+            Ok(())
+        }
+
+        /// Configura contrato Oracle (apenas owner)
+        #[ink(message)]
+        pub fn set_oracle_contract(&mut self, oracle: AccountId) -> Result<(), LotteryError> {
+            if self.env().caller() != self.owner {
+                return Err(LotteryError::Unauthorized);
+            }
+            self.oracle_contract = Some(oracle);
+            Ok(())
+        }
+
+        /// Retorna tickets de um usuário
+        #[ink(message)]
+        pub fn get_user_tickets(&self, user: AccountId) -> u32 {
+            self.user_tickets.get(user).unwrap_or(0)
+        }
+
+        /// Retorna total de participantes
+        #[ink(message)]
+        pub fn get_participants_count(&self) -> u32 {
+            self.participants.len() as u32
         }
 
         // ==================== Draw Functions ====================
@@ -319,6 +377,17 @@ mod fiapo_lottery {
                 Winner { wallet: winners[2], prize: third_prize, position: 3 },
             ];
 
+            // Transfere prêmios para os ganhadores via cross-contract call
+            for winner in &winner_list {
+                let _ = self.call_core_mint_prize(winner.wallet, winner.prize);
+            }
+
+            // Limpa tickets dos participantes
+            for (wallet, _) in &eligible {
+                self.user_tickets.insert(*wallet, &0);
+            }
+            self.participants.clear();
+
             let current = self.env().block_timestamp();
             let result = DrawResult {
                 id: self.next_lottery_id,
@@ -344,6 +413,28 @@ mod fiapo_lottery {
             });
 
             Ok(result)
+        }
+
+        /// Cross-contract call para mintar prêmios
+        fn call_core_mint_prize(&self, to: AccountId, amount: Balance) -> Result<(), LotteryError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("mint_to")))
+                        .push_arg(to)
+                        .push_arg(amount),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(LotteryError::Unauthorized),
+            }
         }
 
         /// Seleciona ganhadores pseudo-aleatórios

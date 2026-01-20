@@ -236,7 +236,22 @@
     "singlePlayer": "Single Player",
     "spin": {
       "title": "Roda da Fortuna Real",
-      "description": "Gire a roleta para ganhar prêmios incríveis, incluindo o tesouro do Don."
+      "description": "Gire a roleta para ganhar prêmios incríveis, incluindo o tesouro do Don.",
+      "youHave": "Você tem",
+      "spinsLeft": "giros restantes",
+      "lastPrize": "Último Prêmio:",
+      "buySpins": "Comprar Giros",
+      "spinBtn": "GIRAR",
+      "spinSingular": "Giro",
+      "spinsPlural": "Giros",
+      "payment": {
+        "title": "Confirmar Compra",
+        "description": "Você está prestes a adquirir um pacote de giros para a Roda da Fortuna Real.",
+        "package": "Pacote:",
+        "disclaimer": "O valor será debitado da sua carteira conectada. Certifique-se de ter saldo suficiente.",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar Pagamento"
+      }
     },
     "tug": {
       "title": "Cabo de Guerra",

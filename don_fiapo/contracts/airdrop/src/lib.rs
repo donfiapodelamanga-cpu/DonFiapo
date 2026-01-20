@@ -10,13 +10,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::{AccountId, Balance};
+// Traits são re-exportados pelo ink::contract
 
 #[ink::contract]
 mod fiapo_airdrop {
-    use super::*;
     use fiapo_traits::PSP22Error;
-    use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
     /// Erros do airdrop

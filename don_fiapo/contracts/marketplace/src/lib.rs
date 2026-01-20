@@ -51,25 +51,52 @@ mod fiapo_marketplace {
     pub struct FiapoMarketplace {
         core_contract: AccountId,
         ico_contract: AccountId,
+        staking_contract: Option<AccountId>,
         owner: AccountId,
+        team_wallet: AccountId,
         listings: Mapping<u64, Listing>,
         active_listings: Vec<u64>,
         fee_bps: u16,
         total_volume: Balance,
+        total_fees_collected: Balance,
     }
 
     impl FiapoMarketplace {
         #[ink(constructor)]
         pub fn new(core_contract: AccountId, ico_contract: AccountId) -> Self {
+            let caller = Self::env().caller();
             Self {
                 core_contract,
                 ico_contract,
-                owner: Self::env().caller(),
+                staking_contract: None,
+                owner: caller,
+                team_wallet: caller,
                 listings: Mapping::default(),
                 active_listings: Vec::new(),
-                fee_bps: 250, // 2.5% fee
+                fee_bps: 500, // 5% fee (conforme monólito)
                 total_volume: 0,
+                total_fees_collected: 0,
             }
+        }
+
+        /// Configura o contrato de staking para receber fees
+        #[ink(message)]
+        pub fn set_staking_contract(&mut self, staking: AccountId) -> Result<(), MarketplaceError> {
+            if self.env().caller() != self.owner {
+                return Err(MarketplaceError::Unauthorized);
+            }
+            self.staking_contract = Some(staking);
+            Ok(())
+        }
+
+        /// Configura a carteira do time para receber fees
+        #[ink(message)]
+        pub fn set_team_wallet(&mut self, wallet: AccountId) -> Result<(), MarketplaceError> {
+            if self.env().caller() != self.owner {
+                return Err(MarketplaceError::Unauthorized);
+            }
+            self.team_wallet = wallet;
+            Ok(())
         }
 
         #[ink(message)]
@@ -115,6 +142,8 @@ mod fiapo_marketplace {
             Ok(())
         }
 
+        /// Compra um NFT listado
+        /// Fee split conforme monólito: 5% total = 50% team + 50% staking
         #[ink(message)]
         pub fn buy_nft(&mut self, nft_id: u64) -> Result<(), MarketplaceError> {
             let buyer = self.env().caller();
@@ -126,12 +155,44 @@ mod fiapo_marketplace {
                 return Err(MarketplaceError::ListingNotFound);
             }
 
+            // Calcula taxa do marketplace (5%)
+            let total_fee = listing.price
+                .saturating_mul(self.fee_bps as u128)
+                .saturating_div(10000);
+            let seller_amount = listing.price.saturating_sub(total_fee);
+
+            // Fee split: 50% team, 50% staking
+            let team_fee = total_fee / 2;
+            let staking_fee = total_fee.saturating_sub(team_fee);
+
+            // 1. Transfere tokens do comprador para o vendedor (menos fee)
+            self.call_core_transfer_from(buyer, listing.seller, seller_amount)?;
+
+            // 2. Transfere fee para team wallet
+            if team_fee > 0 {
+                self.call_core_transfer_from(buyer, self.team_wallet, team_fee)?;
+            }
+
+            // 3. Transfere fee para staking contract (se configurado)
+            if staking_fee > 0 {
+                if let Some(staking) = self.staking_contract {
+                    self.call_core_transfer_from(buyer, staking, staking_fee)?;
+                } else {
+                    // Se staking não configurado, envia para team
+                    self.call_core_transfer_from(buyer, self.team_wallet, staking_fee)?;
+                }
+            }
+
+            // 4. Transfere NFT do vendedor para o comprador
+            self.call_ico_transfer_nft(listing.seller, buyer, nft_id)?;
+
             listing.active = false;
             self.listings.insert(nft_id, &listing);
 
             // Remove from active
             self.active_listings.retain(|&id| id != nft_id);
             self.total_volume = self.total_volume.saturating_add(listing.price);
+            self.total_fees_collected = self.total_fees_collected.saturating_add(total_fee);
 
             Self::env().emit_event(NFTSold {
                 nft_id,
@@ -141,6 +202,52 @@ mod fiapo_marketplace {
             });
 
             Ok(())
+        }
+
+        /// Cross-contract call: transfere tokens via Core
+        fn call_core_transfer_from(&self, from: AccountId, to: AccountId, amount: Balance) -> Result<(), MarketplaceError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer_from")))
+                        .push_arg(from)
+                        .push_arg(to)
+                        .push_arg(amount),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(MarketplaceError::InsufficientFunds),
+            }
+        }
+
+        /// Cross-contract call: transfere NFT via ICO
+        fn call_ico_transfer_nft(&self, from: AccountId, to: AccountId, nft_id: u64) -> Result<(), MarketplaceError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.ico_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer_nft")))
+                        .push_arg(from)
+                        .push_arg(to)
+                        .push_arg(nft_id),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(MarketplaceError::NFTNotOwned),
+            }
         }
 
         #[ink(message)]

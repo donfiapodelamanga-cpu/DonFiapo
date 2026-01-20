@@ -15,6 +15,9 @@ fiapo-traits = { path = "../traits", default-features = false, features = ["ink-
 [lib]
 path = "lib.rs"
 
+[dev-dependencies]
+ink_e2e = "4.2.1"
+
 [features]
 default = ["std"]
 std = [
@@ -23,3 +26,4 @@ std = [
     "scale-info/std",
 ]
 ink-as-dependency = []
+e2e-tests = []

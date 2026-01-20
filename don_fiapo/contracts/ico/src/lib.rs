@@ -11,7 +11,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::{AccountId, Balance, PSP22Error, NFTType};
+use fiapo_traits::PSP22Error;
 
 #[ink::contract]
 mod fiapo_ico {
@@ -22,6 +22,7 @@ mod fiapo_ico {
     /// Constantes do sistema
     pub const MINING_PERIOD_DAYS: u64 = 112;
     pub const SECONDS_PER_DAY: u64 = 86400;
+    #[allow(dead_code)]
     pub const DECIMALS: u8 = 8;
     pub const SCALE: u128 = 100_000_000; // 10^8
 
@@ -186,6 +187,10 @@ mod fiapo_ico {
     pub struct FiapoICO {
         /// Referência ao contrato Core
         core_contract: AccountId,
+        /// Contrato Oracle (autorizado a chamar mint_paid_for)
+        oracle_contract: Option<AccountId>,
+        /// Contrato Marketplace (autorizado a transferir NFTs)
+        marketplace_contract: Option<AccountId>,
         /// Owner do contrato
         owner: AccountId,
         /// Se o ICO está ativo
@@ -227,6 +232,8 @@ mod fiapo_ico {
             
             let mut contract = Self {
                 core_contract,
+                oracle_contract: None,
+                marketplace_contract: None,
                 owner: caller,
                 ico_active: true,
                 mining_active: true,
@@ -449,6 +456,48 @@ mod fiapo_ico {
             self.mint_nft_internal(caller, nft_tier, config.price_usdt_cents)
         }
 
+        /// Mint pago em nome de outro usuário (chamado pelo Oracle após confirmar pagamento)
+        #[ink(message)]
+        pub fn mint_paid_for(&mut self, user: AccountId, tier: u8) -> Result<u64, ICOError> {
+            let caller = self.env().caller();
+
+            // Apenas Oracle pode chamar
+            if Some(caller) != self.oracle_contract {
+                return Err(ICOError::Unauthorized);
+            }
+
+            if !self.ico_active {
+                return Err(ICOError::ICONotActive);
+            }
+
+            if tier == 0 {
+                return Err(ICOError::PaymentRequired);
+            }
+
+            let nft_tier = NFTTier::from_u8(tier).ok_or(ICOError::InvalidNFTType)?;
+            let config = self.tier_configs.get(tier).ok_or(ICOError::InvalidNFTType)?;
+
+            if config.minted >= config.max_supply {
+                return Err(ICOError::MaxSupplyReached);
+            }
+
+            // Atualiza total arrecadado
+            self.total_raised = self.total_raised.saturating_add(config.price_usdt_cents as u64);
+
+            // Minta o NFT
+            self.mint_nft_internal(user, nft_tier, config.price_usdt_cents)
+        }
+
+        /// Configura contrato Oracle (apenas owner)
+        #[ink(message)]
+        pub fn set_oracle_contract(&mut self, oracle: AccountId) -> Result<(), ICOError> {
+            if self.env().caller() != self.owner {
+                return Err(ICOError::Unauthorized);
+            }
+            self.oracle_contract = Some(oracle);
+            Ok(())
+        }
+
         /// Função interna de minting
         fn mint_nft_internal(
             &mut self,
@@ -533,6 +582,58 @@ mod fiapo_ico {
                 90..=97 => VisualRarity::Epic,       // 8%
                 _ => VisualRarity::Legendary,        // 2%
             }
+        }
+
+        // ==================== Transfer Functions ====================
+
+        /// Transfere NFT de um owner para outro (chamado pelo Marketplace ou owner do NFT)
+        #[ink(message)]
+        pub fn transfer_nft(&mut self, from: AccountId, to: AccountId, nft_id: u64) -> Result<(), ICOError> {
+            let caller = self.env().caller();
+
+            // Verifica NFT existe
+            let mut nft = self.nfts.get(nft_id).ok_or(ICOError::NFTNotFound)?;
+
+            // Verifica ownership
+            if nft.owner != from {
+                return Err(ICOError::NotNFTOwner);
+            }
+
+            // Apenas owner do NFT, owner do contrato ou Marketplace autorizado podem transferir
+            let is_nft_owner = caller == from;
+            let is_contract_owner = caller == self.owner;
+            let is_marketplace = Some(caller) == self.marketplace_contract;
+            
+            if !is_nft_owner && !is_contract_owner && !is_marketplace {
+                return Err(ICOError::Unauthorized);
+            }
+
+            // Atualiza owner do NFT
+            nft.owner = to;
+            self.nfts.insert(nft_id, &nft);
+
+            // Remove da lista do antigo owner
+            if let Some(mut from_nfts) = self.nfts_by_owner.get(from) {
+                from_nfts.retain(|&id| id != nft_id);
+                self.nfts_by_owner.insert(from, &from_nfts);
+            }
+
+            // Adiciona à lista do novo owner
+            let mut to_nfts = self.nfts_by_owner.get(to).unwrap_or_default();
+            to_nfts.push(nft_id);
+            self.nfts_by_owner.insert(to, &to_nfts);
+
+            Ok(())
+        }
+
+        /// Configura contrato Marketplace (apenas owner)
+        #[ink(message)]
+        pub fn set_marketplace_contract(&mut self, marketplace: AccountId) -> Result<(), ICOError> {
+            if self.env().caller() != self.owner {
+                return Err(ICOError::Unauthorized);
+            }
+            self.marketplace_contract = Some(marketplace);
+            Ok(())
         }
 
         // ==================== Mining Functions ====================

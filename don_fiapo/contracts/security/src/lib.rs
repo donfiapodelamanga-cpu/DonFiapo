@@ -5,7 +5,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::{AccountId, Balance, SecurityError};
+use fiapo_traits::SecurityError;
 
 #[ink::contract]
 mod fiapo_security {
@@ -14,6 +14,7 @@ mod fiapo_security {
     use ink::storage::Mapping;
 
     /// Constantes de segurança
+    #[allow(dead_code)]
     pub const MAX_OPERATIONS_PER_BLOCK: u32 = 10;
     pub const RATE_LIMIT_WINDOW_MS: u64 = 60_000; // 1 minuto
     pub const MAX_OPERATIONS_PER_WINDOW: u32 = 100;

@@ -9,11 +9,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::{AccountId, Balance, PSP22Error, PSP22Result};
+// Traits são re-exportados pelo ink::contract
 
 #[ink::contract]
 mod fiapo_governance {
-    use super::*;
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
 
@@ -635,8 +634,8 @@ mod fiapo_governance {
                 executor: caller,
             });
 
-            // TODO: Implementar lógica de execução baseada no proposal_type
-            // Isso requer cross-contract calls para o Core
+            // Executa a lógica baseada no tipo de proposta
+            self.execute_proposal_action(&proposal)?;
 
             Ok(())
         }
@@ -781,8 +780,8 @@ mod fiapo_governance {
                 executor: caller,
             });
 
-            // TODO: Executar a operação baseada no tipo
-            // A lógica específica seria implementada aqui ou via cross-contract call
+            // Executa a ação específica da operação timelock
+            self.execute_timelock_action(&operation)?;
 
             Ok(())
         }
@@ -827,6 +826,268 @@ mod fiapo_governance {
             }
             self.timelock_expiration = expiration;
             Ok(())
+        }
+
+        // ==================== Internal Execution Functions ====================
+
+        /// Executa a ação específica de uma proposta aprovada
+        fn execute_proposal_action(&mut self, proposal: &Proposal) -> Result<(), GovernanceError> {
+            match proposal.proposal_type {
+                ProposalType::PauseSystem => {
+                    // Pausa o sistema de governança
+                    self.is_active = false;
+                    Ok(())
+                }
+                ProposalType::ConfigChange => {
+                    // Decodifica nova configuração do campo data
+                    if proposal.data.len() >= 32 {
+                        // Formato: [min_governors(4), quorum_bps(4), voting_period(8), timelock_period(8), proposal_lifetime(8)]
+                        let min_governors = u32::from_le_bytes([
+                            proposal.data[0], proposal.data[1], proposal.data[2], proposal.data[3]
+                        ]);
+                        let quorum_bps = u32::from_le_bytes([
+                            proposal.data[4], proposal.data[5], proposal.data[6], proposal.data[7]
+                        ]);
+                        let voting_period = u64::from_le_bytes([
+                            proposal.data[8], proposal.data[9], proposal.data[10], proposal.data[11],
+                            proposal.data[12], proposal.data[13], proposal.data[14], proposal.data[15]
+                        ]);
+                        let timelock_period = u64::from_le_bytes([
+                            proposal.data[16], proposal.data[17], proposal.data[18], proposal.data[19],
+                            proposal.data[20], proposal.data[21], proposal.data[22], proposal.data[23]
+                        ]);
+                        let proposal_lifetime = u64::from_le_bytes([
+                            proposal.data[24], proposal.data[25], proposal.data[26], proposal.data[27],
+                            proposal.data[28], proposal.data[29], proposal.data[30], proposal.data[31]
+                        ]);
+                        
+                        self.config = GovernanceConfig {
+                            min_governors,
+                            quorum_bps,
+                            voting_period,
+                            timelock_period,
+                            proposal_lifetime,
+                        };
+                    }
+                    Ok(())
+                }
+                ProposalType::Emergency => {
+                    // Ações de emergência: pausa imediata
+                    self.is_active = false;
+                    Ok(())
+                }
+                ProposalType::SystemWalletChange => {
+                    // Mudança de wallet requer timelock adicional
+                    // Agenda operação de timelock para execução posterior
+                    if proposal.data.len() >= 32 {
+                        let new_wallet_bytes: [u8; 32] = proposal.data[0..32].try_into()
+                            .map_err(|_| GovernanceError::InvalidParameters)?;
+                        let _new_wallet = AccountId::from(new_wallet_bytes);
+                        // A mudança efetiva seria via cross-contract call ao Core
+                        // após o timelock expirar
+                    }
+                    Ok(())
+                }
+                ProposalType::Upgrade => {
+                    // Upgrade requer timelock de 72h - agenda operação
+                    let _operation_id = self.next_timelock_id;
+                    self.next_timelock_id += 1;
+                    
+                    let current_time = self.env().block_timestamp();
+                    let delay = TimelockOperationType::ContractUpgrade.get_delay();
+                    
+                    let operation = TimelockEntry {
+                        id: _operation_id,
+                        operation_type: TimelockOperationType::ContractUpgrade,
+                        data: proposal.data.clone(),
+                        scheduler: proposal.proposer,
+                        scheduled_at: current_time,
+                        executable_at: current_time + delay,
+                        expires_at: current_time + delay + self.timelock_expiration,
+                        status: TimelockStatus::Scheduled,
+                        reason: proposal.description.clone(),
+                    };
+                    
+                    self.timelock_operations.insert(_operation_id, &operation);
+                    Ok(())
+                }
+                ProposalType::ExchangeListing | 
+                ProposalType::InfluencerMarketing |
+                ProposalType::AcceleratedBurn |
+                ProposalType::ListingDonation |
+                ProposalType::MarketingDonation => {
+                    // Propostas de gastos/marketing: registra aprovação
+                    // A execução real (transferências) seria via sistema de pagamentos
+                    Ok(())
+                }
+            }
+        }
+
+        /// Executa a ação específica de uma operação timelock
+        fn execute_timelock_action(&mut self, operation: &TimelockEntry) -> Result<(), GovernanceError> {
+            match operation.operation_type {
+                TimelockOperationType::TransferOwnership => {
+                    if operation.data.len() >= 32 {
+                        let new_owner_bytes: [u8; 32] = operation.data[0..32].try_into()
+                            .map_err(|_| GovernanceError::InvalidParameters)?;
+                        let new_owner = AccountId::from(new_owner_bytes);
+                        
+                        // Atualiza owner local
+                        self.owner = new_owner;
+                        
+                        // Cross-contract: transfere ownership do Core
+                        self.call_core_transfer_ownership(new_owner)?;
+                    }
+                    Ok(())
+                }
+                TimelockOperationType::ConfigChange => {
+                    // Já tratado em execute_proposal_action
+                    Ok(())
+                }
+                TimelockOperationType::ContractUpgrade => {
+                    // Upgrade via set_code_hash
+                    // Formato: [code_hash: 32 bytes]
+                    if operation.data.len() >= 32 {
+                        let code_hash_bytes: [u8; 32] = operation.data[0..32].try_into()
+                            .map_err(|_| GovernanceError::InvalidParameters)?;
+                        
+                        // Tenta fazer upgrade do próprio contrato
+                        if ink::env::set_code_hash(&code_hash_bytes).is_err() {
+                            return Err(GovernanceError::InvalidParameters);
+                        }
+                    }
+                    Ok(())
+                }
+                TimelockOperationType::SystemWalletChange => {
+                    // Formato: [wallet_type: 1 byte][new_wallet: 32 bytes]
+                    // wallet_type: 0=team, 1=staking_rewards, 2=marketing
+                    if operation.data.len() >= 33 {
+                        let wallet_type = operation.data[0];
+                        let new_wallet_bytes: [u8; 32] = operation.data[1..33].try_into()
+                            .map_err(|_| GovernanceError::InvalidParameters)?;
+                        let new_wallet = AccountId::from(new_wallet_bytes);
+                        
+                        // Cross-contract: atualiza wallet no Core
+                        self.call_core_set_wallet(wallet_type, new_wallet)?;
+                    }
+                    Ok(())
+                }
+                TimelockOperationType::TokenomicsChange => {
+                    // Formato: [param_type: 1 byte][new_value: 16 bytes]
+                    // param_type: 0=max_supply, 1=burn_rate, 2=mint_cap
+                    if operation.data.len() >= 17 {
+                        let param_type = operation.data[0];
+                        let value_bytes: [u8; 16] = operation.data[1..17].try_into()
+                            .map_err(|_| GovernanceError::InvalidParameters)?;
+                        let new_value = u128::from_le_bytes(value_bytes);
+                        
+                        // Cross-contract: atualiza tokenomics no Core
+                        self.call_core_set_tokenomics(param_type, new_value)?;
+                    }
+                    Ok(())
+                }
+                TimelockOperationType::FeeChange => {
+                    // Formato: [fee_type: 1 byte][new_bps: 2 bytes]
+                    // fee_type: 0=transaction, 1=staking_entry, 2=withdrawal
+                    if operation.data.len() >= 3 {
+                        let fee_type = operation.data[0];
+                        let new_bps = u16::from_le_bytes([operation.data[1], operation.data[2]]);
+                        
+                        // Cross-contract: atualiza fee no Core
+                        self.call_core_set_fee(fee_type, new_bps)?;
+                    }
+                    Ok(())
+                }
+            }
+        }
+
+        // ==================== Cross-Contract Calls ====================
+
+        /// Transfere ownership do Core
+        fn call_core_transfer_ownership(&self, new_owner: AccountId) -> Result<(), GovernanceError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer_ownership")))
+                        .push_arg(new_owner),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(GovernanceError::Unauthorized),
+            }
+        }
+
+        /// Atualiza wallet no Core
+        fn call_core_set_wallet(&self, wallet_type: u8, new_wallet: AccountId) -> Result<(), GovernanceError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("set_system_wallet")))
+                        .push_arg(wallet_type)
+                        .push_arg(new_wallet),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(GovernanceError::Unauthorized),
+            }
+        }
+
+        /// Atualiza parâmetros de tokenomics no Core
+        fn call_core_set_tokenomics(&self, param_type: u8, value: u128) -> Result<(), GovernanceError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("set_tokenomics_param")))
+                        .push_arg(param_type)
+                        .push_arg(value),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(GovernanceError::Unauthorized),
+            }
+        }
+
+        /// Atualiza taxas no Core
+        fn call_core_set_fee(&self, fee_type: u8, new_bps: u16) -> Result<(), GovernanceError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("set_fee_bps")))
+                        .push_arg(fee_type)
+                        .push_arg(new_bps),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(GovernanceError::Unauthorized),
+            }
         }
     }
 

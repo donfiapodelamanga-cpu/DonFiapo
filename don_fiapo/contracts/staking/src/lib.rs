@@ -13,11 +13,12 @@ use fiapo_traits::{AccountId, Balance, PSP22Error, PSP22Result, StakingPoolType,
 #[ink::contract]
 mod fiapo_staking {
     use super::*;
-    use ink::prelude::{string::String, vec::Vec, vec};
+    use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
     /// Constantes
     pub const SECONDS_PER_DAY: u64 = 86400;
+    #[allow(dead_code)]
     pub const DECIMALS: u8 = 8;
     pub const SCALE: u128 = 100_000_000;
     pub const LUSDT_SCALE: u128 = 1_000_000; // 10^6 para LUSDT
@@ -204,6 +205,8 @@ mod fiapo_staking {
     pub struct FiapoStaking {
         /// Contrato Core
         core_contract: AccountId,
+        /// Contrato Oracle (autorizado a chamar stake_for)
+        oracle_contract: Option<AccountId>,
         /// Owner
         owner: AccountId,
         /// Configurações dos pools
@@ -234,6 +237,7 @@ mod fiapo_staking {
             
             let mut contract = Self {
                 core_contract,
+                oracle_contract: None,
                 owner: caller,
                 pool_configs: Mapping::default(),
                 positions: Mapping::default(),
@@ -413,6 +417,85 @@ mod fiapo_staking {
             Ok(position_id)
         }
 
+        /// Cria posição de staking em nome de outro usuário (chamado pelo Oracle)
+        #[ink(message)]
+        pub fn stake_for(&mut self, user: AccountId, amount: Balance, pool: u8) -> Result<u64, StakingError> {
+            let caller = self.env().caller();
+            let current_time = self.env().block_timestamp();
+
+            // Apenas Oracle pode chamar
+            if Some(caller) != self.oracle_contract {
+                return Err(StakingError::Unauthorized);
+            }
+
+            if self.paused {
+                return Err(StakingError::StakingPaused);
+            }
+
+            if amount == 0 {
+                return Err(StakingError::InvalidAmount);
+            }
+
+            let pool_type = PoolType::from_u8(pool).ok_or(StakingError::PoolNotActive)?;
+            let config = self.pool_configs.get(pool).ok_or(StakingError::PoolNotActive)?;
+
+            if !config.active {
+                return Err(StakingError::PoolNotActive);
+            }
+
+            // Taxa de entrada
+            let fee_result = self.calculate_entry_fee(amount);
+            let entry_fee = fee_result.fee_lusdt;
+
+            let position_id = self.next_position_id;
+            let position = StakingPosition {
+                id: position_id,
+                user,
+                pool_type,
+                amount,
+                entry_fee,
+                start_time: current_time,
+                last_reward_time: current_time,
+                accumulated_rewards: 0,
+                status: PositionStatus::Active,
+            };
+
+            self.positions.insert(position_id, &position);
+
+            let mut user_positions = self.user_positions.get(user).unwrap_or_default();
+            let is_new = user_positions.is_empty();
+            user_positions.push(position_id);
+            self.user_positions.insert(user, &user_positions);
+
+            self.next_position_id += 1;
+            self.total_staked_per_pool[pool as usize] = 
+                self.total_staked_per_pool[pool as usize].saturating_add(amount);
+            self.active_positions += 1;
+
+            if is_new {
+                self.stakers_per_pool[pool as usize] += 1;
+            }
+
+            Self::env().emit_event(Staked {
+                position_id,
+                user,
+                pool,
+                amount,
+            });
+
+            Ok(position_id)
+        }
+
+        /// Configura contrato Oracle (apenas owner)
+        #[ink(message)]
+        pub fn set_oracle_contract(&mut self, oracle: AccountId) -> Result<(), StakingError> {
+            if self.env().caller() != self.owner {
+                return Err(StakingError::Unauthorized);
+            }
+            self.oracle_contract = Some(oracle);
+            Ok(())
+        }
+
         /// Claim rewards de uma posição
         #[ink(message)]
         pub fn claim_rewards(&mut self, position_id: u64) -> Result<Balance, StakingError> {
@@ -460,6 +543,10 @@ mod fiapo_staking {
         }
 
         /// Unstake (saca posição completa)
+        /// Regras de penalidade por pool (do monólito):
+        /// - Don Burn: 10 LUSDT + 50% capital + 80% juros (saque antecipado)
+        /// - Don Lunes: 8% do capital (saque antecipado)
+        /// - Don Fiapo: 6% do capital (saque antecipado)
         #[ink(message)]
         pub fn unstake(&mut self, position_id: u64) -> Result<Balance, StakingError> {
             let caller = self.env().caller();
@@ -479,23 +566,115 @@ mod fiapo_staking {
             let config = self.pool_configs.get(position.pool_type.to_u8())
                 .ok_or(StakingError::PoolNotActive)?;
 
+            // Calcula rewards pendentes
+            let pending = self.calculate_rewards(&position, &config);
+            let total_rewards = position.accumulated_rewards.saturating_add(pending);
+
             // Calcula dias em staking
             let days_staked = (current_time.saturating_sub(position.start_time)) / SECONDS_PER_DAY;
             let is_early = days_staked < config.min_period_days as u64;
 
-            // Calcula penalidade se for saque antecipado
-            let penalty = if is_early {
-                position.amount
-                    .saturating_mul(config.early_withdrawal_penalty_bps as u128)
-                    .saturating_div(10000)
+            // Calcula penalidade conforme regras do monólito
+            let (penalty, rewards_penalty) = if is_early {
+                match position.pool_type {
+                    PoolType::DonBurn => {
+                        // Don Burn - Saque Antecipado: 10 LUSDT + 50% capital + 80% juros
+                        let lusdt_penalty = 10 * LUSDT_SCALE; // 10 LUSDT (6 decimais)
+                        let capital_penalty = position.amount / 2; // 50% do capital
+                        let interest_penalty = total_rewards * 80 / 100; // 80% dos juros
+                        (lusdt_penalty.saturating_add(capital_penalty), interest_penalty)
+                    }
+                    PoolType::DonLunes => {
+                        // Don Lunes - usa penalidade percentual da config
+                        let penalty = position.amount
+                            .saturating_mul(config.early_withdrawal_penalty_bps as u128)
+                            .saturating_div(10000);
+                        (penalty, 0)
+                    }
+                    PoolType::DonFiapo => {
+                        // Don Fiapo - usa penalidade percentual da config
+                        let penalty = position.amount
+                            .saturating_mul(config.early_withdrawal_penalty_bps as u128)
+                            .saturating_div(10000);
+                        (penalty, 0)
+                    }
+                }
             } else {
-                0
+                (0, 0)
+            };
+
+            // Calcula valor líquido
+            let net_rewards = total_rewards.saturating_sub(rewards_penalty);
+            let net_principal = position.amount.saturating_sub(penalty);
+            let net_amount = net_principal.saturating_add(net_rewards);
+            let total_penalty = penalty.saturating_add(rewards_penalty);
+
+            // Atualiza posição
+            position.status = PositionStatus::Completed;
+            position.accumulated_rewards = 0;
+            self.positions.insert(position_id, &position);
+
+            // Atualiza contadores
+            let pool = position.pool_type.to_u8() as usize;
+            self.total_staked_per_pool[pool] = 
+                self.total_staked_per_pool[pool].saturating_sub(position.amount);
+            self.active_positions = self.active_positions.saturating_sub(1);
+
+            // Cross-contract call: transfere tokens de volta para o usuário
+            self.call_core_transfer(caller, net_amount)?;
+
+            Self::env().emit_event(Unstaked {
+                position_id,
+                user: caller,
+                amount: net_amount,
+                penalty: total_penalty,
+            });
+
+            Ok(net_amount)
+        }
+
+        /// Cancela uma posição de staking (retorna apenas capital com penalidade)
+        /// Regras de penalidade por cancelamento (do monólito):
+        /// - Don Burn: 20% do capital
+        /// - Don Lunes: 2.5% do capital
+        /// - Don Fiapo: 10% do capital
+        #[ink(message)]
+        pub fn cancel_position(&mut self, position_id: u64) -> Result<Balance, StakingError> {
+            let caller = self.env().caller();
+
+            let mut position = self.positions.get(position_id)
+                .ok_or(StakingError::PositionNotFound)?;
+
+            if position.user != caller {
+                return Err(StakingError::NotPositionOwner);
+            }
+
+            if position.status != PositionStatus::Active {
+                return Err(StakingError::PositionNotActive);
+            }
+
+            let config = self.pool_configs.get(position.pool_type.to_u8())
+                .ok_or(StakingError::PoolNotActive)?;
+
+            // Calcula penalidade de cancelamento conforme regras do monólito
+            let penalty = match position.pool_type {
+                PoolType::DonLunes => {
+                    // Don Lunes - Cancelamento: 2.5% do capital em $FIAPO
+                    position.amount * 25 / 1000 // 2.5%
+                }
+                _ => {
+                    // Don Burn e Don Fiapo usam penalidade percentual da config
+                    position.amount
+                        .saturating_mul(config.cancellation_penalty_bps as u128)
+                        .saturating_div(10000)
+                }
             };
 
             let net_amount = position.amount.saturating_sub(penalty);
 
-            // Atualiza posição
-            position.status = PositionStatus::Completed;
+            // Atualiza posição - perde todos os rewards acumulados
+            position.status = PositionStatus::Cancelled;
+            position.accumulated_rewards = 0;
             self.positions.insert(position_id, &position);
 
             // Atualiza contadores

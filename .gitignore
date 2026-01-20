@@ -39,8 +39,11 @@ don_fiapo/target/
 docs/internal/
 brain/
 
-# Documentation (User Request)
-*.md
+# Documentation (permitir arquivos essenciais)
+# *.md
+!README.md
+!ARCHITECTURE.md
+!CHANGELOG.md
 
 # Debug & Temp Files
 *.txt

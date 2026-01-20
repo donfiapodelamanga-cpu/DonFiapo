@@ -5,11 +5,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::AccountId;
+// AccountId é re-exportado pelo ink::contract
 
 #[ink::contract]
 mod fiapo_upgrade {
-    use super::*;
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
 
