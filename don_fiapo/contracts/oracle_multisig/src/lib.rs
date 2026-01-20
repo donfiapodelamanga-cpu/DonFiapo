@@ -58,6 +58,15 @@ mod fiapo_oracle_multisig {
         Custom(String),
     }
 
+    /// Tipo de stablecoin aceita
+    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode, Default)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    pub enum StablecoinType {
+        #[default]
+        USDT,
+        USDC,
+    }
+
     /// Status de um pagamento
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode, Default)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
@@ -76,7 +85,8 @@ mod fiapo_oracle_multisig {
     pub struct PendingPayment {
         pub tx_hash: String,
         pub sender_address: String,
-        pub amount_usdt: Balance,
+        pub stablecoin: StablecoinType,
+        pub amount: Balance,
         pub beneficiary: AccountId,
         pub payment_type: PaymentType,
         pub confirmations: Vec<AccountId>,
@@ -96,7 +106,10 @@ mod fiapo_oracle_multisig {
         pub required_confirmations: u8,
         pub payment_timeout_ms: u64,
         pub is_active: bool,
+        /// Taxa de conversão USDT -> FIAPO (8 decimais)
         pub usdt_to_fiapo_rate: Balance,
+        /// Taxa de conversão USDC -> FIAPO (8 decimais)
+        pub usdc_to_fiapo_rate: Balance,
     }
 
     impl Default for OracleConfig {
@@ -107,6 +120,7 @@ mod fiapo_oracle_multisig {
                 payment_timeout_ms: PAYMENT_TIMEOUT_MS,
                 is_active: true,
                 usdt_to_fiapo_rate: 100_000_000, // 1:1 por padrão (8 decimais)
+                usdc_to_fiapo_rate: 100_000_000, // 1:1 por padrão (8 decimais)
             }
         }
     }
@@ -126,7 +140,8 @@ mod fiapo_oracle_multisig {
     pub struct ConsensusReached {
         #[ink(topic)]
         tx_hash: String,
-        amount_usdt: Balance,
+        stablecoin: StablecoinType,
+        amount: Balance,
         beneficiary: AccountId,
         payment_type: PaymentType,
     }
@@ -169,8 +184,8 @@ mod fiapo_oracle_multisig {
         spin_game_contract: Option<AccountId>,
         /// Total de pagamentos processados
         total_processed: u64,
-        /// Total de USDT processado
-        total_usdt_processed: Balance,
+        /// Total de stablecoins processado (USDT + USDC)
+        total_stablecoins_processed: Balance,
         /// Total de pagamentos rejeitados
         total_rejected: u64,
     }
@@ -197,7 +212,7 @@ mod fiapo_oracle_multisig {
                 lottery_contract: None,
                 spin_game_contract: None,
                 total_processed: 0,
-                total_usdt_processed: 0,
+                total_stablecoins_processed: 0,
                 total_rejected: 0,
             }
         }
@@ -231,23 +246,28 @@ mod fiapo_oracle_multisig {
 
         #[ink(message)]
         pub fn get_stats(&self) -> (u64, Balance, u64) {
-            (self.total_processed, self.total_usdt_processed, self.total_rejected)
+            (self.total_processed, self.total_stablecoins_processed, self.total_rejected)
         }
 
         #[ink(message)]
-        pub fn convert_usdt_to_fiapo(&self, usdt_amount: Balance) -> Balance {
-            usdt_amount.saturating_mul(self.config.usdt_to_fiapo_rate) / 1_000_000
+        pub fn convert_to_fiapo(&self, stablecoin: StablecoinType, amount: Balance) -> Balance {
+            let rate = match stablecoin {
+                StablecoinType::USDT => self.config.usdt_to_fiapo_rate,
+                StablecoinType::USDC => self.config.usdc_to_fiapo_rate,
+            };
+            amount.saturating_mul(rate) / 1_000_000
         }
 
         // ==================== Oracle Functions ====================
 
-        /// Submete confirmação de um pagamento Solana
+        /// Submete confirmação de um pagamento Solana (USDT ou USDC)
         #[ink(message)]
         pub fn submit_confirmation(
             &mut self,
             tx_hash: String,
             sender_address: String,
-            amount_usdt: Balance,
+            stablecoin: StablecoinType,
+            amount: Balance,
             beneficiary: AccountId,
             payment_type: PaymentType,
         ) -> Result<bool, OracleError> {
@@ -271,7 +291,7 @@ mod fiapo_oracle_multisig {
                 if current_time > existing.expires_at {
                     return self.expire_payment(tx_hash);
                 }
-                if existing.amount_usdt != amount_usdt || existing.beneficiary != beneficiary {
+                if existing.amount != amount || existing.beneficiary != beneficiary {
                     return Err(OracleError::PaymentDataMismatch);
                 }
                 if existing.confirmations.contains(&caller) {
@@ -284,14 +304,15 @@ mod fiapo_oracle_multisig {
                     return Err(OracleError::TooManyPendingPayments);
                 }
 
-                let equivalent_fiapo = self.convert_usdt_to_fiapo(amount_usdt);
+                let equivalent_fiapo = self.convert_to_fiapo(stablecoin.clone(), amount);
                 
                 self.pending_tx_hashes.push(tx_hash.clone());
                 
                 PendingPayment {
                     tx_hash: tx_hash.clone(),
                     sender_address,
-                    amount_usdt,
+                    stablecoin: stablecoin.clone(),
+                    amount,
                     beneficiary,
                     payment_type: payment_type.clone(),
                     confirmations: Vec::new(),
@@ -323,7 +344,8 @@ mod fiapo_oracle_multisig {
 
                 Self::env().emit_event(ConsensusReached {
                     tx_hash: tx_hash.clone(),
-                    amount_usdt: payment.amount_usdt,
+                    stablecoin: payment.stablecoin.clone(),
+                    amount: payment.amount,
                     beneficiary: payment.beneficiary,
                     payment_type: payment.payment_type.clone(),
                 });
@@ -428,6 +450,15 @@ mod fiapo_oracle_multisig {
         }
 
         #[ink(message)]
+        pub fn set_usdc_rate(&mut self, rate: Balance) -> Result<(), OracleError> {
+            if self.env().caller() != self.owner {
+                return Err(OracleError::Unauthorized);
+            }
+            self.config.usdc_to_fiapo_rate = rate;
+            Ok(())
+        }
+
+        #[ink(message)]
         pub fn set_staking_contract(&mut self, contract: AccountId) -> Result<(), OracleError> {
             if self.env().caller() != self.owner {
                 return Err(OracleError::Unauthorized);
@@ -518,7 +549,7 @@ mod fiapo_oracle_multisig {
 
             // Atualizar estatísticas
             self.total_processed += 1;
-            self.total_usdt_processed = self.total_usdt_processed.saturating_add(payment.amount_usdt);
+            self.total_stablecoins_processed = self.total_stablecoins_processed.saturating_add(payment.amount);
 
             // Remover da lista de pendentes
             self.remove_from_pending(&payment.tx_hash);
