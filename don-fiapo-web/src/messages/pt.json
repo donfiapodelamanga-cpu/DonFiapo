@@ -9,6 +9,7 @@
     "marketplace": "Marketplace",
     "staking": "Staking",
     "simulations": "Simulações",
+    "games": "Jogos",
     "tokenomics": "Economia",
     "airdrop": "Airdrop",
     "affiliate": "Afiliados",
@@ -226,5 +227,24 @@
     "connect": "Conectar",
     "viewMore": "Ver Mais",
     "seeAll": "Ver Todos"
+  },
+  "Games": {
+    "title": "Arena Real",
+    "subtitle": "Desafie a sorte e a habilidade nos jogos do reino.",
+    "comingSoon": "EM BREVE",
+    "multiplayer": "Multiplayer",
+    "singlePlayer": "Single Player",
+    "spin": {
+      "title": "Roda da Fortuna Real",
+      "description": "Gire a roleta para ganhar prêmios incríveis, incluindo o tesouro do Don."
+    },
+    "tug": {
+      "title": "Cabo de Guerra",
+      "description": "Puxe a corda com seus cães de guerra e derrote o oponente."
+    },
+    "meme": {
+      "title": "Batalha de Memes",
+      "description": "Use seus melhores memes para duelar e provar quem é o mais engraçado do reino."
+    }
   }
 }

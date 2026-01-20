@@ -6,7 +6,11 @@
   "nav": {
     "home": "Accueil",
     "ico": "ICO/NFTs",
+    "marketplace": "Marché",
     "staking": "Staking",
+    "simulations": "Simulations",
+    "games": "Jeux",
+    "tokenomics": "Tokenomics",
     "airdrop": "Airdrop",
     "affiliate": "Affiliés",
     "governance": "Gouvernance",
@@ -197,5 +201,24 @@
     "connect": "Connecter",
     "viewMore": "Voir Plus",
     "seeAll": "Voir Tout"
+  },
+  "Games": {
+    "title": "Arène Royale",
+    "subtitle": "Défiez votre chance et votre habileté dans les jeux du royaume.",
+    "comingSoon": "BIENTÔT DISPONIBLE",
+    "multiplayer": "Multijoueur",
+    "singlePlayer": "Un Joueur",
+    "spin": {
+      "title": "Roue Royale de la Fortune",
+      "description": "Faites tourner la roue pour gagner des prix incroyables, y compris le trésor du Don."
+    },
+    "tug": {
+      "title": "Tir à la Corde",
+      "description": "Tirez sur la corde avec vos chiens de guerre et battez l'adversaire."
+    },
+    "meme": {
+      "title": "Bataille de Mèmes",
+      "description": "Utilisez vos meilleurs mèmes pour vous battre en duel et prouver qui est le plus drôle du royaume."
+    }
   }
 }

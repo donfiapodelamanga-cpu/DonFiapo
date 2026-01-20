@@ -8,6 +8,7 @@
     "ico": "ICO/NFTs",
     "staking": "Staking",
     "simulations": "Simulaciones",
+    "games": "Juegos",
     "tokenomics": "Tokenómica",
     "airdrop": "Airdrop",
     "affiliate": "Afiliados",
@@ -199,5 +200,24 @@
     "connect": "Conectar",
     "viewMore": "Ver Más",
     "seeAll": "Ver Todo"
+  },
+  "Games": {
+    "title": "Arena Real",
+    "subtitle": "Desafía tu suerte y habilidad en los juegos del reino.",
+    "comingSoon": "PRÓXIMAMENTE",
+    "multiplayer": "Multijugador",
+    "singlePlayer": "Un Jugador",
+    "spin": {
+      "title": "Rueda de la Fortuna Real",
+      "description": "Gira la rueda para ganar premios increíbles, incluido el tesoro del Don."
+    },
+    "tug": {
+      "title": "Tira y Afloja",
+      "description": "Tira de la cuerda con tus perros de guerra y derrota al oponente."
+    },
+    "meme": {
+      "title": "Batalla de Memes",
+      "description": "Usa tus mejores memes para batirte en duelo y demostrar quién es el más divertido del reino."
+    }
   }
 }

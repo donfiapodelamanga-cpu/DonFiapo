@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link, useRouter } from "@/lib/navigation";
+import { Link } from "@/lib/navigation";
 import Image from "next/image";
 import { Menu, X, Crown, Loader2 } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/marketplace", key: "marketplace" },
   { href: "/staking", key: "staking" },
   { href: "/simulations", key: "simulations" },
+  { href: "/games", key: "games" },
   { href: "/tokenomics", key: "tokenomics" },
   { href: "/airdrop", key: "airdrop" },
   { href: "/affiliate", key: "affiliate" },
@@ -24,25 +25,10 @@ const navItems = [
 
 export function Header() {
   const t = useTranslations("nav");
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
-  const handleNavClick = (href: string) => {
-    startTransition(() => {
-      router.push(href);
-    });
-    setIsOpen(false);
-  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-      {/* Loading indicator */}
-      {isPending && (
-        <div className="absolute top-0 left-0 right-0 h-1 bg-golden/20 overflow-hidden">
-          <div className="h-full bg-golden animate-pulse w-1/3" style={{ animation: 'loading 1s ease-in-out infinite' }} />
-        </div>
-      )}
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
@@ -99,13 +85,14 @@ export function Header() {
         <div className="lg:hidden bg-card border-t border-border animate-in slide-in-from-top duration-200">
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-2">
             {navItems.map((item) => (
-              <button
+              <Link
                 key={item.key}
-                onClick={() => handleNavClick(item.href)}
-                className="px-4 py-3 text-left text-foreground hover:text-golden hover:bg-background rounded-lg transition-colors"
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="px-4 py-3 text-left text-foreground hover:text-golden hover:bg-background rounded-lg transition-colors block"
               >
                 {t(item.key)}
-              </button>
+              </Link>
             ))}
             <div className="mt-4">
               <WalletButton />

@@ -1,45 +1,45 @@
-[package]
-name = "don-fiapo-contract"
+[workspace]
+resolver = "2"
+members = [
+    "contracts/traits",
+    "contracts/core",
+    "contracts/ico",
+    "contracts/staking",
+    "contracts/governance",
+    "contracts/lottery",
+    "contracts/airdrop",
+    "contracts/rewards",
+    "contracts/marketplace",
+    "contracts/bridge",
+    "contracts/affiliate",
+    "contracts/spin_game",
+    "contracts/security",
+    "contracts/timelock",
+    "contracts/upgrade",
+    "contracts/oracle_multisig",
+]
+
+[workspace.package]
 version = "1.0.0"
 authors = ["Don Fiapo Team"]
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/don-fiapo/don-fiapo-contract"
-description = "Don Fiapo ($FIAPO) - The Alpha of Memecoins on Lunes Network. Gamified staking, burning mechanics, and community governance."
-keywords = ["blockchain", "ink", "smart-contract", "lunes", "memecoin", "defi", "staking"]
-categories = ["cryptography::cryptocurrencies"]
 
-
-[dependencies]
-# ink! 4.2.2 - Stable version compatible with Lunes Network
-ink = { version = "4.2.2", default-features = false }
+[workspace.dependencies]
+# ink! 4.2.1 - Version specified by user
+ink = { version = "4.2.1", default-features = false }
 
 # SCALE Codec for serialization/deserialization
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
-
-
-[dev-dependencies]
-ink_e2e = "4.2.2"
-
-[lib]
-path = "src/lib.rs"
-
-[features]
-default = ["std"]
-std = [
-    "ink/std",
-    "scale/std",
-    "scale-info/std",
-]
-ink-as-dependency = []
-e2e-tests = []
+scale-info = { version = "2", default-features = false, features = ["derive"] }
 
 [profile.release]
 overflow-checks = false
 lto = true
 codegen-units = 1
 opt-level = "z"
+panic = "abort"
+strip = true
 
 [profile.dev]
 overflow-checks = true

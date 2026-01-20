@@ -1,5 +1,5 @@
 import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
-import { Code, BlueprintPromise } from '@polkadot/api-contract';
+import { CodePromise, BlueprintPromise } from '@polkadot/api-contract';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -65,9 +65,32 @@ async function main() {
     const deployer = keyring.addFromUri(mnemonic);
     console.log(`👤 Conta de Deploy: ${deployer.address}`);
 
-    const balance = await api.query.system.account(deployer.address);
+    let balance = await api.query.system.account(deployer.address);
     // @ts-ignore
     console.log(`💰 Saldo Atual: ${balance.data.free.toHuman()}`);
+
+    if (balance.data.free.toBigInt() === 0n) {
+        console.log("⚠️ Saldo zerado. Tentando fundear com Alice...");
+        const alice = keyring.addFromUri('//Alice');
+        try {
+            // 5000 tokens * 10^8
+            const amount = 5000n * 100000000n;
+            const transfer = api.tx.balances.transferAllowDeath
+                ? api.tx.balances.transferAllowDeath(deployer.address, amount)
+                : api.tx.balances.transfer(deployer.address, amount);
+
+            await new Promise((resolve, reject) => {
+                transfer.signAndSend(alice, { nonce: -1 }, ({ status }) => {
+                    if (status.isInBlock) {
+                        console.log(`💸 Fundos recebidos no bloco ${status.asInBlock}`);
+                        resolve();
+                    }
+                }).catch(reject);
+            });
+        } catch (e) {
+            console.error("❌ Falha no funding, tentando continuar: ", e.message);
+        }
+    }
 
     // 3. Ler Arquivo do Contrato
     const contractPath = path.resolve(__dirname, '../../don_fiapo/target/ink/don_fiapo_contract.contract');
@@ -83,21 +106,23 @@ async function main() {
 
     // 4. Upload e Instanciação
     console.log(`📜 Carregando código do contrato...`);
-    const code = new Code(api, contractAbi);
+    const code = new CodePromise(api, contractAbi, contractAbi.source.wasm);
 
     // Parâmetros do Construtor
-    // Ajuste conforme seu construtor em lib.rs: new(initial_supply, symbol, name)
-    // Atenção: O construtor é: pub fn new(initial_supply: u128, name: Option<String>, symbol: Option<String>)
-    // CORREÇÃO TOKENOMICS: Max Supply é 300 Bilhões (conforme docs) e não 1 Bilhão.
     const decimals = 100_000_000n; // 8 decimals
     const initialSupply = 300_000_000_000n * decimals; // 300 Bilhões * 10^8
     const name = "Don Fiapo";
     const symbol = "FIAPO";
 
+    // Carteiras do sistema
+    const burnWallet = deployer.address;
+    const teamWallet = deployer.address;
+    const stakingWallet = deployer.address;
+    const rewardsWallet = deployer.address;
+    const initialOracles = [deployer.address];
+
     console.log(`🏗️  Instanciando contrato...`);
     console.log(`   - Supply: ${initialSupply}`);
-    console.log(`   - Name: ${name}`);
-    console.log(`   - Symbol: ${symbol}`);
 
     // Determinar limites de gas (aproximado)
     const gasLimit = api.registry.createType('WeightV2', {
@@ -105,18 +130,16 @@ async function main() {
         proofSize: 20000n,
     });
 
-    // Deploy blueprint
-    // Nota: Em versoes recentes do api-contract, usamos blueprint
-    // Para simplificar, Code.createBlueprint() ou tx.
-
-    // Como contract tx pode ser complexo com dry-run, vamos tentar a abordagem direta:
-    // Upload code first if needed, or instantiate directly.
-
     const unsubscribe = await code.tx.new(
         { gasLimit, storageDepositLimit: null },
-        initialSupply,
         name,
-        symbol
+        symbol,
+        initialSupply,
+        burnWallet,
+        teamWallet,
+        stakingWallet,
+        rewardsWallet,
+        initialOracles
     )
         .signAndSend(deployer, async ({ status, contract, dispatchError, events }) => {
             if (status.isInBlock || status.isFinalized) {
@@ -139,6 +162,21 @@ async function main() {
 
                     fs.writeFileSync(path.join(__dirname, '../.env'), finalEnvContent);
                     console.log(`📝 Atualizado .env com o novo endereço.`);
+
+                    // Atualizar .env.local tambem
+                    const envLocalPath = path.join(__dirname, '../.env.local');
+                    if (fs.existsSync(envLocalPath)) {
+                        const envLocalContent = fs.readFileSync(envLocalPath, 'utf8');
+                        const newEnvLocalContent = envLocalContent.replace(
+                            /NEXT_PUBLIC_CONTRACT_ADDRESS=.*/,
+                            `NEXT_PUBLIC_CONTRACT_ADDRESS=${contract.address.toString()}`
+                        );
+                        const finalEnvLocalContent = newEnvLocalContent.includes('NEXT_PUBLIC_CONTRACT_ADDRESS')
+                            ? newEnvLocalContent
+                            : newEnvLocalContent + `\nNEXT_PUBLIC_CONTRACT_ADDRESS=${contract.address.toString()}`;
+                        fs.writeFileSync(envLocalPath, finalEnvLocalContent);
+                        console.log(`📝 Atualizado .env.local com o novo endereço.`);
+                    }
 
                     process.exit(0);
                 }

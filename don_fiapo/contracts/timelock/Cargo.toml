@@ -1,0 +1,28 @@
+[package]
+name = "fiapo-timelock"
+version = "1.0.0"
+authors = ["Don Fiapo Team"]
+edition = "2021"
+
+[dependencies]
+ink = { version = "4.3.0", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+fiapo-traits = { path = "../traits", default-features = false }
+
+[dev-dependencies]
+ink_e2e = "4.3.0"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+    "fiapo-traits/std",
+]
+ink-as-dependency = []
+e2e-tests = []

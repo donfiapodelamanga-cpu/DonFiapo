@@ -9,6 +9,7 @@
     "marketplace": "Marketplace",
     "staking": "Staking",
     "simulations": "Simulations",
+    "games": "Games",
     "tokenomics": "Tokenomics",
     "airdrop": "Airdrop",
     "affiliate": "Affiliate",
@@ -226,5 +227,24 @@
     "connect": "Connect",
     "viewMore": "View More",
     "seeAll": "See All"
+  },
+  "Games": {
+    "title": "Royal Arena",
+    "subtitle": "Challenge your luck and skill in the kingdom's games.",
+    "comingSoon": "COMING SOON",
+    "multiplayer": "Multiplayer",
+    "singlePlayer": "Single Player",
+    "spin": {
+      "title": "Royal Wheel of Fortune",
+      "description": "Spin the wheel to win incredible prizes, including the Don's treasure."
+    },
+    "tug": {
+      "title": "Tug of War",
+      "description": "Pull the rope with your war dogs and defeat the opponent."
+    },
+    "meme": {
+      "title": "Meme Battle",
+      "description": "Use your best memes to duel and prove who is the funniest in the kingdom."
+    }
   }
 }

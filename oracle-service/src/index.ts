@@ -156,9 +156,9 @@ function createServer(): express.Application {
    * Protected by API Key
    */
   app.post('/api/payment/create', authenticate, (req: Request, res: Response) => {
-    const { lunesAccount, fiapoAmount, expectedAmount, expectedSender } = req.body;
+    const { lunesAccount, paymentType, itemAmount, expectedAmount, expectedSender } = req.body;
 
-    if (!lunesAccount || !fiapoAmount || !expectedAmount) {
+    if (!lunesAccount || !paymentType || !itemAmount || !expectedAmount) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
@@ -166,10 +166,11 @@ function createServer(): express.Application {
     const id = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const payment: PendingPayment = {
       id,
+      lunesAccount,
+      paymentType,
+      itemAmount,
       expectedAmount,
       expectedSender,
-      lunesAccount,
-      fiapoAmount, // Ensure this handles large numbers correctly if strict
       createdAt: Date.now(),
       expiresAt: Date.now() + (60 * 60 * 1000), // 1 hora
       status: 'pending'
@@ -248,15 +249,27 @@ function createServer(): express.Application {
 
       console.log('✅ Transação Solana verificada!');
 
-      // 2. Confirma no contrato Lunes
-      console.log('📝 Confirmando no contrato Lunes...');
-      const confirmResult = await lunesClient.confirmSolanaPayment(
-        transactionHash,
-        verification.sender,
-        verification.amount,
-        verification.blockTime,
-        verification.slot
-      );
+      // 2. Confirma no contrato Lunes com base no tipo de pagamento
+      let confirmResult: ConfirmPaymentResult;
+
+      if (payment.paymentType === 'spin_purchase') {
+        console.log('📝 Creditando giros no contrato Lunes...');
+        confirmResult = await lunesClient.creditSpins(
+          payment.lunesAccount,
+          payment.itemAmount, // quantidade de giros
+          transactionHash
+        );
+      } else {
+        // Lógica padrão para ICO
+        console.log('📝 Confirmando pagamento de ICO no contrato Lunes...');
+        confirmResult = await lunesClient.confirmSolanaPayment(
+          transactionHash,
+          verification.sender,
+          verification.amount,
+          verification.blockTime,
+          verification.slot
+        );
+      }
 
       if (!confirmResult.success) {
         res.status(500).json({
@@ -332,7 +345,7 @@ async function main(): Promise<void> {
       console.log('  GET  /api/payment/:id     - Consultar status do pagamento');
       console.log('\n📋 Exemplo de uso:');
       console.log('  1. POST /api/payment/create');
-      console.log('     Body: { "lunesAccount": "5...", "fiapoAmount": 1000000000000, "expectedAmount": 1000000 }');
+      console.log('     Body: { "lunesAccount": "5...", "paymentType": "ico", "itemAmount": 1000, "expectedAmount": 1000000 }');
       console.log('  2. Usuário envia USDT para o endereço retornado');
       console.log('  3. POST /api/payment/verify');
       console.log('     Body: { "paymentId": "PAY_...", "transactionHash": "5Vfy..." }');

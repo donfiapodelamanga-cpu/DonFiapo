@@ -202,4 +202,78 @@ export class LunesContractClient {
   getOracleAddress(): string {
     return this.oraclePair?.address || '';
   }
+
+  /**
+   * Credita giros para um usuário no contrato
+   */
+  async creditSpins(
+    lunesAccount: string,
+    spinsAmount: number,
+    solanaTxHash: string,
+  ): Promise<ConfirmPaymentResult> {
+    if (process.env.ENABLE_MOCK_PAYMENTS === 'true') {
+      console.log(`⚠️  MOCK MODE: Crediting ${spinsAmount} spins for ${lunesAccount}`);
+      return {
+        success: true,
+        transactionHash: `mock_lunes_tx_${Date.now()}`,
+        blockNumber: 12345
+      };
+    }
+
+    if (!this.api || !this.contract || !this.oraclePair) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    try {
+      console.log(`Creditando ${spinsAmount} giros para: ${lunesAccount}`);
+      console.log(`  Ref Solana TX: ${solanaTxHash}`);
+
+      const gasLimit: WeightV2 = this.api.registry.createType('WeightV2', {
+        refTime: 100_000_000_000n,
+        proofSize: 1_000_000n,
+      }) as unknown as WeightV2;
+
+      const tx = await this.contract.tx['creditSpins'](
+        { gasLimit, storageDepositLimit: null },
+        lunesAccount,
+        spinsAmount,
+        solanaTxHash
+      );
+
+      return new Promise((resolve) => {
+        tx.signAndSend(this.oraclePair, (result: ISubmittableResult) => {
+          const { status, dispatchError } = result;
+          if (status.isInBlock || status.isFinalized) {
+            if (dispatchError) {
+              let errorMessage = 'Unknown error';
+
+              if (dispatchError.isModule) {
+                const decoded = this.api!.registry.findMetaError(dispatchError.asModule);
+                errorMessage = `${decoded.section}.${decoded.name}: ${decoded.docs.join(' ')}`;
+              }
+
+              resolve({
+                success: false,
+                error: errorMessage,
+              });
+            } else {
+              resolve({
+                success: true,
+                transactionHash: tx.hash.toHex(),
+                blockNumber: status.isInBlock
+                  ? (status.asInBlock as any).blockNumber?.toNumber()
+                  : undefined,
+              });
+            }
+          }
+        });
+      });
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 }

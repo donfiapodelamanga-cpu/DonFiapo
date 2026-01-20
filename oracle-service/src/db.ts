@@ -9,7 +9,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS pending_payments (
     id TEXT PRIMARY KEY,
     lunes_account TEXT NOT NULL,
-    fiapo_amount TEXT NOT NULL,
+    payment_type TEXT NOT NULL DEFAULT 'ico',
+    item_amount TEXT NOT NULL,
     expected_amount REAL NOT NULL,
     expected_sender TEXT,
     created_at INTEGER NOT NULL,
@@ -18,11 +19,14 @@ db.exec(`
   )
 `);
 
+export type PaymentType = 'ico' | 'spin_purchase';
+
 export interface PendingPayment {
     id: string;
     lunesAccount: string;
-    fiapoAmount: number; // Stored as TEXT (string) in DB for precision, converted here if safe or keep string
-    expectedAmount: number;
+    paymentType: PaymentType;
+    itemAmount: number; // Amount of $FIAPO or spins
+    expectedAmount: number; // Amount of USDT
     expectedSender?: string;
     createdAt: number;
     expiresAt: number;
@@ -32,13 +36,14 @@ export interface PendingPayment {
 export const PaymentRepository = {
     create: (payment: PendingPayment) => {
         const stmt = db.prepare(`
-      INSERT INTO pending_payments (id, lunes_account, fiapo_amount, expected_amount, expected_sender, created_at, expires_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO pending_payments (id, lunes_account, payment_type, item_amount, expected_amount, expected_sender, created_at, expires_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
         stmt.run(
             payment.id,
             payment.lunesAccount,
-            String(payment.fiapoAmount), // Convert BigInt/large number to string
+            payment.paymentType,
+            String(payment.itemAmount),
             payment.expectedAmount,
             payment.expectedSender || null,
             payment.createdAt,
@@ -54,7 +59,8 @@ export const PaymentRepository = {
         return {
             id: row.id,
             lunesAccount: row.lunes_account,
-            fiapoAmount: Number(row.fiapo_amount), // Or keeping as string if needed
+            paymentType: row.payment_type,
+            itemAmount: Number(row.item_amount),
             expectedAmount: row.expected_amount,
             expectedSender: row.expected_sender,
             createdAt: row.created_at,

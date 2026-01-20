@@ -1,6 +1,6 @@
 {
   "metadata": { "title": "Don Fiapo Dela Manga - 迷因币之王", "description": "他不吠叫——他颁布法令。区块链现在有了君主制。加入王朝。" },
-  "nav": { "home": "首页", "ico": "ICO/NFT", "staking": "质押", "airdrop": "空投", "affiliate": "推广", "governance": "治理", "ranking": "排名", "wallet": "钱包", "docs": "文档", "connectWallet": "连接钱包", "disconnect": "断开连接" },
+  "nav": { "home": "首页", "ico": "ICO/NFT", "marketplace": "市场", "staking": "质押", "simulations": "模拟", "games": "游戏", "tokenomics": "代币经济学", "airdrop": "空投", "affiliate": "推广", "governance": "治理", "ranking": "排名", "wallet": "钱包", "docs": "文档", "connectWallet": "连接钱包", "disconnect": "断开连接" },
   "hero": { "badge": "去中心化幽默之王", "title": "Don Fiapo Dela Manga", "subtitle": "迷因币之王", "description": "他不吠叫——他颁布法令。区块链现在有了君主制。加入王朝。", "cta": { "buy": "立即购买 $FIAPO", "whitepaper": "阅读皇家白皮书", "telegram": "加入Fiapeiros骑士团", "airdrop": "领取皇家空投" } },
   "legend": { "title": "Don Fiapo的传说", "subtitle": "流浪狗成为陛下的故事。", "description": "在区块链被遗忘的巷子里，一只流浪狗发现了一个金色的芒果。他没有吃掉它——他颁布了法令。Don Fiapo是去中心化的像素皇族。" },
   "tokenomics": { "title": "皇家代币经济学", "subtitle": "Fiapo王国的皇家国库", "totalSupply": "总供应量", "symbol": "符号", "distribution": "分配", "staking": "骑兵团", "airdrop": "骑士团", "marketing": "皇家国库", "liquidity": "流动性", "team": "团队", "note": "每笔交易都是贡品。每个持有者都是贵族。每个迷因都是法令。" },
@@ -16,5 +16,24 @@
   "wallet": { "title": "皇家钱包", "connect": "连接钱包", "selectWallet": "选择钱包", "balance": "余额", "transactions": "交易", "transfer": "转账", "send": "发送", "receive": "接收", "history": "交易历史" },
   "ranking": { "title": "皇家排名", "subtitle": "王国最伟大的贵族" },
   "affiliate": { "title": "推广计划", "subtitle": "邀请朋友并获得皇家奖励", "referralLink": "您的推荐链接", "howItWorks": "如何运作" },
-  "common": { "loading": "加载中...", "error": "发生错误", "success": "成功！", "confirm": "确认", "cancel": "取消", "back": "返回", "next": "下一步", "submit": "提交", "connect": "连接", "viewMore": "查看更多", "seeAll": "查看全部" }
+  "common": { "loading": "加载中...", "error": "发生错误", "success": "成功！", "confirm": "确认", "cancel": "取消", "back": "返回", "next": "下一步", "submit": "提交", "connect": "连接", "viewMore": "查看更多", "seeAll": "查看全部" },
+  "Games": {
+    "title": "皇家竞技场",
+    "subtitle": "在王国的游戏中挑战你的运气和技巧。",
+    "comingSoon": "即将推出",
+    "multiplayer": "多人游戏",
+    "singlePlayer": "单人游戏",
+    "spin": {
+      "title": "皇家财富之轮",
+      "description": "转动轮盘，赢取包括唐的宝藏在内的惊人奖品。"
+    },
+    "tug": {
+      "title": "拔河比赛",
+      "description": "用你的战犬拉绳子，打败对手。"
+    },
+    "meme": {
+      "title": "表情包大战",
+      "description": "用你最好的表情包进行对决，证明谁是王国里最有趣的。"
+    }
+  }
 }

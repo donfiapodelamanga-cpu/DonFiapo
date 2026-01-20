@@ -2,7 +2,7 @@
 
 
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), no_std, no_main)]
 #![allow(unexpected_cfgs)]
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::arithmetic_side_effects)]
@@ -286,6 +286,7 @@ mod don_fiapo {
         timestamp: u64,
     }
 
+
     /// Estatísticas do sistema
     #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, Default)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
@@ -500,6 +501,7 @@ mod don_fiapo {
         staking_manager: crate::staking::StakingManager,
         /// Marketplace manager instance
         marketplace: crate::marketplace::MarketplaceManager,
+
     }
 
     impl DonFiapo {
@@ -662,6 +664,7 @@ mod don_fiapo {
                 ranking_system: crate::ranking_system::RankingSystem::new(),
                 staking_manager: crate::staking::StakingManager::new(),
                 marketplace: crate::marketplace::MarketplaceManager::new(),
+
             };
             
             // Inicializar ranking configs padrao
@@ -673,228 +676,8 @@ mod don_fiapo {
                 to: Some(caller),
                 value: initial_supply,
             });
-            
-            Ok(instance)
-        }
-
-        /// Retorna o nome do token
-        #[ink(message)]
-        pub fn token_name(&self) -> String {
-            self.name.clone()
-        }
-
-        /// Retorna o símbolo do token
-        #[ink(message)]
-        pub fn token_symbol(&self) -> String {
-            self.symbol.clone()
-        }
-
-        /// Retorna o número de decimais
-        #[ink(message)]
-        pub fn decimals(&self) -> u8 {
-            DECIMALS
-        }
-
-        /// Retorna o total supply atual
-        #[ink(message)]
-        pub fn total_supply(&self) -> u128 {
-            self.total_supply
-        }
-
-        /// Retorna o saldo de uma conta
-        #[ink(message)]
-        pub fn balance_of(&self, owner: AccountId) -> u128 {
-            self.balances.get(&owner).unwrap_or_default()
-        }
-
-        /// Retorna o valor aprovado para gasto
-        #[ink(message)]
-        pub fn allowance(&self, owner: AccountId, spender: AccountId) -> u128 {
-            self.allowances.get(&(owner, spender)).unwrap_or_default()
-        }
-
-        /// Transfere tokens entre contas aplicando taxa de transação
-        /// 
-        /// # Segurança
-        /// - Protegido contra reentrancy
-        /// - Valida endereços e valores
-        /// - Aplica taxa de 0.6%
-        #[ink(message)]
-        pub fn transfer(&mut self, to: AccountId, value: u128) -> Result<(), Error> {
-            // Proteção contra reentrancy
-            if self.reentrancy_locked {
-                return Err(Error::InvalidOperation);
-            }
-            self.reentrancy_locked = true;
-            
-            let result = self._transfer_internal(to, value);
-            
-            self.reentrancy_locked = false;
-            result
-        }
-        
-        /// Implementação interna do transfer (protegida por reentrancy guard)
-        fn _transfer_internal(&mut self, to: AccountId, value: u128) -> Result<(), Error> {
-            // Verificações de segurança
-            if self.is_paused {
-                return Err(Error::SystemPaused);
-            }
-            
-            let caller = self.env().caller();
-            let contract_address = self.env().account_id();
-            
-            // Validações de entrada usando o módulo de segurança
-            crate::security::InputValidator::validate_address(&to)
-                .map_err(|_| Error::InvalidInput)?;
-            crate::security::InputValidator::validate_not_contract_address(&to, &contract_address)
-                .map_err(|_| Error::InvalidOperation)?;
-            crate::security::InputValidator::validate_positive_amount(value)
-                .map_err(|_| Error::InvalidValue)?;
-            
-            // Verificar se não é transferência para si mesmo
-            if caller == to {
-                return Err(Error::InvalidOperation);
-            }
-            
-            self._transfer_with_fee(caller, to, value)
-        }
-
-        /// Transfere tokens de uma conta aprovada
-        /// 
-        /// # Segurança
-        /// - Protegido contra reentrancy
-        /// - Valida endereços e valores
-        /// - Verifica allowance
-        #[ink(message)]
-        pub fn transfer_from(&mut self, from: AccountId, to: AccountId, value: u128) -> Result<(), Error> {
-            // Proteção contra reentrancy
-            if self.reentrancy_locked {
-                return Err(Error::InvalidOperation);
-            }
-            self.reentrancy_locked = true;
-            
-            let result = self._transfer_from_internal(from, to, value);
-            
-            self.reentrancy_locked = false;
-            result
-        }
-        
-        /// Implementação interna do transfer_from (protegida por reentrancy guard)
-        fn _transfer_from_internal(&mut self, from: AccountId, to: AccountId, value: u128) -> Result<(), Error> {
-            // Verificações de segurança
-            if self.is_paused {
-                return Err(Error::SystemPaused);
-            }
-            
-            let caller = self.env().caller();
-            let contract_address = self.env().account_id();
-            
-            // Validações de entrada
-            crate::security::InputValidator::validate_address(&from)
-                .map_err(|_| Error::InvalidInput)?;
-            crate::security::InputValidator::validate_address(&to)
-                .map_err(|_| Error::InvalidInput)?;
-            crate::security::InputValidator::validate_not_contract_address(&to, &contract_address)
-                .map_err(|_| Error::InvalidOperation)?;
-            crate::security::InputValidator::validate_positive_amount(value)
-                .map_err(|_| Error::InvalidValue)?;
-            
-            // Verificar se não é transferência para si mesmo
-            if from == to {
-                return Err(Error::InvalidOperation);
-            }
-            
-            let current_allowance = self.allowance(from, caller);
-            
-            if current_allowance < value {
-                return Err(Error::InsufficientBalance);
-            }
-            
-            self.allowances.insert((from, caller), &(current_allowance.saturating_sub(value)));
-            self._transfer_with_fee(from, to, value)
-        }
-        
-        /// Aprova um spender para gastar tokens
-        /// 
-        /// # Segurança
-        /// - Valida endereço do spender (não pode ser zero)
-        /// - Emite evento para auditoria
-        #[ink(message)]
-        pub fn approve(&mut self, spender: AccountId, value: u128) -> Result<(), Error> {
-            // Validação de segurança: spender não pode ser endereço zero
-            crate::security::InputValidator::validate_address(&spender)
-                .map_err(|_| Error::InvalidInput)?;
-            
-            let owner = self.env().caller();
-            
-            // Não pode aprovar a si mesmo
-            if owner == spender {
-                return Err(Error::InvalidOperation);
-            }
-            
-            self.allowances.insert((owner, spender), &value);
-            
-            // Emitir evento de aprovação
-            self.env().emit_event(Approval {
-                owner,
-                spender,
-                value,
-            });
-            
-            Ok(())
-        }
-
-        /// Transferência interna com aplicação de taxa
-        fn _transfer_with_fee(&mut self, from: AccountId, to: AccountId, value: u128) -> Result<(), Error> {
-            if from == to {
-                return Err(Error::InvalidOperation);
-            }
-
-            let from_balance = self.balance_of(from);
-            if from_balance < value {
-                return Err(Error::InsufficientBalance);
-            }
-
-            // Calcular taxa de transação (0.6%) usando operações seguras
-            let fee_amount = match value.checked_mul(TRANSACTION_FEE_BPS as u128) {
-                Some(result) => result.checked_div(10000).unwrap_or(0),
-                None => return Err(Error::ArithmeticError),
-            };
-            
-            let transfer_amount = match value.checked_sub(fee_amount) {
-                Some(result) => result,
-                None => return Err(Error::ArithmeticError),
-            };
-            
-            // Aplicar transferência usando operações seguras
-            let new_from_balance = match from_balance.checked_sub(value) {
-                Some(result) => result,
-                None => return Err(Error::ArithmeticError),
-            };
-            
-            let to_balance = self.balance_of(to);
-            let new_to_balance = match to_balance.checked_add(transfer_amount) {
-                Some(result) => result,
-                None => return Err(Error::ArithmeticError),
-            };
-            
-            self.balances.insert(from, &new_from_balance);
-            self.balances.insert(to, &new_to_balance);
-            
-            // Distribuir taxa se houver
-            if fee_amount > 0 {
-                self._distribute_transaction_fee(from, fee_amount)?;
-            }
-            
-            // Emitir eventos
-            self.env().emit_event(Transfer {
-                from: Some(from),
-                to: Some(to),
-                value: transfer_amount,
-            });
 
             Ok(())
-        }
 
         /// Distribui a taxa de transação conforme especificação
         fn _distribute_transaction_fee(&mut self, payer: AccountId, fee_amount: u128) -> Result<(), Error> {

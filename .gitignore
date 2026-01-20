@@ -26,6 +26,7 @@ Thumbs.db
 !package.json
 !tsconfig.json
 !don_fiapo.json
+!don-fiapo-web/src/messages/*.json
 wallet.json
 id.json
 
