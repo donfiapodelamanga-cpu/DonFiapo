@@ -10,7 +10,6 @@ members = [
     "contracts/airdrop",
     "contracts/rewards",
     "contracts/marketplace",
-    "contracts/bridge",
     "contracts/affiliate",
     "contracts/spin_game",
     "contracts/security",

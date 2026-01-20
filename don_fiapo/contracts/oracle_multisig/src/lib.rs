@@ -5,7 +5,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::{AccountId, Balance};
+use fiapo_traits::{AccountId, Balance, PSP22Error};
 
 #[ink::contract]
 mod fiapo_oracle_multisig {
@@ -36,16 +36,25 @@ mod fiapo_oracle_multisig {
         MinimumOraclesRequired,
         InvalidConfiguration,
         TooManyPendingPayments,
+        CrossContractCallFailed,
+        ContractNotConfigured,
     }
 
-    /// Tipo de pagamento
+    /// Tipo de pagamento/ação a executar
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     pub enum PaymentType {
+        /// Entrada em staking
         StakingEntry,
-        NFTPurchase,
+        /// Compra de NFT no ICO
+        NFTPurchase { tier: u8 },
+        /// Compra de ticket de loteria
+        LotteryTicket { quantity: u32 },
+        /// Crédito para jogo Spin
+        SpinGameCredit,
+        /// Depósito de governança
         GovernanceDeposit,
-        BridgeDeposit,
+        /// Ação customizada
         Custom(String),
     }
 
@@ -154,6 +163,10 @@ mod fiapo_oracle_multisig {
         staking_contract: Option<AccountId>,
         /// Contrato ICO
         ico_contract: Option<AccountId>,
+        /// Contrato Lottery
+        lottery_contract: Option<AccountId>,
+        /// Contrato SpinGame
+        spin_game_contract: Option<AccountId>,
         /// Total de pagamentos processados
         total_processed: u64,
         /// Total de USDT processado
@@ -181,6 +194,8 @@ mod fiapo_oracle_multisig {
                 core_contract,
                 staking_contract: None,
                 ico_contract: None,
+                lottery_contract: None,
+                spin_game_contract: None,
                 total_processed: 0,
                 total_usdt_processed: 0,
                 total_rejected: 0,
@@ -431,6 +446,24 @@ mod fiapo_oracle_multisig {
         }
 
         #[ink(message)]
+        pub fn set_lottery_contract(&mut self, contract: AccountId) -> Result<(), OracleError> {
+            if self.env().caller() != self.owner {
+                return Err(OracleError::Unauthorized);
+            }
+            self.lottery_contract = Some(contract);
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn set_spin_game_contract(&mut self, contract: AccountId) -> Result<(), OracleError> {
+            if self.env().caller() != self.owner {
+                return Err(OracleError::Unauthorized);
+            }
+            self.spin_game_contract = Some(contract);
+            Ok(())
+        }
+
+        #[ink(message)]
         pub fn toggle_active(&mut self, active: bool) -> Result<(), OracleError> {
             if self.env().caller() != self.owner {
                 return Err(OracleError::Unauthorized);
@@ -496,11 +529,145 @@ mod fiapo_oracle_multisig {
                 amount_fiapo: payment.equivalent_fiapo,
             });
 
-            // Cross-contract call para Core.mint_to ou contrato específico
-            // Implementação real usando ink::contract_ref! seria aqui
-            // Por ora, apenas emitimos o evento e os contratos podem reagir
+            // Cross-contract call baseado no tipo de pagamento
+            match &payment.payment_type {
+                PaymentType::StakingEntry => {
+                    self.call_staking_stake_for(payment.beneficiary, payment.equivalent_fiapo)?;
+                }
+                PaymentType::NFTPurchase { tier } => {
+                    self.call_ico_mint_paid(payment.beneficiary, *tier)?;
+                }
+                PaymentType::LotteryTicket { quantity } => {
+                    self.call_lottery_buy_tickets(payment.beneficiary, *quantity)?;
+                }
+                PaymentType::SpinGameCredit => {
+                    self.call_spin_game_credit(payment.beneficiary, payment.equivalent_fiapo)?;
+                }
+                PaymentType::GovernanceDeposit => {
+                    self.call_core_mint_to(payment.beneficiary, payment.equivalent_fiapo)?;
+                }
+                PaymentType::Custom(_) => {
+                    self.call_core_mint_to(payment.beneficiary, payment.equivalent_fiapo)?;
+                }
+            }
 
             Ok(())
+        }
+
+        // ==================== Cross-Contract Calls ====================
+
+        fn call_core_mint_to(&self, to: AccountId, amount: Balance) -> Result<(), OracleError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("mint_to")))
+                        .push_arg(to)
+                        .push_arg(amount),
+                )
+                .returns::<Result<(), PSP22Error>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(OracleError::CrossContractCallFailed),
+            }
+        }
+
+        fn call_staking_stake_for(&self, user: AccountId, amount: Balance) -> Result<(), OracleError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let staking = self.staking_contract.ok_or(OracleError::ContractNotConfigured)?;
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(staking)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("stake_for")))
+                        .push_arg(user)
+                        .push_arg(amount)
+                        .push_arg(0u8), // pool_type default
+                )
+                .returns::<Result<u64, u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(_))) => Ok(()),
+                _ => Err(OracleError::CrossContractCallFailed),
+            }
+        }
+
+        fn call_ico_mint_paid(&self, user: AccountId, tier: u8) -> Result<(), OracleError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let ico = self.ico_contract.ok_or(OracleError::ContractNotConfigured)?;
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(ico)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("mint_paid_for")))
+                        .push_arg(user)
+                        .push_arg(tier),
+                )
+                .returns::<Result<u64, u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(_))) => Ok(()),
+                _ => Err(OracleError::CrossContractCallFailed),
+            }
+        }
+
+        fn call_lottery_buy_tickets(&self, user: AccountId, quantity: u32) -> Result<(), OracleError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let lottery = self.lottery_contract.ok_or(OracleError::ContractNotConfigured)?;
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(lottery)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("buy_tickets_for")))
+                        .push_arg(user)
+                        .push_arg(quantity),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(OracleError::CrossContractCallFailed),
+            }
+        }
+
+        fn call_spin_game_credit(&self, user: AccountId, amount: Balance) -> Result<(), OracleError> {
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+
+            let spin_game = self.spin_game_contract.ok_or(OracleError::ContractNotConfigured)?;
+
+            let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(spin_game)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("credit_for")))
+                        .push_arg(user)
+                        .push_arg(amount),
+                )
+                .returns::<Result<(), u8>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(()))) => Ok(()),
+                _ => Err(OracleError::CrossContractCallFailed),
+            }
         }
     }
 
