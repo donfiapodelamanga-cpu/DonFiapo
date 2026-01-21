@@ -14,12 +14,14 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { SolanaVerifier } from './solana-verifier';
-import { LunesContractClient } from './lunes-contract';
+import { LunesContractClient, ConfirmPaymentResult } from './lunes-contract';
 import { PaymentRepository, PendingPayment } from './db';
 import { OracleWatcher } from './watcher'; // NEW IMPORT
 
-// Load environment from project root
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Load environment - priority: process.env > .env local > .env root
+// Only load from files if not already set in environment
+dotenv.config(); // Load from oracle-service/.env first
+dotenv.config({ path: path.resolve(__dirname, '../../.env') }); // Then from root .env
 
 // Configuração
 const config = {
@@ -88,39 +90,55 @@ function authenticate(req: Request, res: Response, next: express.NextFunction) {
 async function initialize(): Promise<void> {
   console.log('🚀 Iniciando Don Fiapo Oracle Service...\n');
 
-  // Valida configuração
-  if (!config.usdtReceiverAddress) {
-    throw new Error('USDT_RECEIVER_ADDRESS não configurado');
+  if (config.enableMock) {
+    console.log('⚠️  MODO MOCK ATIVADO - Sem conexão real com blockchains\n');
   }
-  if (!config.contractAddress) {
-    throw new Error('CONTRACT_ADDRESS não configurado');
+
+  // Valida configuração (menos rigorosa em modo mock)
+  if (!config.enableMock) {
+    if (!config.usdtReceiverAddress) {
+      throw new Error('USDT_RECEIVER_ADDRESS não configurado');
+    }
+    if (!config.contractAddress) {
+      throw new Error('CONTRACT_ADDRESS não configurado');
+    }
   }
 
   // Inicializa verificador Solana
   solanaVerifier = new SolanaVerifier(
     config.solanaRpcUrl,
     config.usdtTokenAddress,
-    config.usdtReceiverAddress,
+    config.usdtReceiverAddress || 'MockReceiverAddress',
     config.minConfirmations
   );
   console.log('✅ Verificador Solana inicializado');
-  console.log(`   USDT Receiver: ${config.usdtReceiverAddress}`);
+  console.log(`   USDT Receiver: ${config.usdtReceiverAddress || 'MockReceiverAddress'}`);
 
   // Inicializa cliente Lunes
   lunesClient = new LunesContractClient(
     config.lunesRpcUrls,
-    config.contractAddress,
+    config.contractAddress || 'MockContractAddress',
     config.oracleSeed
   );
-  await lunesClient.connect();
-  console.log('✅ Cliente Lunes conectado');
-  console.log(`   Oracle Address: ${lunesClient.getOracleAddress()}`);
+  
+  // Só conecta se não estiver em modo mock
+  if (!config.enableMock) {
+    await lunesClient.connect();
+    console.log('✅ Cliente Lunes conectado');
+    console.log(`   Oracle Address: ${lunesClient.getOracleAddress()}`);
+  } else {
+    console.log('✅ Cliente Lunes inicializado (MOCK)');
+  }
   console.log('');
 
-  // Inicializa e inicia o watcher
-  oracleWatcher = new OracleWatcher(solanaVerifier, lunesClient, config.pollIntervalMs);
-  oracleWatcher.start();
-  console.log('✅ Oracle Watcher iniciado');
+  // Inicializa e inicia o watcher (só em modo real)
+  if (!config.enableMock) {
+    oracleWatcher = new OracleWatcher(solanaVerifier, lunesClient, config.pollIntervalMs);
+    oracleWatcher.start();
+    console.log('✅ Oracle Watcher iniciado');
+  } else {
+    console.log('⏸️  Oracle Watcher desabilitado em modo mock');
+  }
 }
 
 /**

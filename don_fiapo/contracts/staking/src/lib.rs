@@ -296,8 +296,8 @@ mod fiapo_staking {
         /// Retorna estatísticas globais
         #[ink(message)]
         pub fn get_stats(&self) -> StakingStats {
-            let total_staked: Balance = self.total_staked_per_pool.iter().sum();
-            let total_stakers: u32 = self.stakers_per_pool.iter().sum();
+            let total_staked: Balance = self.total_staked_per_pool.iter().fold(0, |acc, &x| acc.saturating_add(x));
+            let total_stakers: u32 = self.stakers_per_pool.iter().fold(0, |acc, &x| acc.saturating_add(x));
 
             StakingStats {
                 total_staked,
@@ -342,7 +342,7 @@ mod fiapo_staking {
         /// Total staked
         #[ink(message)]
         pub fn total_staked(&self) -> Balance {
-            self.total_staked_per_pool.iter().sum()
+            self.total_staked_per_pool.iter().fold(0, |acc, &x| acc.saturating_add(x))
         }
 
         // ==================== Staking Functions ====================
@@ -398,13 +398,13 @@ mod fiapo_staking {
             self.user_positions.insert(caller, &user_positions);
 
             // Atualiza contadores
-            self.next_position_id += 1;
+            self.next_position_id = self.next_position_id.saturating_add(1);
             self.total_staked_per_pool[pool as usize] = 
                 self.total_staked_per_pool[pool as usize].saturating_add(amount);
-            self.active_positions += 1;
+            self.active_positions = self.active_positions.saturating_add(1);
 
             if is_new {
-                self.stakers_per_pool[pool as usize] += 1;
+                self.stakers_per_pool[pool as usize] = self.stakers_per_pool[pool as usize].saturating_add(1);
             }
 
             Self::env().emit_event(Staked {
@@ -467,13 +467,13 @@ mod fiapo_staking {
             user_positions.push(position_id);
             self.user_positions.insert(user, &user_positions);
 
-            self.next_position_id += 1;
+            self.next_position_id = self.next_position_id.saturating_add(1);
             self.total_staked_per_pool[pool as usize] = 
                 self.total_staked_per_pool[pool as usize].saturating_add(amount);
-            self.active_positions += 1;
+            self.active_positions = self.active_positions.saturating_add(1);
 
             if is_new {
-                self.stakers_per_pool[pool as usize] += 1;
+                self.stakers_per_pool[pool as usize] = self.stakers_per_pool[pool as usize].saturating_add(1);
             }
 
             Self::env().emit_event(Staked {
@@ -579,9 +579,9 @@ mod fiapo_staking {
                 match position.pool_type {
                     PoolType::DonBurn => {
                         // Don Burn - Saque Antecipado: 10 LUSDT + 50% capital + 80% juros
-                        let lusdt_penalty = 10 * LUSDT_SCALE; // 10 LUSDT (6 decimais)
-                        let capital_penalty = position.amount / 2; // 50% do capital
-                        let interest_penalty = total_rewards * 80 / 100; // 80% dos juros
+                        let lusdt_penalty = 10_u128.saturating_mul(LUSDT_SCALE); // 10 LUSDT (6 decimais)
+                        let capital_penalty = position.amount.saturating_div(2); // 50% do capital
+                        let interest_penalty = total_rewards.saturating_mul(80).saturating_div(100); // 80% dos juros
                         (lusdt_penalty.saturating_add(capital_penalty), interest_penalty)
                     }
                     PoolType::DonLunes => {
@@ -660,7 +660,7 @@ mod fiapo_staking {
             let penalty = match position.pool_type {
                 PoolType::DonLunes => {
                     // Don Lunes - Cancelamento: 2.5% do capital em $FIAPO
-                    position.amount * 25 / 1000 // 2.5%
+                    position.amount.saturating_mul(25).saturating_div(1000) // 2.5%
                 }
                 _ => {
                     // Don Burn e Don Fiapo usam penalidade percentual da config
@@ -877,19 +877,20 @@ mod fiapo_staking {
         }
 
         /// Calcula rewards baseado em APY e tempo
+        #[allow(clippy::arithmetic_side_effects)]
         fn calculate_rewards(&self, position: &StakingPosition, config: &PoolConfig) -> Balance {
             let current_time = self.env().block_timestamp();
             
             let seconds_elapsed = current_time.saturating_sub(position.last_reward_time);
-            let days_elapsed = seconds_elapsed / SECONDS_PER_DAY;
+            let days_elapsed = seconds_elapsed.saturating_div(SECONDS_PER_DAY);
 
             if days_elapsed < config.payment_frequency_days as u64 {
                 return 0;
             }
 
             // Calcula períodos completos
-            let periods = days_elapsed / config.payment_frequency_days as u64;
-            let total_days = periods * config.payment_frequency_days as u64;
+            let periods = days_elapsed.saturating_div(config.payment_frequency_days as u64);
+            let total_days = periods.saturating_mul(config.payment_frequency_days as u64);
 
             // Fórmula: amount * APY * days / 365 / 10000
             let rewards = position.amount

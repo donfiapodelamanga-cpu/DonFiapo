@@ -169,17 +169,17 @@ mod fiapo_affiliate {
 
             // Atualiza stats do referrer
             let mut stats = self.stats.get(referrer).unwrap_or_default();
-            stats.direct_referrals += 1;
+            stats.direct_referrals = stats.direct_referrals.saturating_add(1);
             self.stats.insert(referrer, &stats);
 
             // Se o referrer tiver um referrer (segundo nível)
             if let Some(level2_referrer) = self.referrers.get(referrer) {
                 let mut level2_stats = self.stats.get(level2_referrer).unwrap_or_default();
-                level2_stats.second_level_referrals += 1;
+                level2_stats.second_level_referrals = level2_stats.second_level_referrals.saturating_add(1);
                 self.stats.insert(level2_referrer, &level2_stats);
             }
 
-            self.total_affiliates += 1;
+            self.total_affiliates = self.total_affiliates.saturating_add(1);
 
             Self::env().emit_event(ReferralRegistered {
                 referrer,
@@ -197,7 +197,7 @@ mod fiapo_affiliate {
 
             // Paga nível 1
             if let Some(level1) = self.referrers.get(user) {
-                let commission1 = amount * self.level1_commission_bps as u128 / 10000;
+                let commission1 = amount.saturating_mul(self.level1_commission_bps as u128).saturating_div(10000);
                 let mut stats1 = self.stats.get(level1).unwrap_or_default();
                 stats1.total_earnings = stats1.total_earnings.saturating_add(commission1);
                 self.stats.insert(level1, &stats1);
@@ -210,7 +210,7 @@ mod fiapo_affiliate {
 
                 // Paga nível 2
                 if let Some(level2) = self.referrers.get(level1) {
-                    let commission2 = amount * self.level2_commission_bps as u128 / 10000;
+                    let commission2 = amount.saturating_mul(self.level2_commission_bps as u128).saturating_div(10000);
                     let mut stats2 = self.stats.get(level2).unwrap_or_default();
                     stats2.total_earnings = stats2.total_earnings.saturating_add(commission2);
                     self.stats.insert(level2, &stats2);
@@ -249,7 +249,7 @@ mod fiapo_affiliate {
             for referral in referrals.iter() {
                 if let Some(activity) = self.activities.get(*referral) {
                     if activity.is_active {
-                        active_count += 1;
+                        active_count = active_count.saturating_add(1);
                     }
                 }
             }

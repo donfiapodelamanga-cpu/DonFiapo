@@ -20,8 +20,26 @@ echo "Checking traits library..."
 cargo check --manifest-path "${ROOT_DIR}/contracts/traits/Cargo.toml"
 
 # Build other contracts
-build_contract "spin_game"
-build_contract "core"
+CONTRACTS=(
+    "core"
+    "ico"
+    "staking"
+    "governance"
+    "lottery"
+    "airdrop"
+    "rewards"
+    "marketplace"
+    "affiliate"
+    "spin_game"
+    "security"
+    "timelock"
+    "upgrade"
+    "oracle_multisig"
+)
+
+for contract in "${CONTRACTS[@]}"; do
+    build_contract "$contract"
+done
 
 echo "================================================="
 echo "All contracts built successfully!"

@@ -63,7 +63,8 @@ npm run dev
 ### 3. Deploy the Contract (For Lords only)
 ```bash
 cd don_fiapo
-sh scripts/deploy.sh
+sh scripts/build_all.sh  # Compiles all contracts safely
+node scripts/deploy_full_system.cjs # Deploys Core & Staking
 ```
 
 ---
@@ -81,6 +82,7 @@ sh scripts/deploy.sh
 - [x] Dynamic APY staking pools
 - [x] Affiliate & ranking systems on-chain
 - [x] Security audit & load testing (100k simulated users)
+- [x] **Arithmetic Safety Hardening**: All contracts updated to use `saturating` arithmetic operations to prevent overflows/panic.
 
 ### Phase 3: The Expanding Kingdom 🚧 (Q1-Q2 2025)
 - [ ] **Mainnet Launch** on Lunes Network

@@ -141,7 +141,7 @@ mod fiapo_upgrade {
             for approver in initial_approvers {
                 if approver != caller {
                     approvers.insert(approver, &true);
-                    count += 1;
+                    count = count.saturating_add(1);
                 }
             }
 
@@ -224,8 +224,8 @@ mod fiapo_upgrade {
                 new_implementation,
                 proposer: caller,
                 proposed_at: current_time,
-                executable_at: current_time + self.upgrade_delay,
-                expires_at: current_time + self.upgrade_delay + UPGRADE_EXPIRATION,
+                executable_at: current_time.saturating_add(self.upgrade_delay),
+                expires_at: current_time.saturating_add(self.upgrade_delay).saturating_add(UPGRADE_EXPIRATION),
                 status: UpgradeStatus::Proposed,
                 approvals: ink::prelude::vec![caller],
                 version,
@@ -234,7 +234,7 @@ mod fiapo_upgrade {
             };
 
             self.proposals.insert(proposal_id, &proposal);
-            self.next_proposal_id += 1;
+            self.next_proposal_id = self.next_proposal_id.saturating_add(1);
 
             Self::env().emit_event(UpgradeProposed {
                 proposal_id,
@@ -329,7 +329,7 @@ mod fiapo_upgrade {
             self.implementations.insert(proposal.target_contract, &proposal.new_implementation);
 
             // Adicionar ao histórico
-            let version_num = self.version_count.get(proposal.target_contract).unwrap_or(0) + 1;
+            let version_num = self.version_count.get(proposal.target_contract).unwrap_or(0).saturating_add(1);
             self.version_count.insert(proposal.target_contract, &version_num);
             
             let history = VersionHistory {
@@ -386,7 +386,7 @@ mod fiapo_upgrade {
             }
             if !self.approvers.get(approver).unwrap_or(false) {
                 self.approvers.insert(approver, &true);
-                self.approver_count += 1;
+                self.approver_count = self.approver_count.saturating_add(1);
             }
             Ok(())
         }

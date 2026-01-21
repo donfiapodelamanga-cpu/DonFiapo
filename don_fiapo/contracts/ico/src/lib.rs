@@ -238,7 +238,7 @@ mod fiapo_ico {
                 ico_active: true,
                 mining_active: true,
                 mining_start: current_time,
-                mining_end: current_time + (MINING_PERIOD_DAYS * SECONDS_PER_DAY),
+                mining_end: current_time.saturating_add(MINING_PERIOD_DAYS.saturating_mul(SECONDS_PER_DAY)),
                 next_nft_id: 1,
                 tier_configs: Mapping::default(),
                 nfts: Mapping::default(),
@@ -263,8 +263,8 @@ mod fiapo_ico {
                 price_usdt_cents: 0,
                 max_supply: 10_000,
                 minted: 0,
-                tokens_per_nft: 560 * SCALE,
-                daily_mining_rate: 5 * SCALE,
+                tokens_per_nft: 560_u128.saturating_mul(SCALE),
+                daily_mining_rate: 5_u128.saturating_mul(SCALE),
                 active: true,
             });
             // Tier 2: $10, 5600 tokens, 50/dia
@@ -272,8 +272,8 @@ mod fiapo_ico {
                 price_usdt_cents: 1000,
                 max_supply: 50_000,
                 minted: 0,
-                tokens_per_nft: 5_600 * SCALE,
-                daily_mining_rate: 50 * SCALE,
+                tokens_per_nft: 5_600_u128.saturating_mul(SCALE),
+                daily_mining_rate: 50_u128.saturating_mul(SCALE),
                 active: true,
             });
             // Tier 3: $30, 16800 tokens, 150/dia
@@ -281,8 +281,8 @@ mod fiapo_ico {
                 price_usdt_cents: 3000,
                 max_supply: 40_000,
                 minted: 0,
-                tokens_per_nft: 16_800 * SCALE,
-                daily_mining_rate: 150 * SCALE,
+                tokens_per_nft: 16_800_u128.saturating_mul(SCALE),
+                daily_mining_rate: 150_u128.saturating_mul(SCALE),
                 active: true,
             });
             // Tier 4: $55, 33600 tokens, 300/dia
@@ -290,8 +290,8 @@ mod fiapo_ico {
                 price_usdt_cents: 5500,
                 max_supply: 30_000,
                 minted: 0,
-                tokens_per_nft: 33_600 * SCALE,
-                daily_mining_rate: 300 * SCALE,
+                tokens_per_nft: 33_600_u128.saturating_mul(SCALE),
+                daily_mining_rate: 300_u128.saturating_mul(SCALE),
                 active: true,
             });
             // Tier 5: $100, 56000 tokens, 500/dia
@@ -299,8 +299,8 @@ mod fiapo_ico {
                 price_usdt_cents: 10000,
                 max_supply: 20_000,
                 minted: 0,
-                tokens_per_nft: 56_000 * SCALE,
-                daily_mining_rate: 500 * SCALE,
+                tokens_per_nft: 56_000_u128.saturating_mul(SCALE),
+                daily_mining_rate: 500_u128.saturating_mul(SCALE),
                 active: true,
             });
             // Tier 6: $250, 134400 tokens, 1200/dia
@@ -308,8 +308,8 @@ mod fiapo_ico {
                 price_usdt_cents: 25000,
                 max_supply: 5_000,
                 minted: 0,
-                tokens_per_nft: 134_400 * SCALE,
-                daily_mining_rate: 1200 * SCALE,
+                tokens_per_nft: 134_400_u128.saturating_mul(SCALE),
+                daily_mining_rate: 1200_u128.saturating_mul(SCALE),
                 active: true,
             });
             // Tier 7: $500, 280000 tokens, 2500/dia
@@ -317,8 +317,8 @@ mod fiapo_ico {
                 price_usdt_cents: 50000,
                 max_supply: 2_000,
                 minted: 0,
-                tokens_per_nft: 280_000 * SCALE,
-                daily_mining_rate: 2500 * SCALE,
+                tokens_per_nft: 280_000_u128.saturating_mul(SCALE),
+                daily_mining_rate: 2500_u128.saturating_mul(SCALE),
                 active: true,
             });
         }
@@ -336,7 +336,7 @@ mod fiapo_ico {
         pub fn get_stats(&self) -> ICOStats {
             let total_minted: u64 = self.minted_per_tier.iter()
                 .map(|&x| x as u64)
-                .sum();
+                .fold(0u64, |acc, x| acc.saturating_add(x));
             
             ICOStats {
                 total_nfts_minted: total_minted,
@@ -514,7 +514,7 @@ mod fiapo_ico {
 
             // Calcula prestige bonus (primeiros 10% do supply)
             let config = self.tier_configs.get(tier_u8).unwrap();
-            let mining_bonus_bps = if config.minted < config.max_supply / 10 {
+            let mining_bonus_bps = if config.minted < config.max_supply.saturating_div(10) {
                 500 // 5% bonus para early adopters
             } else {
                 0
@@ -546,16 +546,16 @@ mod fiapo_ico {
             self.nfts_by_owner.insert(owner, &owner_nfts);
 
             // Atualiza contadores
-            self.next_nft_id += 1;
-            self.minted_per_tier[tier_u8 as usize] += 1;
+            self.next_nft_id = self.next_nft_id.saturating_add(1);
+            self.minted_per_tier[tier_u8 as usize] = self.minted_per_tier[tier_u8 as usize].saturating_add(1);
             
             if is_new_participant {
-                self.unique_participants += 1;
+                self.unique_participants = self.unique_participants.saturating_add(1);
             }
 
             // Atualiza config minted count
             let mut updated_config = config;
-            updated_config.minted += 1;
+            updated_config.minted = updated_config.minted.saturating_add(1);
             self.tier_configs.insert(tier_u8, &updated_config);
 
             Self::env().emit_event(NFTMinted {
@@ -572,7 +572,7 @@ mod fiapo_ico {
         fn determine_rarity(&self, nft_id: u64) -> VisualRarity {
             // Usa block number + nft_id como seed pseudo-aleatório
             let block = self.env().block_number();
-            let seed = block.wrapping_add(nft_id as u32);
+            let seed = block.saturating_add(nft_id as u32);
             let rand = seed % 100;
 
             match rand {
@@ -697,7 +697,7 @@ mod fiapo_ico {
             }
 
             let seconds_elapsed = effective_end.saturating_sub(effective_start);
-            let days_elapsed = seconds_elapsed / SECONDS_PER_DAY;
+            let days_elapsed = seconds_elapsed.saturating_div(SECONDS_PER_DAY);
 
             if days_elapsed == 0 {
                 return 0;

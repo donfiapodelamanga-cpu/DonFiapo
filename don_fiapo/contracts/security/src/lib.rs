@@ -95,6 +95,12 @@ mod fiapo_security {
         total_blocked: u64,
     }
 
+    impl Default for FiapoSecurity {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl FiapoSecurity {
         #[ink(constructor)]
         pub fn new() -> Self {
@@ -158,7 +164,7 @@ mod fiapo_security {
 
             let status = self.reentrancy_status.get(contract).unwrap_or_default();
             if status == ReentrancyStatus::Entered {
-                self.total_blocked += 1;
+                self.total_blocked = self.total_blocked.saturating_add(1);
                 Self::env().emit_event(OperationBlocked {
                     account: contract,
                     reason: String::from("Reentrancy detected"),
@@ -200,14 +206,14 @@ mod fiapo_security {
             let mut info = self.rate_limits.get(account).unwrap_or_default();
 
             // Reset se janela expirou
-            if current_time > info.window_start + self.config.window_duration_ms {
+            if current_time > info.window_start.saturating_add(self.config.window_duration_ms) {
                 info.window_start = current_time;
                 info.operation_count = 0;
             }
 
             // Verifica limite
             if info.operation_count >= self.config.max_ops_per_window {
-                self.total_blocked += 1;
+                self.total_blocked = self.total_blocked.saturating_add(1);
                 Self::env().emit_event(OperationBlocked {
                     account,
                     reason: String::from("Rate limit exceeded"),
@@ -217,7 +223,7 @@ mod fiapo_security {
             }
 
             // Atualiza contagem
-            info.operation_count += 1;
+            info.operation_count = info.operation_count.saturating_add(1);
             info.last_operation = current_time;
             self.rate_limits.insert(account, &info);
 

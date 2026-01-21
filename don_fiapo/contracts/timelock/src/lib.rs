@@ -278,8 +278,8 @@ mod fiapo_timelock {
                 value,
                 scheduler: caller,
                 scheduled_at: current_time,
-                executable_at: current_time + delay,
-                expires_at: current_time + delay + self.delay_config.expiration_time,
+                executable_at: current_time.saturating_add(delay),
+                expires_at: current_time.saturating_add(delay).saturating_add(self.delay_config.expiration_time),
                 status: OperationStatus::Scheduled,
                 description,
                 executed_by: None,
@@ -287,8 +287,8 @@ mod fiapo_timelock {
             };
 
             self.operations.insert(operation_id, &operation);
-            self.next_operation_id += 1;
-            self.total_scheduled += 1;
+            self.next_operation_id = self.next_operation_id.saturating_add(1);
+            self.total_scheduled = self.total_scheduled.saturating_add(1);
 
             Self::env().emit_event(OperationScheduled {
                 operation_id,
@@ -336,7 +336,7 @@ mod fiapo_timelock {
             operation.executed_by = Some(caller);
             operation.executed_at = Some(current_time);
             self.operations.insert(operation_id, &operation);
-            self.total_executed += 1;
+            self.total_executed = self.total_executed.saturating_add(1);
 
             Self::env().emit_event(OperationExecuted {
                 operation_id,
@@ -368,7 +368,7 @@ mod fiapo_timelock {
 
             operation.status = OperationStatus::Cancelled;
             self.operations.insert(operation_id, &operation);
-            self.total_cancelled += 1;
+            self.total_cancelled = self.total_cancelled.saturating_add(1);
 
             Self::env().emit_event(OperationCancelled {
                 operation_id,

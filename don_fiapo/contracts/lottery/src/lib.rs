@@ -11,7 +11,6 @@ use fiapo_traits::{AccountId, Balance};
 
 #[ink::contract]
 mod fiapo_lottery {
-    use super::*;
     use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
@@ -23,14 +22,7 @@ mod fiapo_lottery {
         Christmas,
     }
 
-    /// Status de um sorteio
-    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum LotteryStatus {
-        Active,
-        Completed,
-        Cancelled,
-    }
+
 
     /// Erros do sistema de sorteios
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -198,7 +190,7 @@ mod fiapo_lottery {
         pub fn is_monthly_due(&self) -> bool {
             let current = self.env().block_timestamp();
             let interval = 30 * 24 * 60 * 60 * 1000; // 30 dias em ms
-            current >= self.last_monthly + interval
+            current >= self.last_monthly.saturating_add(interval)
         }
 
         // ==================== Fund Management ====================
@@ -245,7 +237,7 @@ mod fiapo_lottery {
                 // Novo participante
                 self.participants.push(user);
             }
-            self.user_tickets.insert(user, &(current_tickets + quantity));
+            self.user_tickets.insert(user, &current_tickets.saturating_add(quantity));
 
             Ok(())
         }
@@ -289,7 +281,7 @@ mod fiapo_lottery {
 
             // Verifica intervalo
             let interval = 30 * 24 * 60 * 60 * 1000;
-            if current < self.last_monthly + interval {
+            if current < self.last_monthly.saturating_add(interval) {
                 return Err(LotteryError::TooEarlyForDraw);
             }
 
@@ -325,7 +317,7 @@ mod fiapo_lottery {
 
             // Verifica intervalo anual
             let interval = 365 * 24 * 60 * 60 * 1000;
-            if current < self.last_christmas + interval {
+            if current < self.last_christmas.saturating_add(interval) {
                 return Err(LotteryError::TooEarlyForDraw);
             }
 
@@ -367,11 +359,11 @@ mod fiapo_lottery {
             let winners = self.select_winners(eligible.clone(), 3);
 
             // Calcula prêmios
-            let first_prize = fund * config.first_place_bps as u128 / 10000;
-            let second_prize = fund * config.second_place_bps as u128 / 10000;
-            let third_prize = fund * config.third_place_bps as u128 / 10000;
+            let first_prize = fund.saturating_mul(config.first_place_bps as u128).saturating_div(10000);
+            let second_prize = fund.saturating_mul(config.second_place_bps as u128).saturating_div(10000);
+            let third_prize = fund.saturating_mul(config.third_place_bps as u128).saturating_div(10000);
 
-            let winner_list = vec![
+            let winner_list = ink::prelude::vec![
                 Winner { wallet: winners[0], prize: first_prize, position: 1 },
                 Winner { wallet: winners[1], prize: second_prize, position: 2 },
                 Winner { wallet: winners[2], prize: third_prize, position: 3 },
@@ -403,7 +395,7 @@ mod fiapo_lottery {
                 self.history.remove(0);
             }
             self.history.push(result.clone());
-            self.next_lottery_id += 1;
+            self.next_lottery_id = self.next_lottery_id.saturating_add(1);
 
             Self::env().emit_event(LotteryExecuted {
                 lottery_id: result.id,
@@ -448,8 +440,12 @@ mod fiapo_lottery {
                     break;
                 }
                 
-                let seed = block as u64 + time + i as u64;
-                let idx = (seed % wallets.len() as u64) as usize;
+                let seed = (block as u64).saturating_add(time).saturating_add(i as u64);
+                if wallets.is_empty() {
+                    break;
+                }
+                let len = wallets.len() as u64;
+                let idx = (seed.checked_rem(len).unwrap_or(0)) as usize;
                 let (winner, _) = wallets.remove(idx);
                 winners.push(winner);
             }

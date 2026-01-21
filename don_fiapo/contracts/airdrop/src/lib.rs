@@ -208,6 +208,7 @@ mod fiapo_airdrop {
 
         /// Inicia uma nova rodada
         #[ink(message)]
+        #[allow(clippy::arithmetic_side_effects)]
         pub fn start_round(&mut self, total_tokens: Balance) -> Result<u32, AirdropError> {
             if self.env().caller() != self.owner {
                 return Err(AirdropError::Unauthorized);
@@ -221,7 +222,7 @@ mod fiapo_airdrop {
             let round_id = self.current_round + 1;
 
             // 12 meses em blocos (~12s por bloco)
-            let duration = 12 * 30 * 24 * 60 * 60 / 12;
+            let duration = 12 * 30 * 24 * 60 * 60 / 12; // 12 meses em segundos (aprox)
 
             self.config.is_active = true;
             self.config.start_block = block;
@@ -246,6 +247,7 @@ mod fiapo_airdrop {
 
         /// Fecha a rodada atual
         #[ink(message)]
+        #[allow(clippy::arithmetic_side_effects)]
         pub fn close_round(&mut self) -> Result<(), AirdropError> {
             if self.env().caller() != self.owner {
                 return Err(AirdropError::Unauthorized);
@@ -266,7 +268,11 @@ mod fiapo_airdrop {
                 }
 
                 round.total_points = self.total_points;
-                round.tokens_per_point = self.total_tokens / self.total_points;
+                if self.total_points > 0 {
+                    round.tokens_per_point = self.total_tokens.saturating_div(self.total_points);
+                } else {
+                    round.tokens_per_point = 0;
+                }
                 self.rounds.insert(self.current_round, &round);
             }
 
@@ -287,7 +293,7 @@ mod fiapo_airdrop {
                 return Ok(());
             }
 
-            let points = avg_balance / 100_000_000 * self.config.points_per_fiapo as u128;
+            let points = avg_balance.saturating_div(100_000_000).saturating_mul(self.config.points_per_fiapo as u128);
 
             let mut user_data = self.user_points.get(user).unwrap_or_default();
             let old_points = user_data.balance_points;
@@ -311,7 +317,7 @@ mod fiapo_airdrop {
                 return Err(AirdropError::NotActive);
             }
 
-            let points = staked / 100_000_000 * self.config.points_per_stake as u128;
+            let points = staked.saturating_div(100_000_000).saturating_mul(self.config.points_per_stake as u128);
 
             let mut user_data = self.user_points.get(user).unwrap_or_default();
             let old_points = user_data.staking_points;
@@ -340,7 +346,7 @@ mod fiapo_airdrop {
                 let count = nft_counts[tier] as u128;
                 let multiplier = self.config.nft_tier_multipliers[tier] as u128;
                 let base = self.config.points_per_nft as u128;
-                points = points.saturating_add(count * base * multiplier);
+                points = points.saturating_add(count.saturating_mul(base).saturating_mul(multiplier));
             }
 
             let mut user_data = self.user_points.get(user).unwrap_or_default();
@@ -384,7 +390,7 @@ mod fiapo_airdrop {
                 return Err(AirdropError::NotEligible);
             }
 
-            let amount = total_user_points * round.tokens_per_point;
+            let amount = total_user_points.saturating_mul(round.tokens_per_point);
 
             user_data.claimed = true;
             self.user_points.insert(caller, &user_data);

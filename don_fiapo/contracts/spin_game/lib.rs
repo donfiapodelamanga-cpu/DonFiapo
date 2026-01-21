@@ -47,22 +47,12 @@ pub mod royal_wheel {
 
     // --- Structs ---
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Default)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, StorageLayout))]
     pub struct DailyLimits {
         pub total_usdt_cents: u32,
         pub jackpot_hits: u8,
         pub last_reset_timestamp: u64,
-    }
-
-    impl Default for DailyLimits {
-        fn default() -> Self {
-            Self {
-                total_usdt_cents: 0,
-                jackpot_hits: 0,
-                last_reset_timestamp: 0,
-            }
-        }
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -229,7 +219,7 @@ pub mod royal_wheel {
 
         #[ink(message)]
         pub fn get_spin_balance(&self, player: AccountId) -> u32 {
-            self.spins_balance.get(&player).unwrap_or(0)
+            self.spins_balance.get(player).unwrap_or(0)
         }
 
         #[ink(message)]
@@ -286,7 +276,10 @@ pub mod royal_wheel {
             ink::env::hash_encoded::<ink::env::hash::Keccak256, _>(&seed_data, &mut output);
             
             let random_val = u32::from_le_bytes([output[0], output[1], output[2], output[3]]);
-            random_val % max
+            if max == 0 {
+                return 0;
+            }
+            random_val.checked_rem(max).unwrap_or(0)
         }
 
         fn draw_reward(&mut self, _player: AccountId, package: SpinPackage) -> SpinResult {
@@ -309,9 +302,9 @@ pub mod royal_wheel {
             // Adjust RHS of ranges for calculation
             // RNG is 5..9999
             // USDT Range: 5 .. (5 + usdt)
-            let usdt_end = 5 + usdt_limit;
-            let fiapo_end = usdt_end + fiapo_limit;
-            let boost_end = fiapo_end + boost_limit;
+            let usdt_end = 5u32.saturating_add(usdt_limit);
+            let fiapo_end = usdt_end.saturating_add(fiapo_limit);
+            let boost_end = fiapo_end.saturating_add(boost_limit);
 
             if rng < usdt_end {
                 // USDT Hit
@@ -320,8 +313,8 @@ pub mod royal_wheel {
                 let (reward_id, amount_cents) = if sub_rng < 20 { (3, 500) } else { (6, 100) };
 
                 // Anti-Drain Check
-                if self.daily_limits.total_usdt_cents + amount_cents > MAX_DAILY_USDT_CENTS ||
-                   self.campaign_usdt_cents + amount_cents > MAX_CAMPAIGN_USDT_CENTS {
+                if self.daily_limits.total_usdt_cents.saturating_add(amount_cents) > MAX_DAILY_USDT_CENTS ||
+                   self.campaign_usdt_cents.saturating_add(amount_cents) > MAX_CAMPAIGN_USDT_CENTS {
                        // Fallback -> 100 FIAPO (Emotionally better than nothing)
                        return self.create_reward(9);
                 }
@@ -391,15 +384,15 @@ pub mod royal_wheel {
         fn apply_reward(&mut self, player: &AccountId, reward: &SpinResult) {
             match reward.reward_type {
                 RewardType::Usdt => {
-                    self.daily_limits.total_usdt_cents += reward.amount as u32;
-                    self.campaign_usdt_cents += reward.amount as u32;
+                    self.daily_limits.total_usdt_cents = self.daily_limits.total_usdt_cents.saturating_add(reward.amount as u32);
+                    self.campaign_usdt_cents = self.campaign_usdt_cents.saturating_add(reward.amount as u32);
                     // Logic to transfer USDT would go here (Cross-contract call)
                 },
                 RewardType::Boost => {
                     let current_end = self.user_boost_end_time.get(player).unwrap_or(0);
                     let now = self.env().block_timestamp();
                     let start_time = if current_end > now { current_end } else { now };
-                    let new_end = start_time + BOOST_DURATION_MS;
+                    let new_end = start_time.saturating_add(BOOST_DURATION_MS);
                     self.user_boost_end_time.insert(player, &new_end);
                     
                     self.env().emit_event(BoostActivated {
@@ -409,7 +402,7 @@ pub mod royal_wheel {
                 },
                 RewardType::TokenFiapo => {
                     if reward.amount == 100_000 { // Jackpot
-                        self.daily_limits.jackpot_hits += 1;
+                        self.daily_limits.jackpot_hits = self.daily_limits.jackpot_hits.saturating_add(1);
                         self.env().emit_event(JackpotWon{
                             player: *player,
                             amount: reward.amount,

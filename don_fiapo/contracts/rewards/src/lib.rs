@@ -447,7 +447,7 @@ mod fiapo_rewards {
                 entries.push(RankingEntry {
                     wallet: *wallet,
                     score: *score,
-                    rank: (i + 1) as u8,
+                    rank: (i.saturating_add(1)) as u8,
                     reward_amount: reward,
                 });
 
@@ -465,7 +465,7 @@ mod fiapo_rewards {
             };
 
             // Atualiza estado
-            self.next_ranking_id += 1;
+            self.next_ranking_id = self.next_ranking_id.saturating_add(1);
             self.rewards_fund = 0;
             self.last_monthly_ranking = current_time;
             self.total_distributed = self.total_distributed.saturating_add(total_rewards);
@@ -507,9 +507,12 @@ mod fiapo_rewards {
                 return Err(RewardsError::Unauthorized);
             }
             // Valida que soma dos pesos é 100
-            let sum = weights.balance_weight as u16 + weights.staking_weight as u16 
-                + weights.burn_weight as u16 + weights.transaction_weight as u16
-                + weights.affiliate_weight as u16 + weights.governance_weight as u16;
+            let sum = (weights.balance_weight as u16)
+                .saturating_add(weights.staking_weight as u16)
+                .saturating_add(weights.burn_weight as u16)
+                .saturating_add(weights.transaction_weight as u16)
+                .saturating_add(weights.affiliate_weight as u16)
+                .saturating_add(weights.governance_weight as u16);
             if sum != 100 {
                 return Err(RewardsError::InvalidConfiguration);
             }

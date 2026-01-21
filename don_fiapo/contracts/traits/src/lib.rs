@@ -385,10 +385,7 @@ impl MathValidator {
     /// Divisão segura com verificação de divisão por zero
     #[inline]
     pub fn safe_div(dividend: u128, divisor: u128) -> Result<u128, SecurityError> {
-        if divisor == 0 {
-            return Err(SecurityError::DivisionByZero);
-        }
-        Ok(dividend / divisor)
+        dividend.checked_div(divisor).ok_or(SecurityError::DivisionByZero)
     }
 
     /// Calcula porcentagem de forma segura (value * percentage / base)
@@ -437,7 +434,7 @@ impl InputValidator {
     /// Valida se endereços são únicos (sem duplicatas)
     pub fn validate_unique_addresses(addresses: &[AccountId]) -> Result<(), SecurityError> {
         for i in 0..addresses.len() {
-            for j in i + 1..addresses.len() {
+            for j in i.saturating_add(1)..addresses.len() {
                 if addresses[i] == addresses[j] {
                     return Err(SecurityError::InvalidAddress);
                 }

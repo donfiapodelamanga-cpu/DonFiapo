@@ -1,9 +1,9 @@
 [package]
 name = "fiapo-staking"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "1.0.0"
+authors = ["Don Fiapo Team"]
+edition = "2021"
+license = "MIT"
 description = "Staking contract for Don Fiapo ecosystem"
 
 [dependencies]

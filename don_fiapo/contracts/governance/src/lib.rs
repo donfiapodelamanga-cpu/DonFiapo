@@ -311,7 +311,7 @@ mod fiapo_governance {
             for governor in initial_governors.iter() {
                 if *governor != AccountId::from([0u8; 32]) {
                     governors.insert(*governor, &true);
-                    total_governors += 1;
+                    total_governors = total_governors.saturating_add(1);
                 }
             }
 
@@ -408,7 +408,7 @@ mod fiapo_governance {
             }
 
             self.governors.insert(new_governor, &true);
-            self.total_governors += 1;
+            self.total_governors = self.total_governors.saturating_add(1);
 
             Self::env().emit_event(GovernorAdded {
                 governor: new_governor,
@@ -437,7 +437,7 @@ mod fiapo_governance {
             }
 
             self.governors.remove(governor);
-            self.total_governors -= 1;
+            self.total_governors = self.total_governors.saturating_sub(1);
 
             Self::env().emit_event(GovernorRemoved {
                 governor,
@@ -479,8 +479,8 @@ mod fiapo_governance {
                 data,
                 created_at: current_time,
                 voting_start: current_time,
-                voting_end: current_time + self.config.voting_period,
-                execution_time: current_time + self.config.voting_period + self.config.timelock_period,
+                voting_end: current_time.saturating_add(self.config.voting_period),
+                execution_time: current_time.saturating_add(self.config.voting_period).saturating_add(self.config.timelock_period),
                 status: ProposalStatus::Active,
                 votes_for: 0,
                 votes_against: 0,
@@ -489,8 +489,8 @@ mod fiapo_governance {
             };
 
             self.proposals.insert(proposal_id, &proposal);
-            self.next_proposal_id += 1;
-            self.active_proposals += 1;
+            self.next_proposal_id = self.next_proposal_id.saturating_add(1);
+            self.active_proposals = self.active_proposals.saturating_add(1);
 
             Self::env().emit_event(ProposalCreated {
                 proposal_id,
@@ -545,9 +545,9 @@ mod fiapo_governance {
 
             // Atualiza contagem
             match vote {
-                Vote::For => proposal.votes_for += 1,
-                Vote::Against => proposal.votes_against += 1,
-                Vote::Abstain => proposal.votes_abstain += 1,
+                Vote::For => proposal.votes_for = proposal.votes_for.saturating_add(1),
+                Vote::Against => proposal.votes_against = proposal.votes_against.saturating_add(1),
+                Vote::Abstain => proposal.votes_abstain = proposal.votes_abstain.saturating_add(1),
             }
 
             self.proposals.insert(proposal_id, &proposal);
@@ -579,8 +579,8 @@ mod fiapo_governance {
             }
 
             // Calcula quorum
-            let total_votes = proposal.votes_for + proposal.votes_against + proposal.votes_abstain;
-            let quorum_votes = (self.total_governors * self.config.quorum_bps / 10000) as u32;
+            let total_votes = proposal.votes_for.saturating_add(proposal.votes_against).saturating_add(proposal.votes_abstain);
+            let quorum_votes = self.total_governors.saturating_mul(self.config.quorum_bps).saturating_div(10000);
 
             let new_status = if total_votes < quorum_votes {
                 ProposalStatus::Rejected
@@ -721,14 +721,14 @@ mod fiapo_governance {
                 data,
                 scheduler: caller,
                 scheduled_at: current_time,
-                executable_at: current_time + delay,
-                expires_at: current_time + delay + self.timelock_expiration,
+                executable_at: current_time.saturating_add(delay),
+                expires_at: current_time.saturating_add(delay).saturating_add(self.timelock_expiration),
                 status: TimelockStatus::Scheduled,
                 reason,
             };
 
             self.timelock_operations.insert(operation_id, &entry);
-            self.next_timelock_id += 1;
+            self.next_timelock_id = self.next_timelock_id.saturating_add(1);
 
             Self::env().emit_event(TimelockScheduled {
                 operation_id,
@@ -821,7 +821,7 @@ mod fiapo_governance {
                 return Err(GovernanceError::Unauthorized);
             }
             // Mínimo 1 dia, máximo 30 dias
-            if expiration < DAY || expiration > 30 * DAY {
+            if !(DAY..=30 * DAY).contains(&expiration) {
                 return Err(GovernanceError::InvalidParameters);
             }
             self.timelock_expiration = expiration;
@@ -891,7 +891,7 @@ mod fiapo_governance {
                 ProposalType::Upgrade => {
                     // Upgrade requer timelock de 72h - agenda operação
                     let _operation_id = self.next_timelock_id;
-                    self.next_timelock_id += 1;
+                    self.next_timelock_id = self.next_timelock_id.saturating_add(1);
                     
                     let current_time = self.env().block_timestamp();
                     let delay = TimelockOperationType::ContractUpgrade.get_delay();
@@ -902,8 +902,8 @@ mod fiapo_governance {
                         data: proposal.data.clone(),
                         scheduler: proposal.proposer,
                         scheduled_at: current_time,
-                        executable_at: current_time + delay,
-                        expires_at: current_time + delay + self.timelock_expiration,
+                        executable_at: current_time.saturating_add(delay),
+                        expires_at: current_time.saturating_add(delay).saturating_add(self.timelock_expiration),
                         status: TimelockStatus::Scheduled,
                         reason: proposal.description.clone(),
                     };
