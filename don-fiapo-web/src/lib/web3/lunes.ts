@@ -17,12 +17,11 @@ export const LUNES_CONFIG = {
 
 // Contract addresses
 export const CONTRACTS = {
-  FIAPO_TOKEN: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
-  // All functionalities (staking, ICO, airdrop, affiliate) are in the main contract
-  STAKING: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
-  ICO: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
-  AIRDROP: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
-  AFFILIATE: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
+  FIAPO_TOKEN: process.env.NEXT_PUBLIC_CORE_CONTRACT || '',
+  STAKING: process.env.NEXT_PUBLIC_STAKING_CONTRACT || '',
+  ICO: process.env.NEXT_PUBLIC_ICO_CONTRACT || '',
+  AIRDROP: process.env.NEXT_PUBLIC_AIRDROP_CONTRACT || '',
+  AFFILIATE: process.env.NEXT_PUBLIC_AFFILIATE_CONTRACT || '',
 };
 
 // Wallet extension IDs
@@ -33,6 +32,7 @@ const WALLET_EXTENSION_IDS: Record<NonNullable<PolkadotWalletProvider>, string> 
 };
 
 let api: ApiPromise | null = null;
+let connectionPromise: Promise<ApiPromise | null> | null = null;
 let enabledExtensions: InjectedExtension[] = [];
 
 /**
@@ -44,21 +44,33 @@ export async function connectToLunes(): Promise<ApiPromise | null> {
     return api;
   }
 
-  try {
-    const provider = new WsProvider(LUNES_CONFIG.rpc, 1000); // 1 second timeout
-
-    // Add connection timeout
-    const connectionPromise = ApiPromise.create({ provider });
-    const timeoutPromise = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('Connection timeout')), 5000)
-    );
-
-    api = await Promise.race([connectionPromise, timeoutPromise]) as ApiPromise;
-    return api;
-  } catch (error) {
-    console.warn('Failed to connect to Lunes Network:', error);
-    return null;
+  // Return pending connection promise if exists
+  if (connectionPromise) {
+    return connectionPromise;
   }
+
+  connectionPromise = (async () => {
+    try {
+      const provider = new WsProvider(LUNES_CONFIG.rpc, 1000); // 1 second timeout
+
+      // Add connection timeout
+      const apiPromise = ApiPromise.create({ provider });
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('Connection timeout')), 5000)
+      );
+
+      const connectedApi = await Promise.race([apiPromise, timeoutPromise]) as ApiPromise;
+      api = connectedApi;
+      connectionPromise = null;
+      return api;
+    } catch (error) {
+      console.warn('Failed to connect to Lunes Network:', error);
+      connectionPromise = null;
+      return null;
+    }
+  })();
+
+  return connectionPromise;
 }
 
 /**

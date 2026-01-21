@@ -659,3 +659,37 @@ export function useICOStats() {
     fetchStats,
   };
 }
+
+import type { ContractNFTConfig } from '@/lib/api/contract';
+
+/**
+ * Hook for fetching NFT Tier Configurations
+ */
+export function useNftConfigs() {
+  const [configs, setConfigs] = useState<ContractNFTConfig[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchConfigs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const contract = await loadContract();
+      if (!contract) return;
+      const data = await contract.getIcoNftConfigs();
+      setConfigs(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch NFT configs');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    configs,
+    loading,
+    error,
+    fetchConfigs,
+  };
+}

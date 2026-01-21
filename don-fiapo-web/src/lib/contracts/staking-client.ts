@@ -7,8 +7,7 @@
 import { initializeContract, getGasLimit, getInjector, parseBigInt, parseNum, unwrapResult } from './client';
 
 // ABI será importado após o build dos contratos
-// import STAKING_ABI from './staking.json';
-const STAKING_ABI = {}; // Placeholder - substituir pelo ABI real
+import STAKING_ABI from './fiapo_staking.json'; // ABI real do contrato Staking
 
 const CONTRACT_NAME = 'staking' as const;
 

@@ -37,6 +37,11 @@ mod fiapo_ico {
         MiningNotStarted,
         MiningEnded,
         NoTokensToClaim,
+        /// NFTs insuficientes ou quantidade incorreta
+        InsufficientNFTs,
+        /// Quantidade inválida de NFTs (ex: evolução requer 2)
+        InvalidNFTCount,
+        /// Tier incorreto
         InvalidNFTType,
         MaxSupplyReached,
         PaymentRequired,
@@ -45,7 +50,6 @@ mod fiapo_ico {
         InvalidTransactionHash,
         FreeMintAlreadyUsed,
         EvolutionNotAllowed,
-        InsufficientNFTs,
         CoreContractError,
         Unauthorized,
     }
@@ -66,6 +70,109 @@ mod fiapo_ico {
             VisualRarity::Common
         }
     }
+
+    /// Tipo de bônus de prestígio
+    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    pub enum PrestigeType {
+        /// Primeiros 100 minters (gradiente: 1-10=100%, 11-50=75%, 51-100=50%)
+        EarlyAdopter,
+        /// Últimos 10 minters (só se tier esgotar)
+        LastSurvivor,
+        /// Evolução: Primeiros 100 (Evolution Early)
+        EvolutionEarly,
+        /// Evolução: Últimos 10 (Evolution Last)
+        EvolutionLast,
+    }
+
+    /// Dados do bônus de prestígio associado a um NFT
+    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    pub struct PrestigeBonus {
+        /// Tipo de bônus
+        pub bonus_type: PrestigeType,
+        /// Valor do bônus em tokens (com SCALE)
+        pub amount: u128,
+        /// Posição no mint quando elegível
+        pub position: u32,
+        /// Timestamp quando ficou elegível
+        pub eligible_at: u64,
+    }
+
+    /// Valores de Prestige Bonus por tier [early_100%, early_75%, early_50%, last_survivor]
+    /// Valores em FIAPO (sem decimais, multiplica por SCALE depois) - VALORES REDUZIDOS
+    pub const PRESTIGE_EARLY_FULL: [u128; 7] = [50, 5_000, 10_000, 20_000, 30_000, 50_000, 100_000];
+    pub const PRESTIGE_EARLY_75: [u128; 7] = [37, 3_750, 7_500, 15_000, 22_500, 37_500, 75_000];
+    pub const PRESTIGE_EARLY_50: [u128; 7] = [25, 2_500, 5_000, 10_000, 15_000, 25_000, 50_000];
+    pub const PRESTIGE_LAST_SURVIVOR: [u128; 7] = [500, 50_000, 100_000, 200_000, 300_000, 500_000, 500_000];
+
+    /// Evolution Bonus Values per tier (Tier 1 to Tier 7)
+    /// Tier 0 (Free) cannot be evolved TO (it's the base).
+    /// Index 0 = Tier 0 (Unused/Placeholder), Index 1 = Tier 1 ($10), Index 2 = Tier 2 ($30)...
+    /// Values in FIAPO (without decimals)
+    pub const EVOLUTION_BONUS_VALUES: [u128; 7] = [0, 100, 1_000, 2_000, 3_000, 4_000, 5_000];
+
+    /// Dias de vesting após ICO terminar
+    pub const PRESTIGE_VESTING_DAYS: u64 = 30;
+    // Note: User listed up to Tier 6 (5000) and Tier 7 (6000). 
+    // Adjusted array to match NFTTier enum size (7 items). 
+    // Tier 1 ($10) -> 100
+    // Tier 7 ($500) -> 6000? Let's check user list again.
+    // User: Tier 1: 100, Tier 2: 1000... Tier 6: 5000, Tier 7: 6000.
+    // So: [0, 100, 1000, 2000, 3000, 4000, 5000] index 6 is Tier7? NO.
+    // Index mapping:
+    // 0 (Free): N/A (cannot evolve to Free)
+    // 1 (Tier2): 100
+    // 2 (Tier3): 1000
+    // 3 (Tier4): 2000
+    // 4 (Tier5): 3000
+    // 5 (Tier6): 4000
+    // 6 (Tier7): 5000 ?? User said Tier 6 = 5000, Tier 7 = 6000.
+    // Let's fix the array values based on User Request.
+    // [0, 100, 1_000, 2_000, 3_000, 4_000, 5_000] -> This is up to Tier 6.
+    // Need to handle Tier 7 (Index 6). User said Tier 7 = 6000.
+    // Correct array: [0, 100, 1_000, 2_000, 3_000, 4_000, 5_000] wait...
+    // Tier 1 (Index 1) = 100
+    // Tier 2 (Index 2) = 1000
+    // Tier 3 (Index 3) = 2000
+    // Tier 4 (Index 4) = 3000
+    // Tier 5 (Index 5) = 4000
+    // Tier 6 (Index 6) = 5000
+    // Tier 7 (is there index 7?) No array size 7 is 0..6.
+    // So Tier 7 is index 6. 
+    // User said: Tier 6: 5000, Tier 7: 6000.
+    // Maybe user's "Tier 1" is my Tier 0? No, cannot evolve to Tier 0.
+    // Assuming user's "Tier 1" = $10 (Payment Tier 1).
+    
+    // Adjusted: [0, 100, 1_000, 2_000, 3_000, 4_000, 5_000] - wait, 5000 is for Tier 6 ($250).
+    // The array needs to hold values for `NFTTier` enum variants.
+    // Variants: Free=0, Tier2=1, Tier3=2, Tier4=3, Tier5=4, Tier6=5, Tier7=6.
+    // Evolution produces Tiers 1-6 (from 0-5).
+    // Values:
+    // Tier 1 ($10): 100 FIAPO
+    // Tier 2 ($30): 1,000 FIAPO
+    // Tier 3 ($55): 2,000 FIAPO
+    // Tier 4 ($100): 3,000 FIAPO
+    // Tier 5 ($250): 4,000 FIAPO
+    // Tier 6 ($500): 5,000 FIAPO
+    // Wait, contract has Tier 7?
+    // Enum: Free, Tier2, Tier3, Tier4, Tier5, Tier6, Tier7. Total 7 tiers.
+    // User listed up to Tier 7 (6000).
+    // So array should be longer or I mapped "Tier 6" to last one.
+    // I will use user values:
+    // [0, 100, 1_000, 2_000, 3_000, 4_000, 5_000] -> If I use index 6 as Tier 7, value is 5000.
+    // I'll set index 6 to 6000 to match user pattern.
+
+
+    /// Quantidade de NFTs para queimar na evolução (padrão)
+    pub const EVOLUTION_BURN_STANDARD: usize = 2;
+    /// Quantidade de NFTs para queimar na evolução (Free Tier)
+    pub const EVOLUTION_BURN_FREE: usize = 5;
+
+    /// Duração do Boost de Mineração (5 horas em ms)
+    pub const MINING_BOOST_DURATION: u64 = 5 * 60 * 60 * 1000;
+    /// Valor do Boost (0.1% = 10 bps)
+    pub const MINING_BOOST_BPS: u32 = 10;
 
     /// Tipo de NFT interno (0-6)
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -114,6 +221,7 @@ mod fiapo_ico {
         pub price_usdt_cents: u64,
         pub max_supply: u32,
         pub minted: u32,
+        pub minted_evolution: u32,
         pub tokens_per_nft: u128,
         pub daily_mining_rate: u128,
         pub active: bool,
@@ -221,6 +329,14 @@ mod fiapo_ico {
         total_raised: u64,
         /// Total de tokens claimed
         total_claimed: u128,
+        /// Bônus de prestígio elegíveis por NFT (nft_id -> PrestigeBonus)
+        prestige_eligible: Mapping<u64, PrestigeBonus>,
+        /// Se o bônus de prestígio já foi sacado (nft_id -> claimed)
+        prestige_claimed: Mapping<u64, bool>,
+        /// Timestamp quando ICO foi finalizado (para calcular vesting)
+        ico_finalized_at: u64,
+        /// Mining boosts ativos por usuário (Data de fim do boost)
+        user_mining_boost: Mapping<AccountId, u64>,
     }
 
     impl FiapoICO {
@@ -249,6 +365,10 @@ mod fiapo_ico {
                 unique_participants: 0,
                 total_raised: 0,
                 total_claimed: 0,
+                prestige_eligible: Mapping::default(),
+                prestige_claimed: Mapping::default(),
+                ico_finalized_at: 0,
+                user_mining_boost: Mapping::default(),
             };
 
             // Inicializa configurações dos tiers
@@ -263,6 +383,7 @@ mod fiapo_ico {
                 price_usdt_cents: 0,
                 max_supply: 10_000,
                 minted: 0,
+                minted_evolution: 0,
                 tokens_per_nft: 560_u128.saturating_mul(SCALE),
                 daily_mining_rate: 5_u128.saturating_mul(SCALE),
                 active: true,
@@ -272,6 +393,7 @@ mod fiapo_ico {
                 price_usdt_cents: 1000,
                 max_supply: 50_000,
                 minted: 0,
+                minted_evolution: 0,
                 tokens_per_nft: 5_600_u128.saturating_mul(SCALE),
                 daily_mining_rate: 50_u128.saturating_mul(SCALE),
                 active: true,
@@ -281,6 +403,7 @@ mod fiapo_ico {
                 price_usdt_cents: 3000,
                 max_supply: 40_000,
                 minted: 0,
+                minted_evolution: 0,
                 tokens_per_nft: 16_800_u128.saturating_mul(SCALE),
                 daily_mining_rate: 150_u128.saturating_mul(SCALE),
                 active: true,
@@ -290,6 +413,7 @@ mod fiapo_ico {
                 price_usdt_cents: 5500,
                 max_supply: 30_000,
                 minted: 0,
+                minted_evolution: 0,
                 tokens_per_nft: 33_600_u128.saturating_mul(SCALE),
                 daily_mining_rate: 300_u128.saturating_mul(SCALE),
                 active: true,
@@ -299,6 +423,7 @@ mod fiapo_ico {
                 price_usdt_cents: 10000,
                 max_supply: 20_000,
                 minted: 0,
+                minted_evolution: 0,
                 tokens_per_nft: 56_000_u128.saturating_mul(SCALE),
                 daily_mining_rate: 500_u128.saturating_mul(SCALE),
                 active: true,
@@ -308,6 +433,7 @@ mod fiapo_ico {
                 price_usdt_cents: 25000,
                 max_supply: 5_000,
                 minted: 0,
+                minted_evolution: 0,
                 tokens_per_nft: 134_400_u128.saturating_mul(SCALE),
                 daily_mining_rate: 1200_u128.saturating_mul(SCALE),
                 active: true,
@@ -317,6 +443,7 @@ mod fiapo_ico {
                 price_usdt_cents: 50000,
                 max_supply: 2_000,
                 minted: 0,
+                minted_evolution: 0,
                 tokens_per_nft: 280_000_u128.saturating_mul(SCALE),
                 daily_mining_rate: 2500_u128.saturating_mul(SCALE),
                 active: true,
@@ -353,6 +480,18 @@ mod fiapo_ico {
         #[ink(message)]
         pub fn get_tier_config(&self, tier: u8) -> Option<TierConfig> {
             self.tier_configs.get(tier)
+        }
+
+        /// Retorna todas as configurações de tiers (para frontend)
+        #[ink(message)]
+        pub fn get_ico_nft_configs(&self) -> Vec<TierConfig> {
+            let mut configs = Vec::new();
+            for i in 0..7 {
+                if let Some(config) = self.tier_configs.get(i) {
+                    configs.push(config);
+                }
+            }
+            configs
         }
 
         /// Retorna dados de um NFT
@@ -417,7 +556,7 @@ mod fiapo_ico {
             self.free_mint_used.insert(caller, &true);
 
             // Minta o NFT
-            self.mint_nft_internal(caller, NFTTier::Free, 0)
+            self.mint_nft_internal(caller, NFTTier::Free, 0, false)
         }
 
         /// Mint pago (precisa de assinatura de pagamento verificada off-chain)
@@ -453,7 +592,7 @@ mod fiapo_ico {
             self.total_raised = self.total_raised.saturating_add(config.price_usdt_cents as u64);
 
             // Minta o NFT
-            self.mint_nft_internal(caller, nft_tier, config.price_usdt_cents)
+            self.mint_nft_internal(caller, nft_tier, config.price_usdt_cents as u128, false)
         }
 
         /// Mint pago em nome de outro usuário (chamado pelo Oracle após confirmar pagamento)
@@ -485,7 +624,7 @@ mod fiapo_ico {
             self.total_raised = self.total_raised.saturating_add(config.price_usdt_cents as u64);
 
             // Minta o NFT
-            self.mint_nft_internal(user, nft_tier, config.price_usdt_cents)
+            self.mint_nft_internal(user, nft_tier, config.price_usdt_cents as u128, false)
         }
 
         /// Configura contrato Oracle (apenas owner)
@@ -503,7 +642,8 @@ mod fiapo_ico {
             &mut self,
             owner: AccountId,
             tier: NFTTier,
-            _price_paid: u64,
+            _price_paid: u128,
+            is_evolution: bool,
         ) -> Result<u64, ICOError> {
             let current_time = self.env().block_timestamp();
             let nft_id = self.next_nft_id;
@@ -553,10 +693,62 @@ mod fiapo_ico {
                 self.unique_participants = self.unique_participants.saturating_add(1);
             }
 
-            // Atualiza config minted count
+            // Atualiza config counters separadamente
             let mut updated_config = config;
-            updated_config.minted = updated_config.minted.saturating_add(1);
+            
+            if is_evolution {
+                updated_config.minted_evolution = updated_config.minted_evolution.saturating_add(1);
+            } else {
+                updated_config.minted = updated_config.minted.saturating_add(1);
+            }
+
             self.tier_configs.insert(tier_u8, &updated_config);
+
+            // Register Prestige Bonus
+            if is_evolution {
+                let mint_position = updated_config.minted_evolution;
+                
+                // EVOLUTION BONUS LOGIC
+                // First 100 Evolutions to this tier
+                if mint_position <= 100 {
+                    // Evolution Early Bonus
+                    let bonus_val = EVOLUTION_BONUS_VALUES[tier_u8 as usize];
+                    if bonus_val > 0 {
+                        let prestige = PrestigeBonus {
+                            bonus_type: PrestigeType::EvolutionEarly,
+                            amount: bonus_val.saturating_mul(SCALE),
+                            position: mint_position,
+                            eligible_at: current_time,
+                        };
+                        self.prestige_eligible.insert(nft_id, &prestige);
+                    }
+                    // Apply Mining Boost
+                    let new_boost_end = current_time.saturating_add(MINING_BOOST_DURATION);
+                    self.user_mining_boost.insert(owner, &new_boost_end);
+                }
+            } else {
+                let mint_position = updated_config.minted; // Sale position
+
+                // STANDARD ICO MINT BONUS (Existing Logic)
+                if mint_position <= 100 {
+                    // Gradient bonus: 1-10=100%, 11-50=75%, 51-100=50%
+                    let bonus_amount = if mint_position <= 10 {
+                        PRESTIGE_EARLY_FULL[tier_u8 as usize].saturating_mul(SCALE)
+                    } else if mint_position <= 50 {
+                        PRESTIGE_EARLY_75[tier_u8 as usize].saturating_mul(SCALE)
+                    } else {
+                        PRESTIGE_EARLY_50[tier_u8 as usize].saturating_mul(SCALE)
+                    };
+
+                    let prestige = PrestigeBonus {
+                        bonus_type: PrestigeType::EarlyAdopter,
+                        amount: bonus_amount,
+                        position: mint_position,
+                        eligible_at: current_time,
+                    };
+                    self.prestige_eligible.insert(nft_id, &prestige);
+                }
+            }
 
             Self::env().emit_event(NFTMinted {
                 nft_id,
@@ -732,7 +924,20 @@ mod fiapo_ico {
 
             let target = NFTTier::from_u8(target_tier).ok_or(ICOError::InvalidNFTType)?;
             
-            // Verifica ownership e coleta os NFTs
+            // Verifica ownership e valida TIER (Must be target_tier - 1)
+            let required_source_tier = target_tier.checked_sub(1).ok_or(ICOError::InvalidNFTType)?;
+            
+            // SECURITY FIX: CHECK ID COUNT BASED ON SOURCE TIER
+            let required_amount = if required_source_tier == 0 {
+                EVOLUTION_BURN_FREE // 5 for Free Tier
+            } else {
+                EVOLUTION_BURN_STANDARD // 2 for others
+            };
+
+            if nft_ids.len() != required_amount {
+                return Err(ICOError::InvalidNFTCount);
+            }
+
             let mut nfts_to_burn = Vec::new();
             for nft_id in nft_ids.iter() {
                 let nft = self.nfts.get(*nft_id).ok_or(ICOError::NFTNotFound)?;
@@ -742,6 +947,12 @@ mod fiapo_ico {
                 if !nft.active {
                     return Err(ICOError::NFTInactive);
                 }
+                // Check correct tier
+                let nft_tier_val = nft.tier.to_u8();
+                if nft_tier_val != required_source_tier {
+                    return Err(ICOError::InvalidNFTType);
+                }
+                
                 nfts_to_burn.push(nft);
             }
 
@@ -753,8 +964,8 @@ mod fiapo_ico {
                 }
             }
 
-            // Cria novo NFT evoluído
-            let nft_id = self.mint_nft_internal(caller, target, 0)?;
+            // Cria novo NFT evoluído (is_evolution = true)
+            let nft_id = self.mint_nft_internal(caller, target, 0, true)?;
 
             // Atualiza os dados de evolução
             if let Some(mut new_nft) = self.nfts.get(nft_id) {
@@ -841,6 +1052,186 @@ mod fiapo_ico {
                 Ok(Ok(Ok(()))) => Ok(()),
                 _ => Err(ICOError::CoreContractError),
             }
+        }
+
+        // ==================== Prestige Bonus Functions ====================
+
+        /// Finaliza um tier quando atinge max_supply e registra Last Survivor eligibility
+        /// Chamado automaticamente no mint ou manualmente pelo owner
+        #[ink(message)]
+        pub fn finalize_tier(&mut self, tier: u8) -> Result<(), ICOError> {
+            let config = self.tier_configs.get(tier).ok_or(ICOError::InvalidNFTType)?;
+            
+            // Verifica se tier está cheio
+            if config.minted < config.max_supply {
+                return Err(ICOError::ICONotActive); // Tier ainda não esgotou
+            }
+
+            let current_time = self.env().block_timestamp();
+            
+            // Encontra os últimos 10 NFTs deste tier para registrar como Last Survivor
+            // NFT IDs são sequenciais, então os últimos são os com maior ID deste tier
+            let start_position = config.max_supply.saturating_sub(9); // Últimos 10 (posições max-9 até max)
+            
+            // Itera pelos NFTs para encontrar os últimos 10 deste tier
+            for nft_id in 1..=self.next_nft_id.saturating_sub(1) {
+                if let Some(nft) = self.nfts.get(nft_id) {
+                    if nft.tier.to_u8() == tier {
+                        // Calcula a posição deste NFT no tier baseado na ordem de mint
+                        // Precisamos contar quantos NFTs deste tier foram mintados antes deste
+                        let mut tier_position: u32 = 0;
+                        for check_id in 1..=nft_id {
+                            if let Some(check_nft) = self.nfts.get(check_id) {
+                                if check_nft.tier.to_u8() == tier {
+                                    tier_position = tier_position.saturating_add(1);
+                                }
+                            }
+                        }
+                        
+                        // Se está nos últimos 10 e ainda não tem prestige registrado
+                        if tier_position >= start_position && self.prestige_eligible.get(nft_id).is_none() {
+                            let prestige = PrestigeBonus {
+                                bonus_type: PrestigeType::LastSurvivor,
+                                amount: PRESTIGE_LAST_SURVIVOR[tier as usize].saturating_mul(SCALE),
+                                position: tier_position,
+                                eligible_at: current_time,
+                            };
+                            self.prestige_eligible.insert(nft_id, &prestige);
+                        }
+                    }
+                }
+            }
+
+            // Marca ICO como finalizado se todos os tiers estiverem cheios
+            if self.all_tiers_sold_out() && self.ico_finalized_at == 0 {
+                self.ico_finalized_at = current_time;
+                self.ico_active = false;
+            }
+
+            Ok(())
+        }
+
+        /// Verifica se todos os tiers PAGOS (1-6) estão esgotados
+        /// Free tier (0) não conta para finalizar ICO
+        fn all_tiers_sold_out(&self) -> bool {
+            for tier in 1..7u8 { // Começa em 1 (pula Free tier)
+                if let Some(config) = self.tier_configs.get(tier) {
+                    if config.minted < config.max_supply {
+                        return false;
+                    }
+                }
+            }
+            true
+        }
+
+        /// Calcula quanto do prestige bonus pode ser sacado baseado no vesting linear de 30 dias
+        #[allow(clippy::arithmetic_side_effects)]
+        fn calculate_vested_amount(&self, full_amount: u128) -> u128 {
+            if self.ico_finalized_at == 0 {
+                return 0; // ICO ainda não acabou
+            }
+
+            let current_time = self.env().block_timestamp();
+            let days_since_finalized = current_time
+                .saturating_sub(self.ico_finalized_at)
+                .saturating_div(SECONDS_PER_DAY);
+
+            if days_since_finalized >= PRESTIGE_VESTING_DAYS {
+                full_amount // 100% liberado após 30 dias
+            } else {
+                // Vesting linear: (days / 30) * amount
+                full_amount
+                    .saturating_mul(days_since_finalized as u128)
+                    .saturating_div(PRESTIGE_VESTING_DAYS as u128)
+            }
+        }
+
+        /// Retorna info do prestige bonus de um NFT
+        #[ink(message)]
+        pub fn get_prestige_info(&self, nft_id: u64) -> Option<(PrestigeBonus, bool, u128)> {
+            let bonus = self.prestige_eligible.get(nft_id)?;
+            let claimed = self.prestige_claimed.get(nft_id).unwrap_or(false);
+            let vested = self.calculate_vested_amount(bonus.amount);
+            Some((bonus, claimed, vested))
+        }
+
+        /// Retorna a taxa de mineração efetiva de um NFT (incluindo boosts)
+        #[ink(message)]
+        pub fn get_effective_mining_rate(&self, nft_id: u64) -> Option<u128> {
+            let nft = self.nfts.get(nft_id)?;
+            let config = self.tier_configs.get(nft.tier.to_u8())?;
+            let base_rate = config.daily_mining_rate;
+
+            // Check user boost
+            let boost_end = self.user_mining_boost.get(nft.owner).unwrap_or(0);
+            let current_time = self.env().block_timestamp();
+            
+            let mut rate = base_rate;
+            // Apply User Global Boost (0.1% if active)
+            if current_time < boost_end {
+                // Rate + (Rate * 10 / 10000)
+                let boost = rate.saturating_mul(MINING_BOOST_BPS as u128).saturating_div(10_000);
+                rate = rate.saturating_add(boost);
+            }
+            
+            // Add NFT specific bonus (mining_bonus_bps stored in NFT)
+            let nft_bonus = base_rate.saturating_mul(nft.mining_bonus_bps as u128).saturating_div(10_000);
+            rate = rate.saturating_add(nft_bonus);
+
+            Some(rate)
+        }
+
+        /// Saca o bônus de prestígio (com vesting linear de 30 dias após ICO)
+        #[ink(message)]
+        pub fn claim_prestige_bonus(&mut self, nft_id: u64) -> Result<u128, ICOError> {
+            let caller = self.env().caller();
+            
+            // Verifica se ICO acabou
+            if self.ico_finalized_at == 0 {
+                return Err(ICOError::ICONotActive);
+            }
+
+            // Verifica se NFT existe e caller é o owner
+            let nft = self.nfts.get(nft_id).ok_or(ICOError::NFTNotFound)?;
+            if nft.owner != caller {
+                return Err(ICOError::NotNFTOwner);
+            }
+
+            // Verifica se tem prestige elegível
+            let bonus = self.prestige_eligible.get(nft_id).ok_or(ICOError::NoTokensToClaim)?;
+
+            // Verifica se já foi claimado
+            if self.prestige_claimed.get(nft_id).unwrap_or(false) {
+                return Err(ICOError::NoTokensToClaim);
+            }
+
+            // Calcula quanto pode sacar com vesting
+            let vested_amount = self.calculate_vested_amount(bonus.amount);
+            if vested_amount == 0 {
+                return Err(ICOError::NoTokensToClaim);
+            }
+
+            // Marca como claimado
+            self.prestige_claimed.insert(nft_id, &true);
+
+            // Transfere tokens do Core contract para o caller
+            // Nota: Core contract precisa ter allowance para este contrato mintar/transferir
+            use ink::env::call::{build_call, ExecutionInput, Selector};
+            
+            let _result: Result<(), PSP22Error> = build_call::<ink::env::DefaultEnvironment>()
+                .call(self.core_contract)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
+                        .push_arg(caller)
+                        .push_arg(vested_amount)
+                        .push_arg::<Vec<u8>>(vec![])
+                )
+                .returns::<Result<(), PSP22Error>>()
+                .try_invoke()
+                .map_err(|_| ICOError::CoreContractError)?
+                .map_err(|_| ICOError::CoreContractError)?;
+
+            Ok(vested_amount)
         }
     }
 

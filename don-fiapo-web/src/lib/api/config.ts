@@ -20,7 +20,7 @@ export const API_CONFIG = {
 
   // Contract addresses (replace with actual deployed addresses)
   contracts: {
-    donFiapo: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '5CRNuJbuTeQPcwJdEoDWRXZnNdkTSnArEfHEXrt5gZqszF5i',
+    donFiapo: process.env.NEXT_PUBLIC_ICO_CONTRACT || '',
   },
 
   // Solana configuration

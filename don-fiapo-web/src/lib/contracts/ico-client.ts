@@ -7,8 +7,7 @@
 import { initializeContract, getGasLimit, getHighGasLimit, getInjector, parseBigInt, parseNum, unwrapResult, getApi } from './client';
 
 // ABI será importado após o build dos contratos
-// import ICO_ABI from './ico.json';
-const ICO_ABI = {}; // Placeholder - substituir pelo ABI real
+import ICO_ABI from './fiapo_ico.json'; // ABI real do contrato ICO
 
 const CONTRACT_NAME = 'ico' as const;
 
@@ -67,7 +66,7 @@ export async function getUserNFTs(address: string): Promise<NFTData[]> {
 
     if (result.isOk && output) {
       const data = unwrapResult<any[]>(output.toHuman());
-      
+
       if (!Array.isArray(data)) return [];
 
       return data.map((nft: any) => {
@@ -75,16 +74,16 @@ export async function getUserNFTs(address: string): Promise<NFTData[]> {
         let nftTypeNum = 0;
         const nftType = nft.nft_type || nft.nftType;
         if (typeof nftType === 'string') {
-          const typeMap: Record<string, number> = { 
-            'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3, 
-            'Tier5': 4, 'Tier6': 5, 'Tier7': 6 
+          const typeMap: Record<string, number> = {
+            'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3,
+            'Tier5': 4, 'Tier6': 5, 'Tier7': 6
           };
           nftTypeNum = typeMap[nftType] ?? 0;
         } else if (typeof nftType === 'object' && nftType !== null) {
           const key = Object.keys(nftType)[0];
-          const typeMap: Record<string, number> = { 
-            'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3, 
-            'Tier5': 4, 'Tier6': 5, 'Tier7': 6 
+          const typeMap: Record<string, number> = {
+            'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3,
+            'Tier5': 4, 'Tier6': 5, 'Tier7': 6
           };
           nftTypeNum = typeMap[key] ?? 0;
         }
@@ -240,7 +239,7 @@ export async function getICOStats(): Promise<ICOStats | null> {
           uniqueParticipants: parseNum(data.uniqueParticipants || data.unique_participants),
           icoActive: !!(data.icoActive || data.ico_active),
           miningActive: !!(data.miningActive || data.mining_active),
-          mintedPerType: Array.isArray(data.mintedPerType || data.minted_per_type) 
+          mintedPerType: Array.isArray(data.mintedPerType || data.minted_per_type)
             ? (data.mintedPerType || data.minted_per_type).map(parseNum)
             : [],
         };
@@ -268,7 +267,7 @@ export async function getNFTConfigs(): Promise<NFTConfig[]> {
 
     if (result.isOk && output) {
       const data = unwrapResult<any[]>(output.toHuman());
-      
+
       if (Array.isArray(data)) {
         return data.map((item: any, index: number) => ({
           tier: index,

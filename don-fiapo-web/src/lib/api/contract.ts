@@ -14,6 +14,7 @@ import { CONTRACT_ABI, type NFTData } from './contract-abi';
 // Module-level cache for connections
 let api: ApiPromise | null = null;
 let contract: ContractPromise | null = null;
+let connectionPromise: Promise<ContractPromise | null> | null = null;
 let connectionFailed = false;
 let lastConnectionAttempt = 0;
 let currentEndpointIndex = 0;
@@ -182,6 +183,11 @@ export async function initializeContract(): Promise<ContractPromise | null> {
     return contract;
   }
 
+  // Return pending connection promise if exists
+  if (connectionPromise) {
+    return connectionPromise;
+  }
+
   // Skip if connection recently failed
   if (!shouldAttemptConnection()) {
     console.info('[Contract] Skipping connection attempt - will retry in',
@@ -191,61 +197,67 @@ export async function initializeContract(): Promise<ContractPromise | null> {
 
   lastConnectionAttempt = Date.now();
 
-  try {
-    // Dynamic imports - only loaded on client side
-    const [{ ContractPromise: ContractPromiseClass }] = await Promise.all([
-      import('@polkadot/api-contract'),
-    ]);
+  connectionPromise = (async () => {
+    try {
+      // Dynamic imports - only loaded on client side
+      const [{ ContractPromise: ContractPromiseClass }] = await Promise.all([
+        import('@polkadot/api-contract'),
+      ]);
 
-    // Try each endpoint until one succeeds
-    let connectedApi: ApiPromise | null = null;
-    const triedEndpoints: string[] = [];
+      // Try each endpoint until one succeeds
+      let connectedApi: ApiPromise | null = null;
+      const triedEndpoints: string[] = [];
 
-    const endpoints = ['ws://127.0.0.1:9944'];
-    for (let i = 0; i < endpoints.length; i++) {
-      const endpoint = endpoints[i];
-      triedEndpoints.push(endpoint);
-      console.info(`[Contract] Trying RPC endpoint: ${endpoint}`);
+      const endpoints = ['ws://127.0.0.1:9944'];
+      for (let i = 0; i < endpoints.length; i++) {
+        const endpoint = endpoints[i];
+        triedEndpoints.push(endpoint);
+        console.info(`[Contract] Trying RPC endpoint: ${endpoint}`);
 
-      connectedApi = await tryConnect(endpoint, 8000);
+        connectedApi = await tryConnect(endpoint, 8000);
 
-      if (connectedApi) {
-        console.info(`[Contract] Connected to: ${endpoint}`);
-        break;
-      } else {
-        console.info(`[Contract] Failed to connect to: ${endpoint}`);
+        if (connectedApi) {
+          console.info(`[Contract] Connected to: ${endpoint}`);
+          break;
+        } else {
+          console.info(`[Contract] Failed to connect to: ${endpoint}`);
+        }
       }
-    }
 
-    if (!connectedApi) {
-      console.info('[Contract] All RPC endpoints failed, using mock data');
+      if (!connectedApi) {
+        console.info('[Contract] All RPC endpoints failed, using mock data');
+        connectionFailed = true;
+        connectionPromise = null;
+        return null;
+      }
+
+      api = connectedApi;
+
+      // Load the contract
+      const abiMessages = (CONTRACT_ABI as any).spec?.messages || [];
+      console.log(`[Contract] Initializing with address: ${API_CONFIG.contracts.donFiapo}`);
+      console.log(`[Contract] ABI contains ${abiMessages.length} messages. Has get_ico_stats? ${!!abiMessages.find((m: any) => m.label === 'get_ico_stats')}`);
+
+      contract = new ContractPromiseClass(
+        api,
+        CONTRACT_ABI as any,
+        API_CONFIG.contracts.donFiapo
+      );
+
+      connectionFailed = false;
+      console.log('[Contract] Connected to Lunes Network');
+      connectionPromise = null; // Clear promise so next call returns direct contract
+      return contract;
+    } catch (error) {
       connectionFailed = true;
+      connectionPromise = null;
+      console.warn('[Contract] Failed to connect to Lunes Network:', error instanceof Error ? error.message : 'Unknown error');
+      console.warn('[Contract] Using fallback data. Will retry connection in', CONNECTION_RETRY_DELAY / 1000, 'seconds');
       return null;
     }
+  })();
 
-    api = connectedApi;
-
-    // Load the contract
-    const abiMessages = (CONTRACT_ABI as any).spec?.messages || [];
-    console.log(`[Contract] Initializing with address: ${API_CONFIG.contracts.donFiapo}`);
-    console.log(`[Contract] ABI contains ${abiMessages.length} messages. Has get_ico_stats? ${!!abiMessages.find((m: any) => m.label === 'get_ico_stats')}`);
-
-    contract = new ContractPromiseClass(
-      api,
-      CONTRACT_ABI as any,
-      API_CONFIG.contracts.donFiapo
-    );
-
-
-    connectionFailed = false;
-    console.log('[Contract] Connected to Lunes Network');
-    return contract;
-  } catch (error) {
-    connectionFailed = true;
-    console.warn('[Contract] Failed to connect to Lunes Network:', error instanceof Error ? error.message : 'Unknown error');
-    console.warn('[Contract] Using fallback data. Will retry connection in', CONNECTION_RETRY_DELAY / 1000, 'seconds');
-    return null;
-  }
+  return connectionPromise;
 }
 
 /**
@@ -535,12 +547,25 @@ export async function mintNFT(
     proofSize: BigInt(1_000_000),     // 1 million proof_size
   }) as any;
 
-  const tx = contractInstance.tx.mintNft(
-    { gasLimit, storageDepositLimit: null },
-    nftType,
-    BigInt(lunesBalance),
-    proof
-  );
+  let tx;
+  if (nftType === 0) {
+    // Free Mint - mint_free() takes no args
+    console.log('[Contract] Executing Free Mint (mint_free)');
+    tx = contractInstance.tx.mintFree(
+      { gasLimit, storageDepositLimit: null }
+    );
+  } else {
+    // Paid Mint - mint_paid(tier, payment_hash)
+    console.log('[Contract] Executing Paid Mint (mint_paid)');
+    if (!proof || !proof.transaction_hash) {
+      throw new Error('Payment proof transaction hash required for paid mint');
+    }
+    tx = contractInstance.tx.mintPaid(
+      { gasLimit, storageDepositLimit: null },
+      nftType,
+      proof.transaction_hash
+    );
+  }
 
   return new Promise((resolve, reject) => {
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
@@ -649,6 +674,7 @@ export interface ContractNFTConfig {
   priceUsdtCents: number;
   maxSupply: number;
   minted: number;
+  mintedEvolution: number;
   tokensPerNft: bigint;
   dailyMiningRate: bigint;
   active: boolean;
@@ -685,6 +711,7 @@ export async function getIcoNftConfigs(): Promise<ContractNFTConfig[] | null> {
           priceUsdtCents: parseInt(cleanNum(item.priceUsdtCents || item.price_usdt_cents || '0').toString()),
           maxSupply: parseInt(cleanNum(item.maxSupply || item.max_supply || '0').toString()),
           minted: parseInt(cleanNum(item.minted || '0').toString()),
+          mintedEvolution: parseInt(cleanNum(item.mintedEvolution || item.minted_evolution || '0').toString()),
           tokensPerNft: BigInt(cleanNum(item.tokensPerNft || item.tokens_per_nft || '0').toString()),
           dailyMiningRate: BigInt(cleanNum(item.dailyMiningRate || item.daily_mining_rate || '0').toString()),
           active: !!(item.active),
@@ -721,7 +748,7 @@ export async function getICOStats(): Promise<ICOStats | null> {
   if (!contractInstance) return null;
 
   try {
-    const { result, output } = await contractInstance.query.getIcoStats(
+    const { result, output } = await contractInstance.query.getStats(
       API_CONFIG.contracts.donFiapo,
       getGasLimit(contractInstance.api)
     );

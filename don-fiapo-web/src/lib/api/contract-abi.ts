@@ -2,10 +2,10 @@
  * Don Fiapo Contract ABI
  * 
  * This file exports the real contract metadata from the build.
- * Updated automatically from don_fiapo/target/ink/don_fiapo_contract.json
+ * Updated: Using ICO contract ABI (fiapo_ico.json)
  */
 
-import contractMetadata from './contract-metadata.json';
+import contractMetadata from '../contracts/fiapo_ico.json';
 
 // Export the full contract ABI from the build
 export const CONTRACT_ABI = contractMetadata;

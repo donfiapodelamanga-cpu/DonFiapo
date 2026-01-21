@@ -114,7 +114,7 @@ async function main() {
     const stakingArtifactPath = path.join(__dirname, '../don_fiapo/target/ink/fiapo_staking/fiapo_staking.contract');
 
     // 1. Deploy Core
-    const INITIAL_SUPPLY = '300000000000000000000'; // 300 billion
+    const INITIAL_SUPPLY = '30000000000000000000'; // 300 billion * 10^8 (19 zeros)
     const coreDeploy = await deployContract(
         api,
         deployer,

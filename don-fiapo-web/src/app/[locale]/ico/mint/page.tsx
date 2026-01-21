@@ -13,7 +13,7 @@ import { Link } from "@/lib/navigation";
 import { useWalletStore } from "@/lib/stores";
 import { useMintNFT } from "@/hooks/usePayment";
 import { useSolana } from "@/hooks/useSolana";
-import { useICOStats } from "@/hooks/useContract";
+import { useICOStats, useNftConfigs } from "@/hooks/useContract";
 import { useToast } from "@/components/ui/toast";
 import { API_CONFIG } from "@/lib/api/config";
 import { ConnectWalletModal } from "@/components/wallet/connect-wallet-modal";
@@ -60,10 +60,31 @@ export default function MintPage() {
 
   // ICO Stats for Prestige Bonus
   const { stats: icoStats, fetchStats: fetchICOStats } = useICOStats();
+  const { configs: nftConfigs, fetchConfigs: fetchNftConfigs } = useNftConfigs();
 
   useEffect(() => {
     fetchICOStats();
-  }, [fetchICOStats]);
+    fetchNftConfigs();
+  }, [fetchICOStats, fetchNftConfigs]);
+
+  // Merge static config with real data
+  const tiersWithData = nftTiers.map((tier) => {
+    const remote = nftConfigs?.[tier.id];
+    if (remote) {
+      return {
+        ...tier,
+        available: Math.max(0, remote.maxSupply - remote.minted), // Sales availability
+        minted: remote.minted,
+        mintedEvolution: remote.mintedEvolution,
+        maxSupply: remote.maxSupply
+      };
+    }
+    // Fallback for free tier if not in contract list or just default
+    if (tier.id === 0) return { ...tier, minted: 0, mintedEvolution: 0, maxSupply: 10000 };
+    return { ...tier, minted: 0, mintedEvolution: 0, maxSupply: tier.supply };
+  });
+
+  const activeTier = tiersWithData.find(t => t.id === selectedTier.id) || tiersWithData[0];
 
   // Cooldown State
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
@@ -268,7 +289,7 @@ export default function MintPage() {
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {nftTiers.map((tier) => (
+                  {tiersWithData.map((tier) => (
                     <button
                       key={tier.id}
                       onClick={() => { setSelectedTier(tier); setQuantity(1); }}
@@ -305,14 +326,31 @@ export default function MintPage() {
                             {tier.price === 0 ? "FREE" : `$${tier.price}`}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <div className="text-xs text-green-500 font-medium">
+
+                        <div className="space-y-2 mt-2">
+                          <div className="text-xs text-green-500 font-medium border-b border-border/50 pb-1">
                             +{formatNumber(tier.miningRate)} FIAPO/day
                           </div>
-                          {icoStats && icoStats.totalCreatedPerType && icoStats.totalCreatedPerType[tier.id] !== undefined && icoStats.totalCreatedPerType[tier.id] <= 100 && (
-                            <div className="bg-purple-500/20 text-purple-400 text-[10px] px-1.5 py-0.5 rounded border border-purple-500/30 flex items-center gap-1">
-                              <Sparkles className="w-2.5 h-2.5" />
-                              {t('prestige.title')}
+
+                          <div className="grid grid-cols-2 gap-1 text-[10px] text-muted-foreground bg-black/20 p-1.5 rounded-md">
+                            <div className="flex flex-col">
+                              <span className="opacity-70">Sales</span>
+                              <span className={tier.available < 100 ? "text-red-400 font-mono" : "text-green-400 font-mono"}>
+                                {tier.minted !== undefined ? `${tier.minted}/${tier.maxSupply}` : '...'}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="opacity-70">Evolution</span>
+                              <span className="text-blue-400 font-mono">
+                                {tier.mintedEvolution || '-'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {(tier.mintedEvolution !== undefined && tier.mintedEvolution < 100) && (
+                            <div className="flex items-center gap-1 bg-purple-500/10 text-purple-400 text-[9px] px-1.5 py-0.5 rounded border border-purple-500/20">
+                              <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                              <span>First 100 (Global) Bonus!</span>
                             </div>
                           )}
                         </div>
@@ -374,7 +412,7 @@ export default function MintPage() {
                               })
                               : t('prestige.lastSurvivor')
                           ) : (
-                            "Esperando dados do contrato..."
+                            "Waiting for contract data..."
                           )}
                         </p>
                       </div>
