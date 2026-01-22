@@ -9,9 +9,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Link } from "@/lib/navigation";
 import { useWalletStore } from "@/lib/stores";
-import { useNFTs } from "@/hooks/useContract";
+import { useNFTs, usePrestige, useICOStats } from "@/hooks/useContract";
 import { useToast } from "@/components/ui/toast";
 import { API_CONFIG } from "@/lib/api/config";
+import { Sparkles } from "lucide-react";
 
 // NFT tier info
 const tierInfo: Record<number, { name: string; image: string }> = {
@@ -42,7 +43,7 @@ const MiningCounter = ({
   decimals?: number;
   className?: string;
 }) => {
-    const [displayValue, setDisplayValue] = useState(baseValue);
+  const [displayValue, setDisplayValue] = useState(baseValue);
   const [initialRenderTime] = useState(() => Date.now());
 
   useEffect(() => {
@@ -84,21 +85,78 @@ export default function MiningPage() {
   const { addToast } = useToast();
   const { lunesConnected, lunesAddress } = useWalletStore();
   const { nfts, loading, fetchNFTs, claimMinedTokens } = useNFTs();
+  const { data: prestigeData, fetchPrestige, claimPrestige } = usePrestige();
+  const { stats: icoStats, fetchStats: fetchICOStats } = useICOStats();
 
   useEffect(() => {
+    fetchICOStats();
     if (lunesConnected) {
       fetchNFTs();
     }
-  }, [lunesConnected, fetchNFTs]);
+  }, [lunesConnected, fetchNFTs, fetchICOStats]);
+
+  // Fetch prestige when NFTs are loaded
+  useEffect(() => {
+    if (nfts.length > 0) {
+      fetchPrestige(nfts.map(n => n.tokenId));
+    }
+  }, [nfts, fetchPrestige]);
 
   // Calculate totals from real NFT data
-  const totalMined = nfts.reduce((acc, nft) => acc + Number(nft.minedTokens), 0) / 10 ** API_CONFIG.token.decimals;
+  // Calculate totals from real NFT data with real-time accumulation for UI
+  const totalMined = nfts.reduce((acc, nft) => {
+    // Base mined from contract (static)
+    const storedMined = Number(nft.minedTokens) / 10 ** API_CONFIG.token.decimals;
+
+    // Calculate real-time accrued since last update
+    const rate = API_CONFIG.nftTiers[nft.nftType]?.dailyMining || 100;
+    const bonusMultiplier = 1 + (nft.miningBonusBps / 10000);
+    const lastUpdate = nft.lastMiningTimestamp || Date.now();
+    const elapsedMs = Math.max(0, Date.now() - lastUpdate);
+    const accrued = (elapsedMs * (rate * bonusMultiplier)) / (24 * 60 * 60 * 1000); // Daily rate to ms
+
+    // Calculate total spec
+    const totalSpec = API_CONFIG.nftTiers[nft.nftType]?.totalMining || 11200;
+
+    // Cap at maxTotal to respect 112-day vesting limit
+    return acc + Math.min(totalSpec, storedMined + accrued);
+  }, 0);
+
   const totalClaimed = nfts.reduce((acc, nft) => acc + Number(nft.claimedTokens), 0) / 10 ** API_CONFIG.token.decimals;
   const totalDaily = nfts.reduce((acc, nft) => {
     const rate = API_CONFIG.nftTiers[nft.nftType]?.dailyMining || 100;
     return acc + rate;
   }, 0);
-  const claimableAmount = totalMined - totalClaimed;
+
+  // Ensure we don't show negative claimable
+  const claimableAmount = Math.max(0, totalMined - totalClaimed);
+
+  // Prestige calculations
+  const totalPrestige = Object.values(prestigeData).reduce((acc, p) => acc + (Number(p.amount)), 0) / 10 ** API_CONFIG.token.decimals;
+  const totalPrestigeVested = Object.values(prestigeData).reduce((acc, p) => acc + (Number(p.vestedAmount)), 0) / 10 ** API_CONFIG.token.decimals;
+  const totalPrestigeClaimable = Object.values(prestigeData).reduce((acc, p) => !p.claimed ? acc + (Number(p.vestedAmount)) : acc, 0) / 10 ** API_CONFIG.token.decimals;
+
+  const handleClaimPrestige = async () => {
+    try {
+      let claimed = 0;
+      for (const nftIdStr of Object.keys(prestigeData)) {
+        const nftId = Number(nftIdStr);
+        const p = prestigeData[nftId];
+        if (p && !p.claimed && p.vestedAmount > BigInt(0)) {
+          await claimPrestige(nftId);
+          claimed++;
+        }
+      }
+      if (claimed > 0) {
+        addToast("success", "Prestige Bonus Claimed!", `Claimed bonus for ${claimed} NFTs`);
+        fetchPrestige(nfts.map(n => n.tokenId));
+      } else {
+        addToast("info", "No Claimable Bonus", "Wait for vesting period or no eligible NFTs");
+      }
+    } catch (err) {
+      addToast("error", "Claim Failed", err instanceof Error ? err.message : "Unknown error");
+    }
+  };
 
   // Calculate average days remaining (112 days total mining period)
   const avgDaysRemaining = nfts.length > 0
@@ -110,13 +168,32 @@ export default function MiningPage() {
 
   const handleClaimAll = async () => {
     try {
+      let anyCliamed = false;
       for (const nft of nfts) {
-        const claimable = Number(nft.minedTokens) - Number(nft.claimedTokens);
-        if (claimable > 0) {
+        // Calculate real-time claimable for this NFT
+        const storedMined = Number(nft.minedTokens) / 10 ** API_CONFIG.token.decimals;
+        const rate = API_CONFIG.nftTiers[nft.nftType]?.dailyMining || 100;
+        const bonusMultiplier = 1 + (nft.miningBonusBps / 10000);
+        const lastUpdate = nft.lastMiningTimestamp || Date.now();
+        const elapsedMs = Math.max(0, Date.now() - lastUpdate);
+        const accrued = (elapsedMs * (rate * bonusMultiplier)) / (24 * 60 * 60 * 1000);
+
+        const totalSpec = API_CONFIG.nftTiers[nft.nftType]?.totalMining || 11200;
+        const totalMinedNft = Math.min(totalSpec, storedMined + accrued);
+
+        const claimedNft = Number(nft.claimedTokens) / 10 ** API_CONFIG.token.decimals;
+        const claimable = totalMinedNft - claimedNft;
+
+        if (claimable > 0) { // Try to claim anything > 0
           await claimMinedTokens(nft.tokenId);
+          anyCliamed = true;
         }
       }
-      addToast("success", "Tokens Claimed!", `You received ${claimableAmount.toLocaleString()} FIAPO`);
+      if (anyCliamed) {
+        addToast("success", "Tokens Claimed!", `Claim transaction submitted.`);
+      } else {
+        addToast("info", "Nothing to Claim", `Wait for more tokens to mine.`);
+      }
     } catch (err) {
       addToast("error", "Claim Failed", err instanceof Error ? err.message : "Unknown error");
     }
@@ -262,22 +339,114 @@ export default function MiningPage() {
                         Mining active • Tokens are released daily into your vesting balance
                       </p>
                     </div>
-                    <Button
-                      size="xl"
-                      className="glow-gold"
-                      onClick={handleClaimAll}
-                      disabled={claimableAmount <= 0 || loading}
-                    >
-                      {loading ? (
-                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing...</>
-                      ) : (
-                        <><Gift className="w-5 h-5 mr-2" /> Claim All Tokens</>
-                      )}
-                    </Button>
+                    {avgDaysRemaining > 0 ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0} className="inline-block">
+                              <Button
+                                size="xl"
+                                className="glow-gold opacity-80 cursor-not-allowed"
+                                disabled
+                              >
+                                <Clock className="w-5 h-5 mr-2" /> Vesting ({avgDaysRemaining} days left)
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Tokens are locked for 112 days. Claiming will be enabled after the vesting period ends.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Button
+                        size="xl"
+                        className="glow-gold"
+                        onClick={handleClaimAll}
+                        disabled={claimableAmount <= 0 || loading}
+                      >
+                        {loading ? (
+                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing...</>
+                        ) : (
+                          <><Gift className="w-5 h-5 mr-2" /> Claim All Tokens</>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Prestige Bonus Card */}
+            {totalPrestige > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="mb-8"
+              >
+                <Card className="bg-gradient-to-r from-purple-500/20 to-pink-500/10 border-purple-500/50">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div>
+                        <div className="text-muted-foreground mb-1 flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                          <span className="text-purple-300 font-bold">Prestige Bonus (First 100 / Early Adopters)</span>
+                        </div>
+                        <div className="flex items-baseline gap-4">
+                          <div className="text-3xl font-bold text-white">
+                            {totalPrestigeVested > 0
+                              ? totalPrestigeVested.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                              : "Locked"
+                            }
+                            <span className="ml-1 text-sm text-muted-foreground">
+                              / {totalPrestige.toLocaleString()} {totalPrestigeVested > 0 ? "Vested" : "Total Bonus"}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {totalPrestigeVested > 0
+                            ? "30-Day Vesting Period • Full amount unlocks daily"
+                            : "Bonus will start vesting after ICO Finalization"
+                          }
+                        </p>
+                      </div>
+                      {icoStats?.icoActive ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span tabIndex={0} className="inline-block">
+                                <Button
+                                  size="lg"
+                                  className="bg-purple-600/50 text-white/50 cursor-not-allowed border border-purple-500/30"
+                                  disabled
+                                >
+                                  <Sparkles className="w-4 h-4 mr-2" />
+                                  Bonus Locked (ICO Active)
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Prestige Bonus can only be claimed after the ICO is fully sold out.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <Button
+                          size="lg"
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          onClick={handleClaimPrestige}
+                          disabled={totalPrestigeClaimable <= 0}
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Claim {totalPrestigeClaimable.toLocaleString(undefined, { maximumFractionDigits: 2 })} Bonus
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
 
             {/* NFT Mining Progress */}
             <motion.div

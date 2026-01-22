@@ -251,12 +251,24 @@ async function main() {
 
     console.log('\n🔗 Configuring Ecosystem Links...\n');
 
-    // Core: Authorize Minters
+    // Core: Authorize Minters (Still needed for initial setup or special events if enabled)
     await callContract(api, deployer, core.address, core.abi, 'authorizeMinter', [staking.address], 'Core -> Staking (Minter)');
     await callContract(api, deployer, core.address, core.abi, 'authorizeMinter', [ico.address], 'Core -> ICO (Minter)');
     await callContract(api, deployer, core.address, core.abi, 'authorizeMinter', [airdrop.address], 'Core -> Airdrop (Minter)');
     await callContract(api, deployer, core.address, core.abi, 'authorizeMinter', [rewards.address], 'Core -> Rewards (Minter)');
-    await callContract(api, deployer, core.address, core.abi, 'authorizeMinter', [affiliate.address], 'Core -> Affiliate (Minter)');
+
+    console.log('\n💰 Seeding Treasuries (Fixed Supply Distribution)...');
+
+    // Amounts in Paws (10^8)
+    const STAKING_SEED = '24000000000000000000'; // 240B
+    const ICO_SEED = '600000000000000000';   // 6B
+    const AIRDROP_SEED = '2100000000000000000';  // 21B
+    const REWARDS_SEED = '100000000000000000';   // 1B
+
+    await callContract(api, deployer, core.address, core.abi, 'transfer', [staking.address, STAKING_SEED], 'Seeding: Staking Treasury');
+    await callContract(api, deployer, core.address, core.abi, 'transfer', [ico.address, ICO_SEED], 'Seeding: ICO Treasury');
+    await callContract(api, deployer, core.address, core.abi, 'transfer', [airdrop.address, AIRDROP_SEED], 'Seeding: Airdrop Treasury');
+    await callContract(api, deployer, core.address, core.abi, 'transfer', [rewards.address, REWARDS_SEED], 'Seeding: Rewards Treasury');
 
     // Oracle: Set Contracts
     await callContract(api, deployer, oracle.address, oracle.abi, 'setContractAddress', ['ico', ico.address], 'Oracle -> ICO');

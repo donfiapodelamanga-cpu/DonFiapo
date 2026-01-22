@@ -317,8 +317,8 @@ mod fiapo_ico {
         nfts: Mapping<u64, NFTData>,
         /// NFTs por owner
         nfts_by_owner: Mapping<AccountId, Vec<u64>>,
-        /// Endereços que já usaram free mint
-        free_mint_used: Mapping<AccountId, bool>,
+        /// Endereços que já usaram free mint (Max 5)
+        free_mint_used: Mapping<AccountId, u8>,
         /// Hashes de transação já usados
         used_payment_hashes: Mapping<String, u64>,
         /// Total mintado por tier
@@ -506,10 +506,11 @@ mod fiapo_ico {
             self.nfts_by_owner.get(owner).unwrap_or_default()
         }
 
-        /// Verifica se um endereço já usou free mint
+        /// Verifica se um endereço já esgotou seus free mints (Max 5)
         #[ink(message)]
         pub fn has_free_mint(&self, account: AccountId) -> bool {
-            self.free_mint_used.get(account).unwrap_or(false)
+            let count = self.free_mint_used.get(account).unwrap_or(0);
+            count >= 5
         }
 
         /// Calcula tokens pendentes para um NFT
@@ -534,7 +535,7 @@ mod fiapo_ico {
 
         // ==================== Minting Functions ====================
 
-        /// Mint gratuito (1 por endereço)
+        /// Mint gratuito (Limitado a 5 por endereço)
         #[ink(message)]
         pub fn mint_free(&mut self) -> Result<u64, ICOError> {
             let caller = self.env().caller();
@@ -543,7 +544,8 @@ mod fiapo_ico {
                 return Err(ICOError::ICONotActive);
             }
 
-            if self.free_mint_used.get(caller).unwrap_or(false) {
+            let used_count = self.free_mint_used.get(caller).unwrap_or(0);
+            if used_count >= 5 {
                 return Err(ICOError::FreeMintAlreadyUsed);
             }
 
@@ -552,8 +554,8 @@ mod fiapo_ico {
                 return Err(ICOError::MaxSupplyReached);
             }
 
-            // Marca como usado
-            self.free_mint_used.insert(caller, &true);
+            // Incrementa contagem
+            self.free_mint_used.insert(caller, &(used_count.saturating_add(1)));
 
             // Minta o NFT
             self.mint_nft_internal(caller, NFTTier::Free, 0, false)
@@ -589,7 +591,7 @@ mod fiapo_ico {
             self.used_payment_hashes.insert(payment_hash, &nft_id);
 
             // Atualiza total arrecadado
-            self.total_raised = self.total_raised.saturating_add(config.price_usdt_cents as u64);
+            self.total_raised = self.total_raised.saturating_add(config.price_usdt_cents);
 
             // Minta o NFT
             self.mint_nft_internal(caller, nft_tier, config.price_usdt_cents as u128, false)
@@ -621,7 +623,7 @@ mod fiapo_ico {
             }
 
             // Atualiza total arrecadado
-            self.total_raised = self.total_raised.saturating_add(config.price_usdt_cents as u64);
+            self.total_raised = self.total_raised.saturating_add(config.price_usdt_cents);
 
             // Minta o NFT
             self.mint_nft_internal(user, nft_tier, config.price_usdt_cents as u128, false)
@@ -864,8 +866,8 @@ mod fiapo_ico {
             // Atualiza total claimed
             self.total_claimed = self.total_claimed.saturating_add(tokens_to_claim);
 
-            // Cross-contract call: minta tokens para o usuário
-            self.call_core_mint_to(caller, tokens_to_claim)?;
+            // Cross-contract call: transfere tokens para o usuário
+            self.call_core_transfer(caller, tokens_to_claim)?;
 
             Self::env().emit_event(TokensClaimed {
                 nft_id,
@@ -1028,26 +1030,26 @@ mod fiapo_ico {
 
         // ==================== Cross-Contract Calls ====================
 
-        /// Chama Core.mint_to para mintar tokens
-        fn call_core_mint_to(
+        /// Chama Core.transfer para enviar tokens
+        fn call_core_transfer(
             &self,
             to: AccountId,
             amount: Balance,
         ) -> Result<(), ICOError> {
             use ink::env::call::{build_call, ExecutionInput, Selector};
-
+ 
             let result = build_call::<ink::env::DefaultEnvironment>()
                 .call(self.core_contract)
                 .gas_limit(0)
                 .transferred_value(0)
                 .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("mint_to")))
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
                         .push_arg(to)
                         .push_arg(amount),
                 )
                 .returns::<Result<(), PSP22Error>>()
                 .try_invoke();
-
+ 
             match result {
                 Ok(Ok(Ok(()))) => Ok(()),
                 _ => Err(ICOError::CoreContractError),
@@ -1215,21 +1217,7 @@ mod fiapo_ico {
             self.prestige_claimed.insert(nft_id, &true);
 
             // Transfere tokens do Core contract para o caller
-            // Nota: Core contract precisa ter allowance para este contrato mintar/transferir
-            use ink::env::call::{build_call, ExecutionInput, Selector};
-            
-            let _result: Result<(), PSP22Error> = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
-                        .push_arg(caller)
-                        .push_arg(vested_amount)
-                        .push_arg::<Vec<u8>>(vec![])
-                )
-                .returns::<Result<(), PSP22Error>>()
-                .try_invoke()
-                .map_err(|_| ICOError::CoreContractError)?
-                .map_err(|_| ICOError::CoreContractError)?;
+            self.call_core_transfer(caller, vested_amount)?;
 
             Ok(vested_amount)
         }
@@ -1289,12 +1277,14 @@ mod fiapo_ico {
         }
 
         #[ink::test]
-        fn free_mint_only_once() {
+        fn free_mint_limit_works() {
             let mut contract = create_contract();
-
-            let _ = contract.mint_free();
+ 
+            for _ in 0..5 {
+                let _ = contract.mint_free();
+            }
             let result = contract.mint_free();
-
+ 
             assert_eq!(result, Err(ICOError::FreeMintAlreadyUsed));
         }
 

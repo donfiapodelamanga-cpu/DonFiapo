@@ -60,19 +60,36 @@
     "subtitle": "El Camino Real hacia la Gloria",
     "phase1": {
       "title": "Fase 1 — La Coronación",
-      "items": ["Lanzamiento del Token", "Sitio Web", "Whitepaper", "Memes"]
+      "items": [
+        "Lanzamiento del Token",
+        "Sitio Web",
+        "Whitepaper",
+        "Memes"
+      ]
     },
     "phase2": {
       "title": "Fase 2 — Conquista del Reino",
-      "items": ["Airdrops", "Listados en DEX", "Campaña \"De Fiapo a Rey\""]
+      "items": [
+        "Airdrops",
+        "Listados en DEX",
+        "Campaña \"De Fiapo a Rey\""
+      ]
     },
     "phase3": {
       "title": "Fase 3 — El Imperio de los Memes",
-      "items": ["Staking gamificado", "NFTs", "Token $OSSIN"]
+      "items": [
+        "Staking gamificado",
+        "NFTs",
+        "Token $OSSIN"
+      ]
     },
     "phase4": {
       "title": "Fase 4 — Dominación Global",
-      "items": ["Merch", "Juego \"Carrera Real del Fiapo\"", "Alianzas"]
+      "items": [
+        "Merch",
+        "Juego \"Carrera Real del Fiapo\"",
+        "Alianzas"
+      ]
     }
   },
   "comparison": {
@@ -155,7 +172,18 @@
     "mining": "Dashboard de Minería",
     "tokensMined": "Tokens Minados",
     "daysRemaining": "Días Restantes",
-    "claimTokens": "Reclamar Tokens"
+    "claimTokens": "Reclamar Tokens",
+    "prestige": {
+      "title": "Bono de Prestigio",
+      "desc": "¡Limitado a los 100 primeros pioneros o a los últimos 10 sobrevivientes de cada nivel!",
+      "earlyAdopter": "Aún puedes ganar el bono de pionero de {amount} $FIAPO (¡Quedan {remaining} espacios!)",
+      "lastSurvivor": "Los espacios para los primeros 100 se han agotado, ¡pero aún puedes ganar si eres uno de los últimos 10!",
+      "congrats": "¡Bono de Prestigio Ganado!",
+      "congratsDesc": "¡Eres uno de los 100 primeros en alcanzar este nivel! 🎉",
+      "potential": "+ Bono de Prestigio Potencial: {amount} FIAPO!",
+      "bonusLabel": "¡Ganaste un bono extra de:",
+      "vestingInfo": "El bono se liberará después de que finalice la ICO con un período de vesting de 30 días."
+    }
   },
   "airdrop": {
     "title": "Airdrop Real",

@@ -26,7 +26,7 @@ export async function getBalance(address: string): Promise<bigint> {
   try {
     const { result, output } = await contract.query.balanceOf(
       address,
-      getGasLimit(contract.api),
+      getGasLimit(contract.api as any),
       address
     );
 
@@ -51,7 +51,7 @@ export async function getTotalSupply(): Promise<bigint> {
   try {
     const { result, output } = await contract.query.totalSupply(
       contract.address,
-      getGasLimit(contract.api)
+      getGasLimit(contract.api as any)
     );
 
     if (result.isOk && output) {
@@ -79,7 +79,7 @@ export async function transfer(
   const injector = await getInjector(from);
 
   const tx = contract.tx.transfer(
-    getGasLimit(contract.api),
+    getGasLimit(contract.api as any),
     to,
     amount.toString()
   );
@@ -111,7 +111,7 @@ export async function approve(
   const injector = await getInjector(owner);
 
   const tx = contract.tx.approve(
-    getGasLimit(contract.api),
+    getGasLimit(contract.api as any),
     spender,
     amount.toString()
   );
@@ -139,7 +139,7 @@ export async function getAllowance(owner: string, spender: string): Promise<bigi
   try {
     const { result, output } = await contract.query.allowance(
       owner,
-      getGasLimit(contract.api),
+      getGasLimit(contract.api as any),
       owner,
       spender
     );
@@ -165,7 +165,7 @@ export async function burn(address: string, amount: bigint): Promise<string> {
   const injector = await getInjector(address);
 
   const tx = contract.tx.burn(
-    getGasLimit(contract.api),
+    getGasLimit(contract.api as any),
     amount.toString()
   );
 

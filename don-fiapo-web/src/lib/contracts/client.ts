@@ -37,12 +37,13 @@ function shouldAttemptConnection(): boolean {
 /**
  * Obter gas limit para transações
  */
-export const getGasLimit = (apiInstance: ApiPromise) => {
+export const getGasLimit = (apiInstance: { registry: { createType: (type: string, value: unknown) => unknown } }) => {
+  const gasLimit = apiInstance.registry.createType('WeightV2', {
+    refTime: 50_000_000_000,
+    proofSize: 10 * 1024 * 1024,
+  }) as unknown as import('@polkadot/types/interfaces').WeightV2;
   return {
-    gasLimit: apiInstance.registry.createType('WeightV2', {
-      refTime: 6_000_000_000,
-      proofSize: 1024 * 1024,
-    }) as unknown,
+    gasLimit,
     storageDepositLimit: null
   };
 };
@@ -50,12 +51,13 @@ export const getGasLimit = (apiInstance: ApiPromise) => {
 /**
  * Obter gas limit alto para operações complexas
  */
-export const getHighGasLimit = (apiInstance: ApiPromise) => {
+export const getHighGasLimit = (apiInstance: { registry: { createType: (type: string, value: unknown) => unknown } }) => {
+  const gasLimit = apiInstance.registry.createType('WeightV2', {
+    refTime: BigInt(100_000_000_000),
+    proofSize: BigInt(1_000_000),
+  }) as unknown as import('@polkadot/types/interfaces').WeightV2;
   return {
-    gasLimit: apiInstance.registry.createType('WeightV2', {
-      refTime: BigInt(100_000_000_000),
-      proofSize: BigInt(1_000_000),
-    }) as unknown,
+    gasLimit,
     storageDepositLimit: null
   };
 };
@@ -75,9 +77,9 @@ async function tryConnect(endpoint: string, timeout: number = 15000): Promise<Ap
       if (!resolved) {
         resolved = true;
         if (apiInstance) {
-          apiInstance.disconnect().catch(() => {});
+          apiInstance.disconnect().catch(() => { });
         } else {
-          provider.disconnect().catch(() => {});
+          provider.disconnect().catch(() => { });
         }
       }
     };
@@ -151,7 +153,7 @@ export async function initializeApi(): Promise<ApiPromise | null> {
     for (const endpoint of RPC_ENDPOINTS) {
       console.info(`[Contract] Trying: ${endpoint}`);
       const connectedApi = await tryConnect(endpoint, 8000);
-      
+
       if (connectedApi) {
         api = connectedApi;
         connectionFailed = false;
@@ -201,10 +203,10 @@ export async function initializeContract(
 
   try {
     const { ContractPromise } = await import('@polkadot/api-contract');
-    
+
     const contract = new ContractPromise(apiInstance, abi as any, address);
     contractCache[contractName] = contract;
-    
+
     console.info(`[Contract] Initialized: ${contractName} at ${address}`);
     return contract;
   } catch (error) {

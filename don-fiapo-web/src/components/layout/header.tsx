@@ -38,6 +38,7 @@ export function Header() {
                 src="/images/logo-round.png"
                 alt="Don Fiapo Logo"
                 fill
+                sizes="48px"
                 className="object-contain"
               />
             </div>

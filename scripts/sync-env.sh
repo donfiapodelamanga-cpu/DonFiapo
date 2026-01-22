@@ -58,6 +58,9 @@ while IFS='=' read -r key value; do
         CONTRACT_ADDRESS)
             echo "NEXT_PUBLIC_CONTRACT_ADDRESS=${value}" >> "$WEB_ENV"
             ;;
+        NEXT_PUBLIC_*_CONTRACT)
+            echo "${key}=${value}" >> "$WEB_ENV"
+            ;;
         SOLANA_RPC_URL)
             echo "NEXT_PUBLIC_SOLANA_RPC=${value}" >> "$WEB_ENV"
             ;;

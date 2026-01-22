@@ -459,59 +459,75 @@ export async function getUserNFTs(address: string): Promise<{
 
   if (result.isOk && output) {
     const rawData = output.toHuman();
-    console.log('[getUserNFTs] Raw data type:', typeof rawData, Array.isArray(rawData) ? 'is array' : 'not array');
 
-    // Handle nested Ok result (Rust Result type)
-    let data = rawData;
-    if (typeof rawData === 'object' && rawData !== null && 'Ok' in (rawData as object)) {
-      data = (rawData as any).Ok;
-    }
-    console.log('[getUserNFTs] Extracted data:', data);
-
-    if (!Array.isArray(data)) {
-      console.warn('[getUserNFTs] Data is not an array, returning empty');
-      return [];
-    }
-
-    // Map contract NFTData fields to frontend format
-    // Contract returns: id, nft_type, created_at, tokens_mined, tokens_claimed, etc.
-    return data.map((nft: any) => {
-      // Handle nft_type which can be an enum like "Free" or { Tier2: null }
-      let nftTypeNum = 0;
-      const nftType = nft.nft_type || nft.nftType;
-      if (typeof nftType === 'string') {
-        const typeMap: Record<string, number> = { 'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3, 'Tier5': 4, 'Tier6': 5, 'Tier7': 6 };
-        nftTypeNum = typeMap[nftType] ?? 0;
-      } else if (typeof nftType === 'object' && nftType !== null) {
-        const key = Object.keys(nftType)[0];
-        const typeMap: Record<string, number> = { 'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3, 'Tier5': 4, 'Tier6': 5, 'Tier7': 6 };
-        nftTypeNum = typeMap[key] ?? 0;
+    // Handle nested Ok result
+    let nftIds: string[] = [];
+    if (Array.isArray(rawData)) {
+      nftIds = rawData as string[];
+    } else if (typeof rawData === 'object' && rawData !== null && 'Ok' in (rawData as object)) {
+      const okData = (rawData as any).Ok;
+      if (Array.isArray(okData)) {
+        nftIds = okData as string[];
       }
+    }
 
-      // Parse numeric values
-      const parseNum = (val: any): number => {
-        if (typeof val === 'number') return val;
-        if (typeof val === 'string') return parseInt(val.replace(/,/g, ''), 10) || 0;
-        return 0;
-      };
+    if (nftIds.length === 0) return [];
 
-      const parseBigInt = (val: any): bigint => {
-        if (typeof val === 'bigint') return val;
-        if (typeof val === 'number') return BigInt(val);
-        if (typeof val === 'string') return BigInt(val.replace(/,/g, '') || '0');
-        return BigInt(0);
-      };
+    console.log('[getUserNFTs] Fetching details for IDs:', nftIds);
 
-      return {
-        tokenId: parseNum(nft.id || nft.tokenId || nft.token_id),
-        nftType: nftTypeNum,
-        mintedAt: parseNum(nft.created_at || nft.createdAt || nft.mintedAt || nft.minted_at),
-        minedTokens: parseBigInt(nft.tokens_mined || nft.tokensMined || nft.minedTokens || nft.mined_tokens),
-        claimedTokens: parseBigInt(nft.tokens_claimed || nft.tokensClaimed || nft.claimedTokens || nft.claimed_tokens),
-        lastMiningTimestamp: parseNum(nft.last_mining_timestamp || nft.lastMiningTimestamp || nft.last_update || 0),
-        miningBonusBps: parseNum(nft.mining_bonus_bps || nft.miningBonusBps || 0),
-      };
+    // Fetch details for each NFT
+    const nftDetailsPromises = nftIds.map(async (idStr) => {
+      const nftId = parseInt(idStr.replace(/,/g, ''), 10);
+      if (isNaN(nftId)) return null;
+
+      try {
+        const detailQuery = await contractInstance.query.getNft(
+          address,
+          getGasLimit(contractInstance.api),
+          nftId
+        );
+
+        if (detailQuery.result.isOk && detailQuery.output) {
+          const detailData = detailQuery.output.toHuman() as any;
+          const nft = detailData?.Ok;
+
+          if (!nft) return null;
+
+          // Helper to parse type
+          let nftTypeNum = 0;
+          const nftType = nft.tier || nft.nftType || nft.nft_type; // Contract uses 'tier'
+          if (typeof nftType === 'string') {
+            const typeMap: Record<string, number> = { 'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3, 'Tier5': 4, 'Tier6': 5, 'Tier7': 6 };
+            nftTypeNum = typeMap[nftType] ?? 0;
+          } else if (typeof nftType === 'object' && nftType !== null) {
+            const key = Object.keys(nftType)[0];
+            const typeMap: Record<string, number> = { 'Free': 0, 'Tier2': 1, 'Tier3': 2, 'Tier4': 3, 'Tier5': 4, 'Tier6': 5, 'Tier7': 6 };
+            nftTypeNum = typeMap[key] ?? 0;
+          }
+
+          const parseNum = (val: any) => typeof val === 'string' ? parseInt(val.replace(/,/g, ''), 10) : val;
+          const parseBig = (val: any) => typeof val === 'string' ? BigInt(val.replace(/,/g, '')) : BigInt(val);
+
+          const claimed = parseBig(nft.tokensClaimed || nft.tokens_claimed || 0);
+
+          return {
+            tokenId: nftId,
+            nftType: nftTypeNum,
+            mintedAt: parseNum(nft.createdAt || nft.created_at),
+            minedTokens: parseBig(nft.tokensMined || nft.tokens_mined || 0),
+            claimedTokens: claimed,
+            lastMiningTimestamp: parseNum(nft.lastMiningTimestamp || nft.last_mining_timestamp),
+            miningBonusBps: parseNum(nft.miningBonusBps || nft.mining_bonus_bps || 0),
+          };
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch NFT ${nftId}:`, err);
+      }
+      return null;
     });
+
+    const results = await Promise.all(nftDetailsPromises);
+    return results.filter(n => n !== null) as any[];
   }
 
   console.warn('[getUserNFTs] Query failed or no output');
@@ -544,7 +560,7 @@ export async function mintNFT(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gasLimit = api!.registry.createType('WeightV2', {
     refTime: BigInt(100_000_000_000), // 100 billion ref_time
-    proofSize: BigInt(1_000_000),     // 1 million proof_size
+    proofSize: BigInt(10_000_000),     // 10 million proof_size
   }) as any;
 
   let tx;
@@ -1263,7 +1279,7 @@ export async function getNFTVisualAttributes(nftId: number): Promise<NFTVisualAt
   }
 
   try {
-    const { result, output } = await contractInstance.query.getVisualAttributes(
+    const { result, output } = await contractInstance.query.getNft(
       contractInstance.address,
       getGasLimit(contractInstance.api),
       nftId
@@ -1271,17 +1287,30 @@ export async function getNFTVisualAttributes(nftId: number): Promise<NFTVisualAt
 
     if (result.isOk && output) {
       const data = output.toHuman() as any;
-      if (data?.Ok) {
+      const nftData = data?.Ok;
+
+      if (nftData) {
+        // Map from NFTData.visual_rarity enum
+        const rarityEnum = nftData.visualRarity || nftData.visual_rarity || 'Common';
+        // Handle string enum or object enum { Common: null }
+        let rarityStr = 'common';
+
+        if (typeof rarityEnum === 'string') {
+          rarityStr = rarityEnum.toLowerCase();
+        } else if (typeof rarityEnum === 'object') {
+          rarityStr = Object.keys(rarityEnum)[0].toLowerCase();
+        }
+
         return {
-          rarity: (data.Ok.rarity || 'common').toLowerCase() as VisualRarity,
-          attributes: data.Ok.attributes || [],
-          seedHash: parseInt(data.Ok.seedHash || 0),
-          revealed: data.Ok.revealed ?? true,
+          rarity: rarityStr as VisualRarity,
+          attributes: [], // Attributes not stored in contract yet
+          seedHash: nftId, // Use ID as seed
+          revealed: true,
         };
       }
     }
   } catch (e) {
-    console.warn('Failed to fetch NFT visual attributes:', e);
+    console.warn('Failed to fetch NFT details for visual attrs:', e);
   }
 
   return null;
@@ -1312,6 +1341,78 @@ export async function getEffectiveMiningRate(nftId: number): Promise<bigint> {
   }
 
   return BigInt(0);
+}
+
+/**
+ * Get Prestige Bonus info for an NFT
+ * Returns: { amount: bigint, claimed: boolean, vestedAmount: bigint } | null
+ */
+export async function getPrestigeBonus(nftId: number): Promise<{ amount: bigint; claimed: boolean; vestedAmount: bigint; eligible: boolean } | null> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) return null;
+
+  try {
+    const { result, output } = await contractInstance.query.getPrestigeInfo(
+      contractInstance.address,
+      getGasLimit(contractInstance.api),
+      nftId
+    );
+
+    if (result.isOk && output) {
+      const data = output.toHuman() as any;
+      // Output is Option<(PrestigeBonus, bool, u128)>
+      // Human: Some: [{...}, false, "1,000"]
+
+      const okData = data?.Ok !== undefined ? data.Ok : data; // Handle Result wrapper if present
+      const someData = okData?.Some !== undefined ? okData.Some : okData; // Handle Option wrapper
+
+      if (Array.isArray(someData)) {
+        const [bonusInfo, claimed, vested] = someData;
+        const amountStr = bonusInfo?.amount || '0';
+        const vestedStr = vested || '0';
+
+        return {
+          amount: BigInt(amountStr.replace(/,/g, '')),
+          claimed: !!claimed,
+          vestedAmount: BigInt(vestedStr.replace(/,/g, '')),
+          eligible: true
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to fetch prestige bonus:', e);
+  }
+
+  return { amount: BigInt(0), claimed: false, vestedAmount: BigInt(0), eligible: false };
+}
+
+/**
+ * Claim Prestige Bonus
+ */
+export async function claimPrestigeBonus(
+  address: string,
+  nftId: number
+): Promise<string> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) throw new Error('Contract not available');
+  const injector = await getInjector(address);
+
+  const tx = contractInstance.tx.claimPrestigeBonus(
+    getGasLimit(contractInstance.api),
+    nftId
+  );
+
+  return new Promise((resolve, reject) => {
+    tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
+      if (status.isFinalized) {
+        if (dispatchError) {
+          reject(new Error(dispatchError.toString()));
+        } else {
+          resolve(txHash.toHex());
+        }
+      }
+    }).catch(reject);
+  });
 }
 
 /**
@@ -1580,69 +1681,59 @@ export async function canEvolveNFTs(nftIds: number[], address: string): Promise<
   }
 
   try {
-    // Convert to BigInt for u64 - polkadot-js should auto-encode Vec<u64>
+    // Convert to BigInt for u64
     const nftIdsBigInt = nftIds.map(id => BigInt(id));
     console.log('[canEvolve] Checking with IDs (BigInt):', nftIdsBigInt.map(n => n.toString()));
 
-    console.log('[canEvolve] Calling query.canEvolve with BigInt array...');
-    const { result, output } = await contractInstance.query.canEvolve(
-      address, // Use the user's address as caller (Origin) to pass ownership check
+    // Use evolveNfts query as a dry-run check (simulating logic)
+    // Rust: fn evolve_nfts(...) -> Result<EvolutionResult, ICOError>
+    // Note: The UI calls this "canEvolve" but the contract method is "evolve_nfts" (tx) called as query.
+    const { result, output } = await contractInstance.query.evolveNfts(
+      address,
       getGasLimit(contractInstance.api),
       nftIdsBigInt
     );
 
-    console.log('[canEvolve] Query completed. result.isOk:', result.isOk);
-    console.log('[canEvolve] result.toHuman():', result.toHuman());
-    if (output) {
-      console.log('[canEvolve] output.toHuman():', output.toHuman());
-    }
-
     if (result.isOk && output) {
-      const data = output.toHuman() as any;
-      console.log('[canEvolve] Parsed data:', data);
-      if (data?.Ok !== undefined) {
-        // Handle nested Ok (Result<Result<u8, Error>, LangError>)
-        const innerData = data.Ok;
-        if (typeof innerData === 'object' && innerData?.Ok !== undefined) {
-          return {
-            canEvolve: true,
-            resultTier: parseInt(innerData.Ok),
-            error: null,
-          };
-        } else if (typeof innerData === 'object' && innerData?.Err !== undefined) {
-          return {
-            canEvolve: false,
-            resultTier: null,
-            error: JSON.stringify(innerData.Err),
-          };
-        } else {
-          return {
-            canEvolve: true,
-            resultTier: parseInt(innerData),
-            error: null,
-          };
-        }
-      } else if (data?.Err) {
+      const response = output.toHuman() as any;
+      console.log('[canEvolve] Contract response:', response);
+
+      // Handle Result::Err from contract logic
+      if (response && typeof response === 'object' && 'Err' in response) {
+        let errStr = 'Contract Error';
+        try {
+          if (typeof response.Err === 'string') errStr = response.Err;
+          else if (typeof response.Err === 'object') errStr = Object.keys(response.Err)[0];
+        } catch (e) { }
+        return { canEvolve: false, resultTier: null, error: errStr };
+      }
+
+      // Handle Result::Ok 
+      if (response && typeof response === 'object' && 'Ok' in response) {
+        const data = response.Ok;
+        // data should be EvolutionResult { newTier: ..., ... }
+        // Depending on how it's returned (camelCase vs snake_case keys from JSON)
+        const newTier = data.newTier || data.new_tier || 0;
         return {
-          canEvolve: false,
-          resultTier: null,
-          error: JSON.stringify(data.Err),
+          canEvolve: true,
+          resultTier: parseInt(newTier.toString()),
+          error: null
         };
       }
-    } else if (result.isErr) {
-      console.error('[canEvolve] Query failed with error:', result.asErr?.toHuman?.() || result.toHuman());
-      return {
-        canEvolve: false,
-        resultTier: null,
-        error: 'Query failed: ' + JSON.stringify(result.toHuman()),
-      };
+
+      return { canEvolve: false, resultTier: null, error: 'Unknown response format from contract' };
     }
+
+    // RPC or Network error
+    if (result.isErr) {
+      return { canEvolve: false, resultTier: null, error: result.asErr.toString() };
+    }
+
+    return { canEvolve: false, resultTier: null, error: 'No output from contract query' };
   } catch (e) {
     console.error('[canEvolve] Exception caught:', e);
-    return { canEvolve: false, resultTier: null, error: String(e) };
+    return { canEvolve: false, resultTier: null, error: e instanceof Error ? e.message : 'Unknown error' };
   }
-
-  return { canEvolve: false, resultTier: null, error: 'Unknown error' };
 }
 
 /**
@@ -2063,4 +2154,30 @@ export async function settleAuction(address: string, tokenId: number): Promise<a
     { gasLimit: getGasLimit(api).gasLimit, storageDepositLimit: null },
     tokenId
   ).signAndSend(address, { signer: injector.signer });
+}
+
+/**
+ * Check if user has reached the free mint limit (Max 5)
+ * Returns true if limit reached (>= 5 mints used)
+ */
+export async function hasReachedFreeMintLimit(address: string): Promise<boolean> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) return false;
+
+  try {
+    const { result, output } = await contractInstance.query.hasFreeMint(
+      address,
+      getGasLimit(contractInstance.api),
+      address
+    );
+
+    if (result.isOk && output) {
+      // Rust: fn has_free_mint -> bool { count >= 5 }
+      const val = output.toHuman();
+      return val === true || val === 'true';
+    }
+  } catch (error) {
+    console.warn('[Contract] Error checking free mint limit:', error);
+  }
+  return false;
 }

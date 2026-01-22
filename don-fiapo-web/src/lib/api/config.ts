@@ -117,7 +117,7 @@ export const API_CONFIG = {
   totalMiningAllocation: 5_070_000_000, // 13% of 39B allocated to NFT mining
 
   // Default mining duration (average across tiers)
-  miningDuration: 365, // days
+  miningDuration: 112, // days
 };
 
 export type StakingPoolId = keyof typeof API_CONFIG.stakingPools;

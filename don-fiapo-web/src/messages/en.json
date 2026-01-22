@@ -181,7 +181,9 @@
       "lastSurvivor": "Slots for the first 100 are gone, but you can still win if you are one of the last 10!",
       "congrats": "Prestige Bonus Earned!",
       "congratsDesc": "You are one of the first 100 to reach this level! 🎉",
-      "potential": "+ Potential Prestige Bonus: {amount} FIAPO!"
+      "potential": "+ Potential Prestige Bonus: {amount} FIAPO!",
+      "bonusLabel": "You earned an extra bonus of:",
+      "vestingInfo": "The bonus will be released after the ICO ends with a 30-day vesting period."
     }
   },
   "airdrop": {

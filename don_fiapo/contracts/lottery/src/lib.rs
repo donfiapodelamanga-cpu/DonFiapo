@@ -371,7 +371,7 @@ mod fiapo_lottery {
 
             // Transfere prêmios para os ganhadores via cross-contract call
             for winner in &winner_list {
-                let _ = self.call_core_mint_prize(winner.wallet, winner.prize);
+                let _ = self.call_core_transfer_prize(winner.wallet, winner.prize);
             }
 
             // Limpa tickets dos participantes
@@ -407,22 +407,22 @@ mod fiapo_lottery {
             Ok(result)
         }
 
-        /// Cross-contract call para mintar prêmios
-        fn call_core_mint_prize(&self, to: AccountId, amount: Balance) -> Result<(), LotteryError> {
+        /// Cross-contract call para transferir prêmios
+        fn call_core_transfer_prize(&self, to: AccountId, amount: Balance) -> Result<(), LotteryError> {
             use ink::env::call::{build_call, ExecutionInput, Selector};
-
+ 
             let result = build_call::<ink::env::DefaultEnvironment>()
                 .call(self.core_contract)
                 .gas_limit(0)
                 .transferred_value(0)
                 .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("mint_to")))
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
                         .push_arg(to)
                         .push_arg(amount),
                 )
                 .returns::<Result<(), u8>>()
                 .try_invoke();
-
+ 
             match result {
                 Ok(Ok(Ok(()))) => Ok(()),
                 _ => Err(LotteryError::Unauthorized),

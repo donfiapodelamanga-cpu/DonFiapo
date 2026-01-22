@@ -181,7 +181,9 @@
       "lastSurvivor": "As vagas dos 100 primeiros já esgotaram, mas você ainda ganha o prêmio se for um dos 10 últimos!",
       "congrats": "Bônus de Prestígio Ganho!",
       "congratsDesc": "Você é um dos 100 primeiros a alcançar este nível! 🎉",
-      "potential": "+ Bônus de Prestígio Potencial: {amount} FIAPO!"
+      "potential": "+ Bônus de Prestígio Potencial: {amount} FIAPO!",
+      "bonusLabel": "Você ganhou um bônus extra de:",
+      "vestingInfo": "O bônus será liberado após o término do ICO com vesting de 30 dias."
     }
   },
   "airdrop": {

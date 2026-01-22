@@ -42,7 +42,7 @@ The memecoin sector ($150B+ market cap as of 2024) is dominated by:
 | **Airdrop & Affiliate** | 5% | 50M | Performance-based |
 
 **Total Supply**: 1,000,000,000 $FIAPO (1 Billion)  
-**Decimals**: 8  
+**Decimals**: 8 (Lower fraction: **Paw**. 1 FIAPO = 10^8 Paws)  
 **Target Min Supply**: 100,000,000 $FIAPO (burn 90%)
 
 ### 2.2 Deflationary Mechanisms

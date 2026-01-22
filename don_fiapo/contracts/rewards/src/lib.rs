@@ -251,7 +251,7 @@ mod fiapo_rewards {
             }
 
             // Cross-contract call: transfere tokens do fundo para o usuário
-            self.call_core_mint_rewards(caller, amount)?;
+            self.call_core_transfer_rewards(caller, amount)?;
 
             self.pending_rewards.insert(caller, &0);
             self.total_distributed = self.total_distributed.saturating_add(amount);
@@ -266,22 +266,22 @@ mod fiapo_rewards {
             Ok(amount)
         }
 
-        /// Cross-contract call para mintar rewards
-        fn call_core_mint_rewards(&self, to: AccountId, amount: Balance) -> Result<(), RewardsError> {
+        /// Cross-contract call para transferir rewards
+        fn call_core_transfer_rewards(&self, to: AccountId, amount: Balance) -> Result<(), RewardsError> {
             use ink::env::call::{build_call, ExecutionInput, Selector};
-
+ 
             let result = build_call::<ink::env::DefaultEnvironment>()
                 .call(self.core_contract)
                 .gas_limit(0)
                 .transferred_value(0)
                 .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("mint_to")))
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
                         .push_arg(to)
                         .push_arg(amount),
                 )
                 .returns::<Result<(), u8>>()
                 .try_invoke();
-
+ 
             match result {
                 Ok(Ok(Ok(()))) => Ok(()),
                 _ => Err(RewardsError::Unauthorized),

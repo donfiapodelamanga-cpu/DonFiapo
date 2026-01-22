@@ -331,7 +331,7 @@ export default function MyNFTsPage() {
 
                 return (
                   <motion.div
-                    key={nft.tokenId}
+                    key={`${nft.tokenId}-${i}`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}

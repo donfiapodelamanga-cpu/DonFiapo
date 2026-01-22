@@ -17,6 +17,7 @@ import { useICOStats, useNftConfigs } from "@/hooks/useContract";
 import { useToast } from "@/components/ui/toast";
 import { API_CONFIG } from "@/lib/api/config";
 import { ConnectWalletModal } from "@/components/wallet/connect-wallet-modal";
+import { PrestigeCelebration } from "@/components/ui/prestige-celebration";
 
 // Consistent number formatting to avoid SSR hydration mismatch
 // Uses 'en-US' locale for consistent server/client rendering
@@ -53,6 +54,9 @@ export default function MintPage() {
   const [isMinting, setIsMinting] = useState(false);
   const [paymentStep, setPaymentStep] = useState<"idle" | "paying" | "verifying" | "success">("idle");
   const [isLunesModalOpen, setIsLunesModalOpen] = useState(false);
+  const [showPrestigeCelebration, setShowPrestigeCelebration] = useState(false);
+  const [prestigeBonusAmount, setPrestigeBonusAmount] = useState(0);
+  const [maxFreeMintsReached, setMaxFreeMintsReached] = useState(false);
 
   const { lunesConnected, lunesAddress } = useWalletStore();
   const { connected: solanaConnected, publicKey } = useWallet();
@@ -102,10 +106,14 @@ export default function MintPage() {
       setCheckingCooldown(true);
       try {
         const contract = await import('@/lib/api/contract');
-        const remaining = await contract.getRemainingCooldown(lunesAddress);
+        const [remaining, limitReached] = await Promise.all([
+          contract.getRemainingCooldown(lunesAddress),
+          contract.hasReachedFreeMintLimit(lunesAddress)
+        ]);
         setCooldownRemaining(remaining);
+        setMaxFreeMintsReached(limitReached);
       } catch (e) {
-        console.error("Failed to check cooldown", e);
+        console.error("Failed to check cooldown/limit", e);
       } finally {
         setCheckingCooldown(false);
       }
@@ -180,7 +188,20 @@ export default function MintPage() {
 
       setPaymentStep("success");
       addToast("success", "NFT Minted!", "Your Royal NFT is now mining FIAPO!");
-      fetchICOStats(); // Refresh stats to show updated counts
+      // Refresh data
+      await Promise.all([fetchICOStats(), fetchNftConfigs()]);
+
+      // Check if user earned prestige bonus (first 100)
+      const tierConfig = API_CONFIG.nftTiers.find(t => t.id === selectedTier.id);
+      const prestigeBonus = (tierConfig as any)?.prestigeBonus?.first || 0;
+
+      const updatedConfig = nftConfigs?.[selectedTier.id];
+      const currentMinted = updatedConfig ? (typeof updatedConfig.minted === 'string' ? parseInt(updatedConfig.minted) : updatedConfig.minted) : 0;
+
+      if (prestigeBonus > 0 && currentMinted <= 100) {
+        setPrestigeBonusAmount(prestigeBonus);
+        setShowPrestigeCelebration(true);
+      }
 
     } catch (err) {
       console.error("Mint error:", err);
@@ -203,6 +224,11 @@ export default function MintPage() {
     if (!lunesConnected || !lunesAddress) {
       addToast("error", "Connect Wallet", "Connect your Lunes wallet to claim a free NFT.");
       setIsLunesModalOpen(true);
+      return;
+    }
+
+    if (maxFreeMintsReached) {
+      addToast("error", "Mint Limit Reached", "You have already claimed the maximum of 5 free NFTs per wallet.");
       return;
     }
 
@@ -229,7 +255,23 @@ export default function MintPage() {
 
       addToast("success", "NFT Minted!", `You received a ${freeTier.shortName} NFT! Transaction Hash: ${result.slice(0, 6)}...${result.slice(-6)}`);
       setPaymentStep("success");
-      fetchICOStats(); // Refresh stats
+      // Update stats and configs
+      await Promise.all([fetchICOStats(), fetchNftConfigs()]);
+
+      // Determine bonus eligibility based on configs or heuristic
+      // Valid if total minted for this tier is <= 100
+      const currentMintedStr = nftConfigs?.[0]?.minted || 0;
+      const currentMinted = typeof currentMintedStr === 'string' ? parseInt(currentMintedStr) : currentMintedStr;
+
+      // We explicitly check if we are within the first 100 based on the recently fetched config 
+      // OR if we were safely within limit before minting (fallback)
+      const prestigeBonus = (freeTier as any)?.prestigeBonus?.first || 0;
+
+      // Assume success if we just minted and it looked like we were early
+      if (prestigeBonus > 0 && currentMinted <= 100) {
+        setPrestigeBonusAmount(prestigeBonus);
+        setShowPrestigeCelebration(true);
+      }
     } catch (error) {
       console.error("[Mint] Free mint error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to mint free NFT";
@@ -555,7 +597,7 @@ export default function MintPage() {
                     size="xl"
                     className="w-full glow-gold"
                     onClick={totalPrice === 0 ? handleFreeMint : handlePaidMint}
-                    disabled={isProcessingPayment || isMinting || (totalPrice === 0 && cooldownRemaining > 0)}
+                    disabled={isProcessingPayment || isMinting || (totalPrice === 0 && (cooldownRemaining > 0 || maxFreeMintsReached))}
                   >
                     {isProcessingPayment ? (
                       <>
@@ -567,6 +609,11 @@ export default function MintPage() {
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                         Minting Your NFT...
                       </>
+                    ) : totalPrice === 0 && maxFreeMintsReached ? (
+                      <span className="flex items-center justify-center text-red-500">
+                        <Info className="w-5 h-5 mr-2" />
+                        Limit Reached (5/5)
+                      </span>
                     ) : totalPrice === 0 && cooldownRemaining > 0 ? (
                       <span className="flex items-center justify-center text-yellow-500">
                         <Clock className="w-5 h-5 mr-2" />
@@ -590,6 +637,14 @@ export default function MintPage() {
       <ConnectWalletModal
         isOpen={isLunesModalOpen}
         onClose={() => setIsLunesModalOpen(false)}
+      />
+
+      {/* Prestige Bonus Celebration with Confetti */}
+      <PrestigeCelebration
+        isVisible={showPrestigeCelebration}
+        onClose={() => setShowPrestigeCelebration(false)}
+        bonusAmount={prestigeBonusAmount}
+        tierName={selectedTier.shortName}
       />
     </div>
   );

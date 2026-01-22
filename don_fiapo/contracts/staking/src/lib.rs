@@ -530,8 +530,8 @@ mod fiapo_staking {
             // Atualiza totais
             self.total_rewards_distributed = self.total_rewards_distributed.saturating_add(rewards);
 
-            // Cross-contract call: minta rewards para o usuário
-            self.call_core_mint_rewards(caller, rewards)?;
+            // Cross-contract call: transfere rewards para o usuário
+            self.call_core_transfer_rewards(caller, rewards)?;
 
             Self::env().emit_event(RewardsClaimed {
                 position_id,
@@ -850,26 +850,26 @@ mod fiapo_staking {
             }
         }
 
-        /// Chama Core.mint_to para mintar rewards
-        fn call_core_mint_rewards(
+        /// Chama Core.transfer para enviar rewards
+        fn call_core_transfer_rewards(
             &self,
             to: AccountId,
             amount: Balance,
         ) -> Result<(), StakingError> {
             use ink::env::call::{build_call, ExecutionInput, Selector};
-
+ 
             let result = build_call::<ink::env::DefaultEnvironment>()
                 .call(self.core_contract)
                 .gas_limit(0)
                 .transferred_value(0)
                 .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("mint_to")))
+                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
                         .push_arg(to)
                         .push_arg(amount),
                 )
                 .returns::<Result<(), PSP22Error>>()
                 .try_invoke();
-
+ 
             match result {
                 Ok(Ok(Ok(()))) => Ok(()),
                 _ => Err(StakingError::MintFailed),

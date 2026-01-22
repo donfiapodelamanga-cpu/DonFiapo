@@ -8,7 +8,7 @@
     "ico": "ICO/NFTs",
     "marketplace": "Marché",
     "staking": "Staking",
-    "simulations": "Simulations",
+    "simulations": "Simulaciones",
     "games": "Jeux",
     "tokenomics": "Tokenomics",
     "airdrop": "Airdrop",
@@ -61,19 +61,36 @@
     "subtitle": "Le Chemin Royal vers la Gloire",
     "phase1": {
       "title": "Phase 1 — Le Couronnement",
-      "items": ["Lancement du Token", "Site Web", "Whitepaper", "Mèmes"]
+      "items": [
+        "Lancement du Token",
+        "Site Web",
+        "Whitepaper",
+        "Mèmes"
+      ]
     },
     "phase2": {
       "title": "Phase 2 — Conquête du Royaume",
-      "items": ["Airdrops", "Listages DEX", "Campagne \"De Fiapo à Roi\""]
+      "items": [
+        "Airdrops",
+        "Listages DEX",
+        "Campagne \"De Fiapo à Roi\""
+      ]
     },
     "phase3": {
       "title": "Phase 3 — L'Empire des Mèmes",
-      "items": ["Staking gamifié", "NFTs", "Token $OSSIN"]
+      "items": [
+        "Staking gamifié",
+        "NFTs",
+        "Token $OSSIN"
+      ]
     },
     "phase4": {
       "title": "Phase 4 — Domination Mondiale",
-      "items": ["Merch", "Jeu \"Course Royale du Fiapo\"", "Partenariats"]
+      "items": [
+        "Merch",
+        "Jeu \"Course Royale du Fiapo\"",
+        "Partenariats"
+      ]
     }
   },
   "comparison": {
@@ -156,7 +173,18 @@
     "mining": "Tableau de Bord Mining",
     "tokensMined": "Tokens Minés",
     "daysRemaining": "Jours Restants",
-    "claimTokens": "Réclamer Tokens"
+    "claimTokens": "Réclamer Tokens",
+    "prestige": {
+      "title": "Bonus de Prestige",
+      "desc": "Limité aux 100 premiers pionniers ou aux 10 derniers survivants par niveau !",
+      "earlyAdopter": "Vous pouvez encore gagner le bonus de pionnier de {amount} $FIAPO (Il reste {remaining} places !)",
+      "lastSurvivor": "Les places pour les 100 premiers sont épuisées, mais vous pouvez encore gagner si vous êtes l'un des 10 derniers !",
+      "congrats": "Bonus de Prestige Gagné !",
+      "congratsDesc": "Vous êtes l'un des 100 premiers à atteindre ce niveau ! 🎉",
+      "potential": "+ Bonus de Prestige Potentiel : {amount} FIAPO !",
+      "bonusLabel": "Vous avez gagné un bonus supplémentaire de :",
+      "vestingInfo": "Le bonus sera libéré après la fin de l'ICO avec une période de vesting de 30 jours."
+    }
   },
   "airdrop": {
     "title": "Airdrop Royal",

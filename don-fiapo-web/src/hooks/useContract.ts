@@ -58,6 +58,14 @@ interface AirdropConfig {
   };
 }
 
+export interface PrestigeData {
+  nftId: number;
+  amount: bigint;
+  vestedAmount: bigint;
+  claimed: boolean;
+  eligible: boolean;
+}
+
 interface NFTData {
   tokenId: number;
   nftType: number;
@@ -304,6 +312,84 @@ export function useNFTs() {
     error,
     fetchNFTs,
     claimMinedTokens,
+  };
+}
+
+/**
+ * Hook for Prestige Bonus
+ */
+export function usePrestige() {
+  const [data, setData] = useState<Record<number, PrestigeData>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { lunesAddress, lunesConnected } = useWalletStore();
+
+  const fetchPrestige = useCallback(async (nftIds: number[]) => {
+    if (!lunesConnected || !lunesAddress || nftIds.length === 0) {
+      setData({});
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const contract = await loadContract();
+      if (!contract) throw new Error('Contract not available');
+
+      const results: Record<number, PrestigeData> = {};
+
+      await Promise.all(nftIds.map(async (id) => {
+        const bonus = await contract.getPrestigeBonus(id);
+        if (bonus && bonus.eligible) {
+          results[id] = {
+            nftId: id,
+            amount: bonus.amount,
+            vestedAmount: bonus.vestedAmount,
+            claimed: bonus.claimed,
+            eligible: true
+          };
+        }
+      }));
+
+      setData(results);
+    } catch (err) {
+      console.error('[usePrestige] Error fetching prestige:', err);
+      // Don't set global error to avoid blocking UI, just log
+    } finally {
+      setLoading(false);
+    }
+  }, [lunesAddress, lunesConnected]);
+
+  const claimPrestige = useCallback(async (nftId: number) => {
+    if (!lunesConnected || !lunesAddress) {
+      throw new Error('Wallet not connected');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const contract = await loadContract();
+      if (!contract) throw new Error('Contract not available');
+      const txHash = await contract.claimPrestigeBonus(lunesAddress, nftId);
+      // Refresh logic should be handled by caller
+      return txHash;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to claim prestige bonus';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [lunesAddress, lunesConnected]);
+
+  return {
+    data,
+    loading,
+    error,
+    fetchPrestige,
+    claimPrestige
   };
 }
 
