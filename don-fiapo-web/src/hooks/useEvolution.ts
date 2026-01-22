@@ -30,6 +30,7 @@ export interface EvolutionState {
 }
 
 export interface EvolutionPreview {
+  nextTierId: number;
   currentTierName: string;
   nextTierName: string;
   nextTierImage: string;
@@ -137,6 +138,7 @@ export function useEvolution() {
     if (!currentTier || !nextTier) return null;
 
     return {
+      nextTierId: nextTier.id,
       currentTierName: currentTier.shortName,
       nextTierName: nextTier.shortName,
       nextTierImage: nextTier.image,
@@ -171,7 +173,11 @@ export function useEvolution() {
       const contract = await import('@/lib/api/contract');
 
       // First check if evolution is possible
-      const check = await contract.canEvolveNFTs(state.selectedNFTs, lunesAddress);
+      const check = await contract.canEvolveNFTs(
+        state.selectedNFTs,
+        preview.nextTierId,
+        lunesAddress
+      );
       if (!check.canEvolve) {
         setState(prev => ({
           ...prev,
@@ -182,7 +188,11 @@ export function useEvolution() {
       }
 
       // Execute evolution
-      const result = await contract.evolveNFTs(state.selectedNFTs, lunesAddress);
+      const result = await contract.evolveNFTs(
+        state.selectedNFTs,
+        preview.nextTierId,
+        lunesAddress
+      );
 
       setState(prev => ({
         ...prev,

@@ -15,6 +15,7 @@ import { API_CONFIG, getRarityConfig } from "@/lib/api/config";
 import { useToast } from "@/components/ui/toast";
 import { ListNFTModal } from "@/components/nft/ListNFTModal";
 import { getNFTVisualAttributes } from "@/lib/api/contract";
+import { ConnectWalletModal } from "@/components/wallet/connect-wallet-modal";
 
 // NFT tier rarity labels (tier-based)
 const tierRarityLabels: Record<number, string> = {
@@ -41,6 +42,7 @@ export default function MyNFTsPage() {
   const { stats: icoStats, fetchStats: fetchICOStats } = useICOStats();
   const { addToast } = useToast();
   const [selectedForListing, setSelectedForListing] = useState<any | null>(null);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
   useEffect(() => {
     if (lunesConnected && lunesAddress) {
@@ -107,7 +109,7 @@ export default function MyNFTsPage() {
             <CardContent className="pt-6 text-center">
               <Crown className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">Connect your wallet to view your NFTs</p>
-              <Button>Connect Wallet</Button>
+              <Button onClick={() => setIsConnectModalOpen(true)}>Connect Wallet</Button>
             </CardContent>
           </Card>
         ) : loading ? (
@@ -434,6 +436,7 @@ export default function MyNFTsPage() {
           </>
         )}
       </div>
+      <ConnectWalletModal isOpen={isConnectModalOpen} onClose={() => setIsConnectModalOpen(false)} />
     </div>
   );
 }

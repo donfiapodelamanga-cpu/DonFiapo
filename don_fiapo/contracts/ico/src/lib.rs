@@ -222,6 +222,7 @@ mod fiapo_ico {
         pub max_supply: u32,
         pub minted: u32,
         pub minted_evolution: u32,
+        pub burned: u32,
         pub tokens_per_nft: u128,
         pub daily_mining_rate: u128,
         pub active: bool,
@@ -384,6 +385,7 @@ mod fiapo_ico {
                 max_supply: 10_000,
                 minted: 0,
                 minted_evolution: 0,
+                burned: 0,
                 tokens_per_nft: 560_u128.saturating_mul(SCALE),
                 daily_mining_rate: 5_u128.saturating_mul(SCALE),
                 active: true,
@@ -394,6 +396,7 @@ mod fiapo_ico {
                 max_supply: 50_000,
                 minted: 0,
                 minted_evolution: 0,
+                burned: 0,
                 tokens_per_nft: 5_600_u128.saturating_mul(SCALE),
                 daily_mining_rate: 50_u128.saturating_mul(SCALE),
                 active: true,
@@ -404,6 +407,7 @@ mod fiapo_ico {
                 max_supply: 40_000,
                 minted: 0,
                 minted_evolution: 0,
+                burned: 0,
                 tokens_per_nft: 16_800_u128.saturating_mul(SCALE),
                 daily_mining_rate: 150_u128.saturating_mul(SCALE),
                 active: true,
@@ -414,6 +418,7 @@ mod fiapo_ico {
                 max_supply: 30_000,
                 minted: 0,
                 minted_evolution: 0,
+                burned: 0,
                 tokens_per_nft: 33_600_u128.saturating_mul(SCALE),
                 daily_mining_rate: 300_u128.saturating_mul(SCALE),
                 active: true,
@@ -424,6 +429,7 @@ mod fiapo_ico {
                 max_supply: 20_000,
                 minted: 0,
                 minted_evolution: 0,
+                burned: 0,
                 tokens_per_nft: 56_000_u128.saturating_mul(SCALE),
                 daily_mining_rate: 500_u128.saturating_mul(SCALE),
                 active: true,
@@ -434,6 +440,7 @@ mod fiapo_ico {
                 max_supply: 5_000,
                 minted: 0,
                 minted_evolution: 0,
+                burned: 0,
                 tokens_per_nft: 134_400_u128.saturating_mul(SCALE),
                 daily_mining_rate: 1200_u128.saturating_mul(SCALE),
                 active: true,
@@ -444,6 +451,7 @@ mod fiapo_ico {
                 max_supply: 2_000,
                 minted: 0,
                 minted_evolution: 0,
+                burned: 0,
                 tokens_per_nft: 280_000_u128.saturating_mul(SCALE),
                 daily_mining_rate: 2500_u128.saturating_mul(SCALE),
                 active: true,
@@ -965,6 +973,11 @@ mod fiapo_ico {
                     self.nfts.insert(*nft_id, &nft);
                 }
             }
+
+            // Update burned count for Source Tier
+            let mut source_config = self.tier_configs.get(required_source_tier).unwrap();
+            source_config.burned = source_config.burned.saturating_add(required_amount as u32);
+            self.tier_configs.insert(required_source_tier, &source_config);
 
             // Cria novo NFT evoluído (is_evolution = true)
             let nft_id = self.mint_nft_internal(caller, target, 0, true)?;

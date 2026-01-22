@@ -184,6 +184,28 @@
       "potential": "+ Potential Prestige Bonus: {amount} FIAPO!",
       "bonusLabel": "You earned an extra bonus of:",
       "vestingInfo": "The bonus will be released after the ICO ends with a 30-day vesting period."
+    },
+    "errors": {
+      "ICONotActive": "ICO is not active at the moment.",
+      "NFTNotFound": "NFT not found.",
+      "NotNFTOwner": "You are not the owner of this NFT.",
+      "NFTInactive": "This NFT is inactive.",
+      "MiningNotStarted": "Mining has not started yet.",
+      "MiningEnded": "Mining has ended.",
+      "NoTokensToClaim": "No tokens to claim.",
+      "InsufficientNFTs": "Insufficient NFTs for this operation.",
+      "InvalidNFTCount": "Invalid NFT count for evolution.",
+      "InvalidNFTType": "Invalid NFT type.",
+      "MaxSupplyReached": "Max supply reached for this tier.",
+      "PaymentRequired": "Payment required for this operation.",
+      "PaymentAmountMismatch": "Incorrect payment amount.",
+      "PaymentAlreadyUsed": "This payment has already been used.",
+      "InvalidTransactionHash": "Invalid transaction hash.",
+      "FreeMintAlreadyUsed": "You have already reached the limit of 5 Free Mints.",
+      "EvolutionNotAllowed": "Evolution not allowed for this NFT.",
+      "CoreContractError": "Error communicating with Core contract.",
+      "Unauthorized": "You are not authorized for this operation.",
+      "ContractReverted": "Operation refused (Possible limit reached or logic error)."
     }
   },
   "airdrop": {

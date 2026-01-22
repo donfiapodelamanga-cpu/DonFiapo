@@ -43,6 +43,92 @@ export const parseArray = (val: any): any[] => {
 };
 
 /**
+ * ICO Contract Error Mapping
+ * Maps contract error indices to user-friendly messages
+ */
+const ICO_ERROR_MESSAGES: Record<number, { code: string; message: string; userMessage: string }> = {
+  0: { code: 'ICONotActive', message: 'ICO is not active', userMessage: 'ico.errors.ICONotActive' },
+  1: { code: 'NFTNotFound', message: 'NFT not found', userMessage: 'ico.errors.NFTNotFound' },
+  2: { code: 'NotNFTOwner', message: 'Not the NFT owner', userMessage: 'ico.errors.NotNFTOwner' },
+  3: { code: 'NFTInactive', message: 'NFT is inactive', userMessage: 'ico.errors.NFTInactive' },
+  4: { code: 'MiningNotStarted', message: 'Mining has not started', userMessage: 'ico.errors.MiningNotStarted' },
+  5: { code: 'MiningEnded', message: 'Mining has ended', userMessage: 'ico.errors.MiningEnded' },
+  6: { code: 'NoTokensToClaim', message: 'No tokens to claim', userMessage: 'ico.errors.NoTokensToClaim' },
+  7: { code: 'InsufficientNFTs', message: 'Insufficient NFTs', userMessage: 'ico.errors.InsufficientNFTs' },
+  8: { code: 'InvalidNFTCount', message: 'Invalid NFT count', userMessage: 'ico.errors.InvalidNFTCount' },
+  9: { code: 'InvalidNFTType', message: 'Invalid NFT type', userMessage: 'ico.errors.InvalidNFTType' },
+  10: { code: 'MaxSupplyReached', message: 'Max supply reached', userMessage: 'ico.errors.MaxSupplyReached' },
+  11: { code: 'PaymentRequired', message: 'Payment required', userMessage: 'ico.errors.PaymentRequired' },
+  12: { code: 'PaymentAmountMismatch', message: 'Payment amount mismatch', userMessage: 'ico.errors.PaymentAmountMismatch' },
+  13: { code: 'PaymentAlreadyUsed', message: 'Payment already used', userMessage: 'ico.errors.PaymentAlreadyUsed' },
+  14: { code: 'InvalidTransactionHash', message: 'Invalid transaction hash', userMessage: 'ico.errors.InvalidTransactionHash' },
+  15: { code: 'FreeMintAlreadyUsed', message: 'Free mint limit reached', userMessage: 'ico.errors.FreeMintAlreadyUsed' },
+  16: { code: 'EvolutionNotAllowed', message: 'Evolution not allowed', userMessage: 'ico.errors.EvolutionNotAllowed' },
+  17: { code: 'CoreContractError', message: 'Core contract error', userMessage: 'ico.errors.CoreContractError' },
+  18: { code: 'Unauthorized', message: 'Unauthorized', userMessage: 'ico.errors.Unauthorized' },
+  // Mapping 25 (0x19) which appears to be ContractReverted or similar in this Runtime
+  25: { code: 'ContractReverted', message: 'Contract Reverted', userMessage: 'ico.errors.ContractReverted' },
+};
+
+/**
+ * Decode contract dispatch error to user-friendly message
+ */
+export function decodeContractError(dispatchError: any, api?: any): string {
+  if (!dispatchError) return 'Erro desconhecido';
+
+  // Handle string errors (already decoded)
+  if (typeof dispatchError === 'string') {
+    // Try to parse JSON error format
+    try {
+      const parsed = JSON.parse(dispatchError);
+      if (parsed.module?.error || parsed.Module?.error) {
+        const errorHex = parsed.module?.error || parsed.Module?.error;
+        // Extract first byte (error index in little-endian)
+        const errorIndex = parseInt(errorHex.slice(2, 4), 16);
+        const icoError = ICO_ERROR_MESSAGES[errorIndex];
+        if (icoError) {
+          return icoError.userMessage;
+        }
+      }
+    } catch {
+      // Not JSON, return as is
+    }
+    return dispatchError;
+  }
+
+  // Handle DispatchError object via API Registry
+  if (dispatchError.isModule && api) {
+    try {
+      const decoded = api.registry.findMetaError(dispatchError.asModule);
+      // Map known errors
+      const errorName = decoded.name;
+      const icoError = Object.values(ICO_ERROR_MESSAGES).find(e => e.code === errorName);
+      if (icoError) {
+        return icoError.userMessage;
+      }
+      return `${decoded.section}.${decoded.name}: ${decoded.docs.join(' ')}`;
+    } catch {
+      // Fallback
+    }
+  }
+
+  // Handle raw error object with module info (toHuman)
+  const rawError = dispatchError.toHuman?.() || dispatchError.toString?.() || dispatchError;
+  const moduleError = rawError?.module?.error || rawError?.Module?.error;
+
+  if (typeof rawError === 'object' && moduleError) {
+    const errorHex = moduleError;
+    const errorIndex = parseInt(errorHex.slice(2, 4), 16);
+    const icoError = ICO_ERROR_MESSAGES[errorIndex];
+    if (icoError) {
+      return icoError.userMessage;
+    }
+  }
+
+  return dispatchError.toString?.() || 'Erro desconhecido na transação';
+}
+
+/**
  * Check if we should attempt connection
  */
 function shouldAttemptConnection(): boolean {
@@ -360,7 +446,7 @@ export async function stake(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -389,7 +475,7 @@ export async function unstake(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -418,7 +504,7 @@ export async function claimRewards(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -493,6 +579,10 @@ export async function getUserNFTs(address: string): Promise<{
 
           if (!nft) return null;
 
+          // Filter out inactive (burned) NFTs
+          const isActive = nft.active === true || nft.active === 'true';
+          if (!isActive) return null;
+
           // Helper to parse type
           let nftTypeNum = 0;
           const nftType = nft.tier || nft.nftType || nft.nft_type; // Contract uses 'tier'
@@ -563,8 +653,34 @@ export async function mintNFT(
     proofSize: BigInt(10_000_000),     // 10 million proof_size
   }) as any;
 
-  let tx;
+  let tx: any;
+
+  // Dry-Run to catch logical errors (like Limits) before sending TX
   if (nftType === 0) {
+    console.log('[Contract] Simulating Free Mint (dry-run)...');
+    try {
+      const { result, output } = await contractInstance.query.mintFree(
+        address,
+        { gasLimit, storageDepositLimit: null }
+      );
+
+      // Check for contract logic errors (Result::Err)
+      if (result.isOk && output) {
+        const human = output.toHuman() as any;
+        if (human && typeof human === 'object' && (human.Err || human.err)) {
+          const errCode = human.Err || human.err;
+          console.warn('[DryRun] Free Mint failed:', errCode);
+          const mapped = Object.values(ICO_ERROR_MESSAGES).find(e => e.code === errCode || e.code === errCode?.toString());
+          if (mapped) throw new Error(mapped.userMessage);
+          throw new Error(`Erro simulado: ${JSON.stringify(errCode)}`);
+        }
+      }
+    } catch (e) {
+      // If dry run throws specific error, rethrow it
+      if (e instanceof Error && !e.message.includes('Simulating')) throw e;
+      console.warn('[DryRun] Simulation exception (ignoring):', e);
+    }
+
     // Free Mint - mint_free() takes no args
     console.log('[Contract] Executing Free Mint (mint_free)');
     tx = contractInstance.tx.mintFree(
@@ -572,10 +688,36 @@ export async function mintNFT(
     );
   } else {
     // Paid Mint - mint_paid(tier, payment_hash)
-    console.log('[Contract] Executing Paid Mint (mint_paid)');
     if (!proof || !proof.transaction_hash) {
       throw new Error('Payment proof transaction hash required for paid mint');
     }
+
+    // Dry Run Paid
+    console.log('[Contract] Simulating Paid Mint (dry-run)...');
+    try {
+      const { result, output } = await contractInstance.query.mintPaid(
+        address,
+        { gasLimit, storageDepositLimit: null },
+        nftType,
+        proof.transaction_hash
+      );
+
+      if (result.isOk && output) {
+        const human = output.toHuman() as any;
+        if (human && typeof human === 'object' && (human.Err || human.err)) {
+          const errCode = human.Err || human.err;
+          console.warn('[DryRun] Paid Mint failed:', errCode);
+          const mapped = Object.values(ICO_ERROR_MESSAGES).find(e => e.code === errCode || e.code === errCode?.toString());
+          if (mapped) throw new Error(mapped.userMessage);
+          throw new Error(`Erro simulado: ${JSON.stringify(errCode)}`);
+        }
+      }
+    } catch (e) {
+      if (e instanceof Error && !e.message.includes('Simulating')) throw e;
+      console.warn('[DryRun] Simulation exception:', e);
+    }
+
+    console.log('[Contract] Executing Paid Mint (mint_paid)');
     tx = contractInstance.tx.mintPaid(
       { gasLimit, storageDepositLimit: null },
       nftType,
@@ -584,10 +726,10 @@ export async function mintNFT(
   }
 
   return new Promise((resolve, reject) => {
-    tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
+    tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }: any) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -616,7 +758,7 @@ export async function claimMinedTokens(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -674,7 +816,7 @@ export async function claimAirdrop(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -691,6 +833,7 @@ export interface ContractNFTConfig {
   maxSupply: number;
   minted: number;
   mintedEvolution: number;
+  burned: number;
   tokensPerNft: bigint;
   dailyMiningRate: bigint;
   active: boolean;
@@ -723,15 +866,29 @@ export async function getIcoNftConfigs(): Promise<ContractNFTConfig[] | null> {
       }
 
       if (Array.isArray(items)) {
-        return items.map((item: any) => ({
-          priceUsdtCents: parseInt(cleanNum(item.priceUsdtCents || item.price_usdt_cents || '0').toString()),
-          maxSupply: parseInt(cleanNum(item.maxSupply || item.max_supply || '0').toString()),
-          minted: parseInt(cleanNum(item.minted || '0').toString()),
-          mintedEvolution: parseInt(cleanNum(item.mintedEvolution || item.minted_evolution || '0').toString()),
-          tokensPerNft: BigInt(cleanNum(item.tokensPerNft || item.tokens_per_nft || '0').toString()),
-          dailyMiningRate: BigInt(cleanNum(item.dailyMiningRate || item.daily_mining_rate || '0').toString()),
-          active: !!(item.active),
-        }));
+        /* START DEBUG LOG */
+        console.log('[Contract] Configs Loaded (Debug):', items.map((i: any) => ({
+          tier: i.priceUsdtCents || '0',
+          minted: i.minted,
+          mintedEvolution: i.mintedEvolution || i.minted_evolution
+        })));
+        /* END DEBUG LOG */
+
+        return items.map((item: any) => {
+          const mDirect = parseInt(cleanNum(item.minted || '0').toString());
+          const mEvo = parseInt(cleanNum(item.mintedEvolution || item.minted_evolution || '0').toString());
+
+          return {
+            priceUsdtCents: parseInt(cleanNum(item.priceUsdtCents || item.price_usdt_cents || '0').toString()),
+            maxSupply: parseInt(cleanNum(item.maxSupply || item.max_supply || '0').toString()),
+            minted: mDirect + mEvo,
+            mintedEvolution: mEvo,
+            burned: parseInt(cleanNum(item.burned || '0').toString()),
+            tokensPerNft: BigInt(cleanNum(item.tokensPerNft || item.tokens_per_nft || '0').toString()),
+            dailyMiningRate: BigInt(cleanNum(item.dailyMiningRate || item.daily_mining_rate || '0').toString()),
+            active: !!(item.active),
+          };
+        });
       }
     }
   } catch (error) {
@@ -851,7 +1008,7 @@ export async function registerWithReferral(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -1406,7 +1563,7 @@ export async function claimPrestigeBonus(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -1510,6 +1667,22 @@ export async function getUserEvolutions(address: string): Promise<EvolutionRecor
   const contractInstance = await initializeContract();
   if (!contractInstance) return [];
 
+  const localKey = `donfiapo_evolution_history_${address}`;
+  let localRecords: EvolutionRecord[] = [];
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(localKey);
+      if (stored) {
+        localRecords = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.warn('Failed to read local evolution history', e);
+    }
+  }
+
+  // Contract results
+  let contractRecords: EvolutionRecord[] = [];
   try {
     const { result, output } = await contractInstance.query.getUserEvolutions(
       contractInstance.address,
@@ -1519,10 +1692,9 @@ export async function getUserEvolutions(address: string): Promise<EvolutionRecor
 
     if (result.isOk && output) {
       const data = output.toHuman() as any;
-      const records = data?.Ok || data || [];
-
+      const records = data?.Ok || data;
       if (Array.isArray(records)) {
-        return records.map((record: any) => ({
+        contractRecords = records.map((record: any) => ({
           id: parseNum(record.id),
           owner: record.owner,
           burnedNftIds: (record.burnedNftIds || record.burned_nft_ids || []).map((id: any) => parseNum(id)),
@@ -1535,10 +1707,20 @@ export async function getUserEvolutions(address: string): Promise<EvolutionRecor
       }
     }
   } catch (e) {
-    console.warn('Failed to fetch user evolutions:', e);
+    console.warn('Failed to fetch user evolutions from contract:', e);
   }
 
-  return [];
+  // Merge records (prefer contract if ID conflict, though local IDs are likely timestamp-based)
+  // Simple merge: Concat and dedupe by timestamp + resultNftId
+  const allRecords = [...contractRecords, ...localRecords];
+
+  // Deduplicate based on unique key (timestamp + resultID)
+  const uniqueRecords = Array.from(new Map(allRecords.map(item =>
+    [`${item.timestamp}-${item.resultNftId}`, item]
+  )).values());
+
+  // Sort by timestamp desc
+  return uniqueRecords.sort((a, b) => b.timestamp - a.timestamp);
 }
 
 /**
@@ -1550,6 +1732,7 @@ export async function getUserEvolutions(address: string): Promise<EvolutionRecor
  */
 export async function evolveNFTs(
   nftIds: number[],
+  targetTier: number,
   address: string
 ): Promise<EvolutionResult | null> {
   const contractInstance = await initializeContract();
@@ -1582,7 +1765,8 @@ export async function evolveNFTs(
       const { gasRequired: estGas, result, output } = await contractInstance.query.evolveNfts(
         address,
         getGasLimit(contractInstance.api),
-        nftIdsBigInt
+        nftIdsBigInt,
+        targetTier
       );
 
       if (result.isErr) {
@@ -1606,7 +1790,8 @@ export async function evolveNFTs(
     console.log('[evolveNFTs] 4. Sending transaction...');
     const tx = contractInstance.tx.evolveNfts(
       { gasLimit: gasRequired },
-      nftIdsBigInt
+      nftIdsBigInt,
+      targetTier
     );
 
     return new Promise((resolve, reject) => {
@@ -1618,7 +1803,7 @@ export async function evolveNFTs(
             const decoded = api?.registry.findMetaError(dispatchError.asModule);
             reject(new Error(`${decoded?.section}.${decoded?.name}: ${decoded?.docs.join(' ')}`));
           } else {
-            reject(new Error(dispatchError.toString()));
+            reject(new Error(decodeContractError(dispatchError)));
           }
           return;
         }
@@ -1648,6 +1833,30 @@ export async function evolveNFTs(
             }
           });
 
+          // Save to local storage for history persistence
+          if (typeof window !== 'undefined') {
+            try {
+              const record: EvolutionRecord = {
+                id: Date.now(), // Local ID
+                owner: address,
+                burnedNftIds: nftIds,
+                sourceTier: API_CONFIG.nftTiers.findIndex(t => t.id === targetTier) - 1,
+                resultNftId: newNftId,
+                resultTier: newTier || targetTier,
+                bonusAppliedBps: bonusBps,
+                timestamp: Date.now()
+              };
+
+              const localKey = `donfiapo_evolution_history_${address}`;
+              const stored = localStorage.getItem(localKey);
+              const history = stored ? JSON.parse(stored) : [];
+              history.push(record);
+              localStorage.setItem(localKey, JSON.stringify(history));
+            } catch (e) {
+              console.warn('Failed to save local evolution history', e);
+            }
+          }
+
           resolve({
             newNftId,
             newTier,
@@ -1666,7 +1875,7 @@ export async function evolveNFTs(
 /**
  * Check if NFTs can be evolved
  */
-export async function canEvolveNFTs(nftIds: number[], address: string): Promise<{
+export async function canEvolveNFTs(nftIds: number[], targetTier: number, address: string): Promise<{
   canEvolve: boolean;
   resultTier: number | null;
   error: string | null;
@@ -1691,7 +1900,8 @@ export async function canEvolveNFTs(nftIds: number[], address: string): Promise<
     const { result, output } = await contractInstance.query.evolveNfts(
       address,
       getGasLimit(contractInstance.api),
-      nftIdsBigInt
+      nftIdsBigInt,
+      targetTier
     );
 
     if (result.isOk && output) {
@@ -1752,7 +1962,7 @@ export async function claimAffiliateRewards(address: string): Promise<string> {
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -1783,7 +1993,7 @@ export async function voteOnProposal(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }
@@ -1816,7 +2026,7 @@ export async function createProposal(
     tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
       if (status.isFinalized) {
         if (dispatchError) {
-          reject(new Error(dispatchError.toString()));
+          reject(new Error(decodeContractError(dispatchError)));
         } else {
           resolve(txHash.toHex());
         }

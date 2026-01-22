@@ -72,20 +72,38 @@ export default function MintPage() {
   }, [fetchICOStats, fetchNftConfigs]);
 
   // Merge static config with real data
-  const tiersWithData = nftTiers.map((tier) => {
+  // Merge static config with real data
+  const tiersWithData = nftTiers.map((tier, index) => {
     const remote = nftConfigs?.[tier.id];
+
+    // Calculate burned amount based on next tier's evolution count
+    // Tier 0 burned = Tier 1 evolution mints * Tier 0 requirement (5)
+    let burnedCount = 0;
+    const nextTierConfig = nftConfigs?.[tier.id + 1];
+    if (nextTierConfig) {
+      const nextEvoStr = nextTierConfig.mintedEvolution || nextTierConfig.minted_evolution || '0';
+      const nextEvo = typeof nextEvoStr === 'string' ? parseInt(nextEvoStr) : nextEvoStr;
+      const req = tier.evolutionRequirement || 2;
+      burnedCount = nextEvo * req;
+    }
+
     if (remote) {
+      const realMaxSupply = remote.maxSupply;
+      // Supply Dinâmico On-Chain v2: Use contract burned count directly
+      const displayMaxSupply = realMaxSupply - (remote.burned || 0);
+
       return {
         ...tier,
-        available: Math.max(0, remote.maxSupply - remote.minted), // Sales availability
+        available: Math.max(0, realMaxSupply - remote.minted), // Available for mint (based on original capacity)
         minted: remote.minted,
         mintedEvolution: remote.mintedEvolution,
-        maxSupply: remote.maxSupply
+        maxSupply: displayMaxSupply, // Adjusted for display (Deflationary view)
+        originalMaxSupply: realMaxSupply
       };
     }
-    // Fallback for free tier if not in contract list or just default
-    if (tier.id === 0) return { ...tier, minted: 0, mintedEvolution: 0, maxSupply: 10000 };
-    return { ...tier, minted: 0, mintedEvolution: 0, maxSupply: tier.supply };
+    // Fallback
+    const defaultMax = tier.id === 0 ? 10000 : tier.supply;
+    return { ...tier, minted: 0, mintedEvolution: 0, maxSupply: defaultMax, available: defaultMax };
   });
 
   const activeTier = tiersWithData.find(t => t.id === selectedTier.id) || tiersWithData[0];
@@ -276,15 +294,24 @@ export default function MintPage() {
       console.error("[Mint] Free mint error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to mint free NFT";
 
-      // Provide more helpful error messages
+      // Provide more helpful error messages with Translation
       if (errorMessage.includes("balance too low") || errorMessage.includes("Inability to pay")) {
         addToast(
           "error",
-          "Insufficient LUNES for Gas Fees",
+          t('common.error'),
           "Your wallet needs native LUNES tokens to pay for transaction fees. Get LUNES from an exchange or the Lunes faucet."
         );
-      } else if (errorMessage.includes("InvalidOperation")) {
-        addToast("error", "Mint Failed", "You may have reached the free NFT limit (5 per wallet).");
+      } else if (errorMessage.startsWith('ico.errors.')) {
+        // Translated contract error
+        // Remove prefix 'ico.errors.' if needed, but since our t() is namespaced 'ico', we might need adjustments
+        // Actually, errorMessage IS the key like 'ico.errors.FreeMintAlreadyUsed'
+        // If we used useTranslations('ico'), we need to strip 'ico.'
+
+        // Wait, t is `useTranslations('ico')`. So t('errors.FreeMintAlreadyUsed') works.
+        // But our contract returns full key 'ico.errors.FreeMintAlreadyUsed'.
+        // So we need to split.
+        const key = errorMessage.replace('ico.', '');
+        addToast("error", t('common.error') || "Mint Failed", t(key));
       } else if (errorMessage.includes("User rejected") || errorMessage.includes("Cancelled")) {
         addToast("info", "Transaction Cancelled", "You cancelled the transaction.");
       } else {

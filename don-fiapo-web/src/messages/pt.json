@@ -184,6 +184,28 @@
       "potential": "+ Bônus de Prestígio Potencial: {amount} FIAPO!",
       "bonusLabel": "Você ganhou um bônus extra de:",
       "vestingInfo": "O bônus será liberado após o término do ICO com vesting de 30 dias."
+    },
+    "errors": {
+      "ICONotActive": "A venda de NFTs não está ativa no momento.",
+      "NFTNotFound": "NFT não encontrado.",
+      "NotNFTOwner": "Você não é o dono deste NFT.",
+      "NFTInactive": "Este NFT está inativo.",
+      "MiningNotStarted": "A mineração ainda não começou.",
+      "MiningEnded": "A mineração já terminou.",
+      "NoTokensToClaim": "Não há tokens para resgatar.",
+      "InsufficientNFTs": "NFTs insuficientes para esta operação.",
+      "InvalidNFTCount": "Quantidade de NFTs inválida para evolução.",
+      "InvalidNFTType": "Tipo de NFT inválido.",
+      "MaxSupplyReached": "O limite máximo de NFTs deste tier foi atingido.",
+      "PaymentRequired": "Pagamento necessário para esta operação.",
+      "PaymentAmountMismatch": "Valor do pagamento incorreto.",
+      "PaymentAlreadyUsed": "Este pagamento já foi utilizado.",
+      "InvalidTransactionHash": "Hash de transação inválido.",
+      "FreeMintAlreadyUsed": "Você já atingiu o limite de 5 Free Mints.",
+      "EvolutionNotAllowed": "Evolução não permitida para este NFT.",
+      "CoreContractError": "Erro ao comunicar com o contrato Core.",
+      "Unauthorized": "Você não tem permissão para esta operação.",
+      "ContractReverted": "Operação recusada (Possível limite atingido ou erro de lógica)."
     }
   },
   "airdrop": {
