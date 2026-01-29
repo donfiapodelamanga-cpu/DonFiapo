@@ -15,6 +15,7 @@
     "affiliate": "Afiliados",
     "governance": "Governança",
     "ranking": "Ranking",
+    "dashboard": "Painel",
     "wallet": "Carteira",
     "docs": "Docs",
     "connectWallet": "Conectar Carteira",
@@ -71,25 +72,25 @@
     "phase2": {
       "title": "Fase 2 — Conquista do Reino",
       "items": [
-        "Airdrops",
-        "Listagens DEX",
-        "Campanha \"De Fiapo a Rei\""
+        "ICO - Mineração via NFTs",
+        "Marketplace"
       ]
     },
     "phase3": {
       "title": "Fase 3 — O Império dos Memes",
       "items": [
-        "Staking gamificado",
-        "NFTs",
-        "Token $OSSIN"
+        "Staking",
+        "Recompensas da Comunidade",
+        "Nova coleção de NFTs",
+        "Listagem na Lunex",
+        "Início de Listagens CEX"
       ]
     },
     "phase4": {
       "title": "Fase 4 — Dominação Global",
       "items": [
-        "Merch",
-        "Game \"Corrida Real do Fiapo\"",
-        "Parcerias"
+        "Liberação de Jogos",
+        "Distribuição de Airdrop"
       ]
     }
   },
@@ -247,10 +248,22 @@
     "cancel": "Cancelar",
     "back": "Voltar",
     "next": "Próximo",
-    "submit": "Enviar",
     "connect": "Conectar",
     "viewMore": "Ver Mais",
     "seeAll": "Ver Todos"
+  },
+  "modal": {
+    "title": "Decreto Real: Negócios da Família",
+    "description": "ENTRE PARA A FAMÍLIA REAL",
+    "desc": "O Don reclamou o trono. Garanta seu status de nobre na organização e comece a minerar GRÁTIS mintando seu NFT antes que os civis cheguem.",
+    "cta": "Entrar na Família & Minerar",
+    "successTitle": "Bem-vindo à Família Real!",
+    "successDesc": "Você agora é um nobre da organização.",
+    "telegramTitle": "O Círculo Interno Real",
+    "telegramBtn": "Entrar na Comunidade",
+    "termsPrefix": "Eu concordo com os",
+    "termsLink": "Termos Reais de Consentimento",
+    "privacyFooter": "Ao entrar, você jura lealdade à Família."
   },
   "Games": {
     "title": "Arena Real",
@@ -275,6 +288,44 @@
         "disclaimer": "O valor será debitado da sua carteira conectada. Certifique-se de ter saldo suficiente.",
         "cancel": "Cancelar",
         "confirm": "Confirmar Pagamento"
+      },
+      "prizes": {
+        "p100k": {
+          "name": "100k $FIAPO",
+          "desc": "Jackpot! 100.000 $FIAPO"
+        },
+        "p50k": {
+          "name": "50k $FIAPO",
+          "desc": "50.000 $FIAPO"
+        },
+        "p1k": {
+          "name": "1k $FIAPO",
+          "desc": "1.000 $FIAPO"
+        },
+        "p100": {
+          "name": "100 $FIAPO",
+          "desc": "100 $FIAPO"
+        },
+        "p05": {
+          "name": "0.5 $FIAPO",
+          "desc": "0.5 $FIAPO"
+        },
+        "usdt5": {
+          "name": "5 USDT",
+          "desc": "5 USDT Cash"
+        },
+        "usdt1": {
+          "name": "1 USDT",
+          "desc": "1 USDT Cash"
+        },
+        "boost": {
+          "name": "Boost de Staking",
+          "desc": "+0.1% APY por 5h"
+        },
+        "nothing": {
+          "name": "Nada",
+          "desc": "Mais sorte na próxima!"
+        }
       }
     },
     "tug": {
