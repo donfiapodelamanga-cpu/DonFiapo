@@ -56,3 +56,16 @@ don-fiapo-web/scripts/fund-wallet.cjs
 don_fiapo/build_output.txt
 don_fiapo/test_results.txt
 ssl/
+
+# Admin Panel (Private - NOT for public repo)
+don-fiapo-admin/
+
+# Agent/AI Config (Internal)
+.agent/
+
+# Deploy Artifacts (Private)
+deploy-package.zip
+deploy/
+
+# Misc junk
+null
