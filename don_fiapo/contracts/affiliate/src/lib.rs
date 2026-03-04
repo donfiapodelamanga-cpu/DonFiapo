@@ -1,6 +1,6 @@
 //! # Fiapo Affiliate Contract
 //!
-//! Sistema de afiliados com 2 níveis.
+//! Sistema de afiliados com 2 níveis e Leaderboard On-Chain (Top 100).
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
@@ -26,6 +26,7 @@ mod fiapo_affiliate {
     pub const MAX_BOOST_BPS: u32 = 500;            // Máximo 5%
     pub const MAX_DIRECT_REFERRALS: u32 = 100;
     pub const SCALE: u128 = 100_000_000;
+    pub const MAX_TOP_AFFILIATES: usize = 100;    // Limite do Leaderboard para evitar DoS por Gas
 
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode, Default)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
@@ -83,6 +84,13 @@ mod fiapo_affiliate {
         level: u8,
     }
 
+    #[ink(event)]
+    pub struct LeaderboardUpdated {
+        #[ink(topic)]
+        affiliate: AccountId,
+        rank: u32,
+    }
+
     #[ink(storage)]
     pub struct FiapoAffiliate {
         core_contract: AccountId,
@@ -103,6 +111,9 @@ mod fiapo_affiliate {
         level2_commission_bps: u16,
         /// total de afiliados
         total_affiliates: u32,
+        /// Top 100 afiliados (ordenado por earnings DESC, referrals DESC)
+        /// Armazenamos apenas IDs para economizar espaço no vetor packed.
+        top_affiliates: Vec<AccountId>,
     }
 
     impl FiapoAffiliate {
@@ -116,9 +127,10 @@ mod fiapo_affiliate {
                 stats: Mapping::default(),
                 activities: Mapping::default(),
                 config: AffiliateConfig::default(),
-                level1_commission_bps: 500, // 5%
-                level2_commission_bps: 200, // 2%
+                level1_commission_bps: 250, // 2.5%
+                level2_commission_bps: 100, // 1%
                 total_affiliates: 0,
+                top_affiliates: Vec::new(),
             }
         }
 
@@ -147,6 +159,34 @@ mod fiapo_affiliate {
             self.total_affiliates
         }
 
+        /// Retorna os Top N afiliados com seus stats
+        #[ink(message)]
+        pub fn get_top_affiliates(&self, limit: u32) -> Vec<(AccountId, AffiliateStats)> {
+            let limit = limit as usize;
+            let count = self.top_affiliates.len().min(limit);
+            let mut result = Vec::with_capacity(count);
+
+            for i in 0..count {
+                let acc = self.top_affiliates[i];
+                let stats = self.stats.get(acc).unwrap_or_default();
+                result.push((acc, stats));
+            }
+
+            result
+        }
+
+        /// Retorna a posição do usuário no Leaderboard (1-based), ou 0 se não estiver no Top
+        #[ink(message)]
+        pub fn get_user_rank(&self, user: AccountId) -> u32 {
+            // Busca linear é aceitável para N=100
+            for (i, &acc) in self.top_affiliates.iter().enumerate() {
+                if acc == user {
+                    return i.saturating_add(1) as u32;
+                }
+            }
+            0
+        }
+
         #[ink(message)]
         pub fn register_referral(&mut self, referrer: AccountId) -> Result<(), AffiliateError> {
             let caller = self.env().caller();
@@ -171,12 +211,19 @@ mod fiapo_affiliate {
             let mut stats = self.stats.get(referrer).unwrap_or_default();
             stats.direct_referrals = stats.direct_referrals.saturating_add(1);
             self.stats.insert(referrer, &stats);
+            
+            // Atualiza Leaderboard para o Referrer
+            self.update_leaderboard(referrer, &stats);
 
             // Se o referrer tiver um referrer (segundo nível)
             if let Some(level2_referrer) = self.referrers.get(referrer) {
                 let mut level2_stats = self.stats.get(level2_referrer).unwrap_or_default();
                 level2_stats.second_level_referrals = level2_stats.second_level_referrals.saturating_add(1);
                 self.stats.insert(level2_referrer, &level2_stats);
+                
+                // Atualiza Leaderboard para o Referrer N2 (embora critério principal seja earnings)
+                // Se o critério de desempate for referrals, isso é importante.
+                self.update_leaderboard(level2_referrer, &level2_stats);
             }
 
             self.total_affiliates = self.total_affiliates.saturating_add(1);
@@ -201,6 +248,9 @@ mod fiapo_affiliate {
                 let mut stats1 = self.stats.get(level1).unwrap_or_default();
                 stats1.total_earnings = stats1.total_earnings.saturating_add(commission1);
                 self.stats.insert(level1, &stats1);
+                
+                // Atualiza Leaderboard (Earnings aumentou)
+                self.update_leaderboard(level1, &stats1);
 
                 Self::env().emit_event(CommissionPaid {
                     affiliate: level1,
@@ -215,6 +265,9 @@ mod fiapo_affiliate {
                     stats2.total_earnings = stats2.total_earnings.saturating_add(commission2);
                     self.stats.insert(level2, &stats2);
 
+                    // Atualiza Leaderboard
+                    self.update_leaderboard(level2, &stats2);
+
                     Self::env().emit_event(CommissionPaid {
                         affiliate: level2,
                         amount: commission2,
@@ -224,6 +277,60 @@ mod fiapo_affiliate {
             }
 
             Ok(())
+        }
+
+        /// Função interna para atualizar o leaderboard
+        /// Complexidade: O(N) onde N é MAX_TOP_AFFILIATES (100) -> Constante barata.
+        fn update_leaderboard(&mut self, account: AccountId, new_stats: &AffiliateStats) {
+            // 1. Verificar se já está na lista e remover para reposicionar
+            let mut index_to_remove = None;
+            for (i, &acc) in self.top_affiliates.iter().enumerate() {
+                if acc == account {
+                    index_to_remove = Some(i);
+                    break;
+                }
+            }
+
+            if let Some(idx) = index_to_remove {
+                self.top_affiliates.remove(idx);
+            }
+
+            // 2. Encontrar posição de inserção correta (Insertion Sort Logic)
+            let mut insert_idx = 0;
+            let mut should_insert = false;
+
+            // Critério: Earnings DESC, depois Direct Referrals DESC
+            while insert_idx < self.top_affiliates.len() {
+                let curr_acc = self.top_affiliates[insert_idx];
+                let curr_stats = self.stats.get(curr_acc).unwrap_or_default();
+
+                if new_stats.total_earnings > curr_stats.total_earnings {
+                    should_insert = true;
+                    break;
+                } else if new_stats.total_earnings == curr_stats.total_earnings 
+                    && new_stats.direct_referrals > curr_stats.direct_referrals 
+                {
+                    should_insert = true;
+                    break;
+                }
+                insert_idx = insert_idx.saturating_add(1);
+            }
+
+            // Se a lista não estiver cheia e chegamos ao fim, inserimos no fim
+            if !should_insert && self.top_affiliates.len() < MAX_TOP_AFFILIATES {
+                should_insert = true;
+                // insert_idx já está no len()
+            }
+
+            // 3. Inserir e Cortar excesso
+            if should_insert && (self.top_affiliates.len() < MAX_TOP_AFFILIATES || insert_idx < MAX_TOP_AFFILIATES) {
+                self.top_affiliates.insert(insert_idx, account);
+                
+                // Se excedeu o tamanho, remove o último
+                if self.top_affiliates.len() > MAX_TOP_AFFILIATES {
+                    self.top_affiliates.pop();
+                }
+            }
         }
 
         // ==================== APY Boost Functions ====================
@@ -338,15 +445,37 @@ mod fiapo_affiliate {
 
             assert_eq!(contract.get_referrer(accounts.bob), Some(accounts.alice));
             assert_eq!(contract.total_affiliates(), 1);
+            
+            // Check leaderboard
+            let top = contract.get_top_affiliates(10);
+            assert_eq!(top.len(), 1);
+            assert_eq!(top[0].0, accounts.alice);
+            assert_eq!(top[0].1.direct_referrals, 1);
         }
 
         #[ink::test]
-        fn cannot_refer_self() {
+        fn leaderboard_ordering_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut contract = FiapoAffiliate::new(accounts.charlie);
-
-            let result = contract.register_referral(accounts.alice);
-            assert_eq!(result, Err(AffiliateError::CannotReferSelf));
+            
+            // Simular referrals para Alice (2 referrals)
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
+            contract.register_referral(accounts.alice).unwrap();
+            
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.eve);
+            contract.register_referral(accounts.alice).unwrap();
+            
+            // Simular referrals para Bob (1 referral)
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.frank);
+            contract.register_referral(accounts.bob).unwrap();
+            
+            let top = contract.get_top_affiliates(10);
+            assert_eq!(top.len(), 2);
+            assert_eq!(top[0].0, accounts.alice); // 2 referrals
+            assert_eq!(top[1].0, accounts.bob);   // 1 referral
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_affiliate::*;

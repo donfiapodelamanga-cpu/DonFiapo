@@ -6,6 +6,7 @@ COPY scripts ./scripts
 RUN apk add --no-cache python3 make g++ && npm ci --ignore-scripts \
     && node scripts/patch-solana.js
 COPY . .
+RUN npx prisma generate
 # Next.js build - webpack is used by default for production builds
 # This allows string-replace-loader to fix octal escape sequences in dependencies
 RUN npx next build
@@ -15,6 +16,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
@@ -26,6 +30,7 @@ COPY --from=builder /app/public ./public
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 USER nextjs
 

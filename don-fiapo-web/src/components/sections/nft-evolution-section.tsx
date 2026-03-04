@@ -53,8 +53,8 @@ export function NFTEvolutionSection() {
                                 <p className="text-sm text-muted-foreground">{item.desc}</p>
                             </div>
                             {idx < 2 && (
-                                <div className="hidden md:block absolute top-1/2 -right-3 transform -translate-y-1/2">
-                                    <ArrowRight className="w-6 h-6 text-orange-500/50" />
+                                <div className="hidden md:flex absolute top-1/2 -right-4 transform -translate-y-1/2 z-20 w-8 h-8 items-center justify-center bg-background rounded-full border border-orange-500/30">
+                                    <ArrowRight className="w-4 h-4 text-orange-500" />
                                 </div>
                             )}
                         </motion.div>

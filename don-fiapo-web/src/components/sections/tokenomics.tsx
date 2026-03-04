@@ -6,12 +6,13 @@ import { siteConfig } from "@/config/site";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 const tokenomicsData = [
-  { name: "Staking Fund", value: 80, color: "#FFD700", emoji: "🏆" },
-  { name: "Airdrop", value: 7, color: "#10B981", emoji: "🎁" },
-  { name: "Marketing", value: 5, color: "#EF4444", emoji: "📢" },
-  { name: "Charity", value: 5, color: "#8B5CF6", emoji: "💜" },
-  { name: "IEO/ICO", value: 2, color: "#3B82F6", emoji: "🚀" },
-  { name: "Team", value: 1, color: "#6B7280", emoji: "👥" },
+  { name: "Pre-sale", value: 25, color: "#F59E0B", emoji: "💎" },
+  { name: "Staking Fund", value: 51.67, color: "#FFD700", emoji: "🏆" },
+  { name: "Airdrop", value: 5.08, color: "#10B981", emoji: "🎁" },
+  { name: "Marketing", value: 3.42, color: "#EF4444", emoji: "📢" },
+  { name: "Charity", value: 3.42, color: "#8B5CF6", emoji: "💜" },
+  { name: "IEO/ICO", value: 10.67, color: "#3B82F6", emoji: "🚀" },
+  { name: "Team", value: 0.75, color: "#6B7280", emoji: "👥" },
 ];
 
 // Custom label for pie chart

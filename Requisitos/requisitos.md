@@ -24,18 +24,19 @@ As seguintes especificações, baseadas no mapa mental, devem ser implementadas:
 
 *   **Nome do Token:** Don Fiapo
 *   **Ticker:** $FIAPO
-*   **Fornecimento Máximo (Max Supply):** 300.000.000.000 (300 Bilhões) $FIAPO.
+*   **Fornecimento Máximo (Max Supply):** 600.000.000.000 (600 Bilhões) $FIAPO.
 *   **Fornecimento Mínimo (Alvo de Queima):** 100.000.000 (100 Milhões) $FIAPO.
 *   **Dígitos Decimais:** 8
 *   **Carteira de Queima:** Uma carteira específica e publicamente visível ("Carteira de Queima") deve ser designada para receber todos os tokens a serem queimados.
 
 **Distribuição Inicial (Tokenomics):**
-*   **Fundo de Staking:** 80%
-*   **Airdrop:** 7%
-*   **Marketing:** 5%
-*   **Doação para Instituições de Caridade:** 5%
-*   **IEO/ICO:** 2%
-*   **Equipe:** 1%
+*   **Pré-venda:** 25% (150Bi)
+*   **Fundo de Staking:** 51.67% (310Bi)
+*   **IEO/ICO:** 10.67% (64Bi)
+*   **Airdrop:** 5.08% (30.5Bi)
+*   **Marketing:** 3.42% (20.5Bi)
+*   **Doação para Instituições de Caridade:** 3.42% (20.5Bi)
+*   **Equipe:** 0.75% (4.5Bi)
 
 ---
 

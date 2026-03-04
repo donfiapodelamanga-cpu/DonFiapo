@@ -33,8 +33,8 @@ O contrato Don Fiapo ($FIAPO) foi desenvolvido seguindo rigorosamente o padrão 
   "name": "Don Fiapo",
   "symbol": "FIAPO",
   "decimals": 8,
-  "total_supply": "30000000000000000000",
-  "max_supply": "30000000000000000000",
+  "total_supply": "60000000000000000000",
+  "max_supply": "60000000000000000000",
   "min_supply": "10000000000000000"
 }
 ```
@@ -51,7 +51,7 @@ O contrato Don Fiapo ($FIAPO) foi desenvolvido seguindo rigorosamente o padrão 
 ### 🔥 **Mecanismo Deflacionário**
 - **Queima Automática**: Parte das taxas é queimada automaticamente
 - **Evento `TokensBurned`**: Transparência total das queimas
-- **Supply Dinâmico**: De 300B para 100M tokens (target)
+- **Supply Dinâmico**: De 600B para 100M tokens (target)
 
 ### 🏆 **Gamificação Integrada**
 - **Sistema de Staking**: 3 tipos (Don Burn, Don LUNES, Don FIAPO)
@@ -98,9 +98,9 @@ UI: https://ui.use.ink/?rpc=wss://ws.lunes.io
     "discord": "[DISCORD_URL]"
   },
   "tokenomics": {
-    "max_supply": "300000000000",
+    "max_supply": "600000000000",
     "min_supply": "100000000",
-    "initial_supply": "300000000000",
+    "initial_supply": "600000000000",
     "burn_mechanism": true,
     "staking_rewards": true,
     "transaction_fee": "0.6%"
@@ -155,7 +155,7 @@ UI: https://ui.use.ink/?rpc=wss://ws.lunes.io
 ```bash
 cargo contract instantiate \
   --constructor new \
-  --args "Don Fiapo" "FIAPO" 30000000000000000000 [BURN_WALLET] [TEAM_WALLET] [STAKING_WALLET] [REWARDS_WALLET] \
+  --args "Don Fiapo" "FIAPO" 60000000000000000000 [BURN_WALLET] [TEAM_WALLET] [STAKING_WALLET] [REWARDS_WALLET] \
   --suri //Alice \
   --url wss://ws-test.lunes.io
 ```
@@ -170,7 +170,7 @@ cargo contract instantiate \
 ```bash
 cargo contract instantiate \
   --constructor new \
-  --args "Don Fiapo" "FIAPO" 30000000000000000000 [BURN_WALLET] [TEAM_WALLET] [STAKING_WALLET] [REWARDS_WALLET] \
+  --args "Don Fiapo" "FIAPO" 60000000000000000000 [BURN_WALLET] [TEAM_WALLET] [STAKING_WALLET] [REWARDS_WALLET] \
   --suri [PRODUCTION_KEY] \
   --url wss://ws.lunes.io
 ```

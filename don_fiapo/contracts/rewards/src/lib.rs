@@ -10,11 +10,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::{AccountId, Balance};
+use fiapo_traits::{AccountId, Balance, RewardsError, PSP22Error};
 
 #[ink::contract]
 mod fiapo_rewards {
     use super::*;
+    use fiapo_logics::traits::psp22::{PSP22, PSP22Ref};
     use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
@@ -141,16 +142,6 @@ mod fiapo_rewards {
         }
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum RewardsError {
-        Unauthorized,
-        NoRewardsAvailable,
-        AlreadyClaimed,
-        RankingNotActive,
-        InsufficientParticipants,
-        InvalidConfiguration,
-    }
 
     #[ink(event)]
     pub struct RewardDistributed {
@@ -266,24 +257,11 @@ mod fiapo_rewards {
             Ok(amount)
         }
 
-        /// Cross-contract call para transferir rewards
+        /// Core: transfer via PSP22Ref (selector correto do trait IPSP22)
         fn call_core_transfer_rewards(&self, to: AccountId, amount: Balance) -> Result<(), RewardsError> {
-            use ink::env::call::{build_call, ExecutionInput, Selector};
- 
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
-                        .push_arg(to)
-                        .push_arg(amount),
-                )
-                .returns::<Result<(), u8>>()
-                .try_invoke();
- 
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
+            let mut psp22: PSP22Ref = self.core_contract.into();
+            match psp22.transfer(to, amount) {
+                Ok(_) => Ok(()),
                 _ => Err(RewardsError::Unauthorized),
             }
         }
@@ -323,9 +301,8 @@ mod fiapo_rewards {
         /// Adiciona fundos ao pool de recompensas
         #[ink(message)]
         pub fn add_rewards_fund(&mut self, amount: Balance) -> Result<(), RewardsError> {
-            if self.env().caller() != self.owner {
-                return Err(RewardsError::Unauthorized);
-            }
+            // Permite que qualquer contrato ou usuário adicione fundos
+            // O valor deve ter sido transferido via Core::transfer
             self.rewards_fund = self.rewards_fund.saturating_add(amount);
             Ok(())
         }
@@ -533,3 +510,6 @@ mod fiapo_rewards {
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_rewards::*;

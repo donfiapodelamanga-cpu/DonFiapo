@@ -20,7 +20,7 @@ const faqCategories = [
       },
       {
         q: "What is the total supply?",
-        a: "The total supply is 300 billion $FIAPO tokens, distributed across staking rewards, liquidity, marketing, team, and airdrops."
+        a: "The total supply is 600 billion $FIAPO tokens. 150 billion (25%) is reserved for pre-sale, with the remaining 450 billion distributed across staking rewards (51.67% — 310B), airdrop (5.08% — 30.5B), marketing (3.42% — 20.5B), charity (3.42% — 20.5B), IEO/ICO (10.67% — 64B), and team (0.75% — 4.5B)."
       },
     ]
   },

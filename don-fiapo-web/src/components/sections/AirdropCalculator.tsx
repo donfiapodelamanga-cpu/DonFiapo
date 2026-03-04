@@ -38,7 +38,7 @@ export function AirdropCalculator({ config }: CalculatorProps) {
 
     // Estimate rewards (assuming 1M total points as example)
     const EXAMPLE_TOTAL_POINTS = 1_000_000;
-    const TOTAL_AIRDROP = 21_000_000_000; // 21B tokens
+    const TOTAL_AIRDROP = 31_500_000_000; // 31.5B tokens
 
     const estimatedHolding = (holdingPoints / EXAMPLE_TOTAL_POINTS) * (TOTAL_AIRDROP * config.distributionRates.holders / 100);
     const estimatedStaking = (stakingPoints / EXAMPLE_TOTAL_POINTS) * (TOTAL_AIRDROP * config.distributionRates.stakers / 100);
@@ -65,7 +65,7 @@ export function AirdropCalculator({ config }: CalculatorProps) {
                                 <PiggyBank className="w-4 h-4 text-blue-400" />
                                 Holding
                             </label>
-                            <span className="text-sm text-golden">{holding.toLocaleString()} FIAPO</span>
+                            <span className="text-sm text-golden">{holding.toLocaleString('en-US')} FIAPO</span>
                         </div>
                         <input
                             type="range"
@@ -89,7 +89,7 @@ export function AirdropCalculator({ config }: CalculatorProps) {
                                 <TrendingUp className="w-4 h-4 text-green-400" />
                                 Staking
                             </label>
-                            <span className="text-sm text-golden">{staking.toLocaleString()} FIAPO</span>
+                            <span className="text-sm text-golden">{staking.toLocaleString('en-US')} FIAPO</span>
                         </div>
                         <input
                             type="range"
@@ -113,7 +113,7 @@ export function AirdropCalculator({ config }: CalculatorProps) {
                                 <Flame className="w-4 h-4 text-orange-400" />
                                 Burning
                             </label>
-                            <span className="text-sm text-golden">{burning.toLocaleString()} FIAPO</span>
+                            <span className="text-sm text-golden">{burning.toLocaleString('en-US')} FIAPO</span>
                         </div>
                         <input
                             type="range"
@@ -185,25 +185,25 @@ export function AirdropCalculator({ config }: CalculatorProps) {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Holding:</span>
-                            <span className="font-mono">{holdingPoints.toLocaleString()}</span>
+                            <span className="font-mono">{holdingPoints.toLocaleString('en-US')}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Staking:</span>
-                            <span className="font-mono">{stakingPoints.toLocaleString()}</span>
+                            <span className="font-mono">{stakingPoints.toLocaleString('en-US')}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Burning:</span>
-                            <span className="font-mono">{burningPoints.toLocaleString()}</span>
+                            <span className="font-mono">{burningPoints.toLocaleString('en-US')}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Affiliates:</span>
-                            <span className="font-mono">{affiliatePoints.toLocaleString()}</span>
+                            <span className="font-mono">{affiliatePoints.toLocaleString('en-US')}</span>
                         </div>
                     </div>
                     <div className="pt-3 border-t border-border">
                         <div className="flex justify-between items-center">
                             <span className="font-bold text-foreground">Total Points:</span>
-                            <span className="text-2xl font-bold text-golden">{totalPoints.toLocaleString()}</span>
+                            <span className="text-2xl font-bold text-golden">{totalPoints.toLocaleString('en-US')}</span>
                         </div>
                     </div>
                 </div>

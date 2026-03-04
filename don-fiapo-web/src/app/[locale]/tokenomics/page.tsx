@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 export default function TokenomicsPage() {
     // Data aligned with Whitepaper (source of truth)
     const supplyData = [
-        { label: 'Staking Fund', percent: 80, tokens: '240Bi', color: 'bg-golden' },
-        { label: 'Airdrop', percent: 7, tokens: '21Bi', color: 'bg-pink-500' },
-        { label: 'Marketing', percent: 5, tokens: '15Bi', color: 'bg-cyan-500' },
-        { label: 'Charity Donations', percent: 5, tokens: '15Bi', color: 'bg-green-500' },
-        { label: 'IEO/ICO', percent: 2, tokens: '6Bi', color: 'bg-blue-500' },
-        { label: 'Team', percent: 1, tokens: '3Bi', color: 'bg-purple-500' },
+        { label: 'Pre-sale', percent: 25, tokens: '150Bi', color: 'bg-amber-500' },
+        { label: 'Staking Fund', percent: 51.67, tokens: '310Bi', color: 'bg-golden' },
+        { label: 'Airdrop', percent: 5.08, tokens: '30.5Bi', color: 'bg-pink-500' },
+        { label: 'Marketing', percent: 3.42, tokens: '20.5Bi', color: 'bg-cyan-500' },
+        { label: 'Charity Donations', percent: 3.42, tokens: '20.5Bi', color: 'bg-green-500' },
+        { label: 'IEO/ICO', percent: 10.67, tokens: '64Bi', color: 'bg-blue-500' },
+        { label: 'Team', percent: 0.75, tokens: '4.5Bi', color: 'bg-purple-500' },
     ];
 
     const deflationaryMechanisms = [
@@ -40,7 +41,7 @@ export default function TokenomicsPage() {
     ];
 
     const metrics: { label: string; value: string; suffix: string; subtext?: string }[] = [
-        { label: 'Max Supply', value: '300', suffix: 'Billion FIAPO' },
+        { label: 'Max Supply', value: '600', suffix: 'Billion FIAPO' },
         { label: 'Initial Supply', value: '100', suffix: 'Million FIAPO' },
         { label: 'Decimals', value: '8', suffix: '' },
         { label: 'Max Staking APY', value: '300', suffix: '%' },
@@ -183,19 +184,19 @@ export default function TokenomicsPage() {
                         </Card>
 
                         <div className="grid md:grid-cols-2 gap-4">
-                            <Card className="bg-golden/10 border border-golden/30">
+                            <Card className="bg-amber-500/10 border border-amber-500/30">
                                 <CardContent className="pt-6">
-                                    <div className="text-sm text-golden font-bold mb-1">Staking Fund (80%)</div>
+                                    <div className="text-sm text-amber-400 font-bold mb-1">Pre-sale (25%)</div>
                                     <p className="text-xs text-muted-foreground">
-                                        Primary source for staking rewards. Distributed based on APY tiers.
+                                        150 billion tokens reserved for pre-sale distribution to early investors.
                                     </p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-pink-500/10 border border-pink-500/30">
+                            <Card className="bg-golden/10 border border-golden/30">
                                 <CardContent className="pt-6">
-                                    <div className="text-sm text-pink-400 font-bold mb-1">Airdrop (7%)</div>
+                                    <div className="text-sm text-golden font-bold mb-1">Staking Fund (51.67%)</div>
                                     <p className="text-xs text-muted-foreground">
-                                        Community airdrops for early adopters and active participants.
+                                        310 billion tokens as primary source for staking rewards. Distributed based on APY tiers.
                                     </p>
                                 </CardContent>
                             </Card>
@@ -258,7 +259,7 @@ export default function TokenomicsPage() {
                 >
                     <h2 className="text-3xl font-bold text-golden mb-2 text-center">🔥 Deflationary Mechanisms</h2>
                     <p className="text-center text-muted-foreground mb-8">
-                        Multiple burn mechanisms drive supply from <span className="text-golden">1B → 100M</span> over time
+                        Multiple burn mechanisms drive supply from <span className="text-golden">600B → 100M</span> over time
                     </p>
 
                     <div className="grid md:grid-cols-3 gap-6">

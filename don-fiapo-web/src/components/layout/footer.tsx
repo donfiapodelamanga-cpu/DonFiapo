@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/lib/navigation";
-import { Crown, Twitter, Send, MessageCircle, Github } from "lucide-react";
+import { Crown, Twitter, Send, Github, Compass, BookOpen } from "lucide-react";
 import { siteConfig } from "@/config/site";
 
 export function Footer() {
@@ -11,8 +11,9 @@ export function Footer() {
   const socialLinks = [
     { icon: Twitter, href: siteConfig.links.twitter, label: "Twitter" },
     { icon: Send, href: siteConfig.links.telegram, label: "Telegram" },
-    { icon: MessageCircle, href: siteConfig.links.discord, label: "Discord" },
     { icon: Github, href: siteConfig.links.github, label: "GitHub" },
+    { icon: Compass, href: siteConfig.links.soquest, label: "SoQuest" },
+    { icon: BookOpen, href: siteConfig.links.medium, label: "Medium" },
   ];
 
   return (
@@ -57,6 +58,11 @@ export function Footer() {
           <div>
             <h4 className="font-bold text-golden mb-4">Links</h4>
             <ul className="space-y-2">
+              <li>
+                <Link href="/docs" className="text-muted-foreground hover:text-golden transition-colors">
+                  Documentation
+                </Link>
+              </li>
               <li>
                 <Link href="/docs/whitepaper" className="text-muted-foreground hover:text-golden transition-colors">
                   {t("links.whitepaper")}
@@ -105,6 +111,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/migration" className="text-muted-foreground hover:text-golden transition-colors">
+                  Token Migration
+                </Link>
+              </li>
+              <li>
                 <Link href="/simulations" className="text-muted-foreground hover:text-golden transition-colors">
                   Simulations
                 </Link>
@@ -112,6 +123,11 @@ export function Footer() {
               <li>
                 <Link href="/tokenomics" className="text-muted-foreground hover:text-golden transition-colors">
                   Tokenomics
+                </Link>
+              </li>
+              <li>
+                <Link href="/noble" className="text-muted-foreground hover:text-golden transition-colors">
+                  Order of Nobles
                 </Link>
               </li>
             </ul>

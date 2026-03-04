@@ -15,6 +15,7 @@
 #[ink::contract]
 mod fiapo_airdrop {
     use fiapo_traits::PSP22Error;
+    use fiapo_logics::traits::psp22::{PSP22, PSP22Ref};
     use ink::storage::Mapping;
 
     /// Erros do airdrop
@@ -409,28 +410,15 @@ mod fiapo_airdrop {
 
         // ==================== Cross-Contract Calls ====================
 
-        /// Chama Core.transfer para enviar tokens
+        /// Core: transfer via PSP22Ref (selector correto do trait IPSP22)
         fn call_core_transfer(
             &self,
             to: AccountId,
             amount: Balance,
         ) -> Result<(), AirdropError> {
-            use ink::env::call::{build_call, ExecutionInput, Selector};
-
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
-                        .push_arg(to)
-                        .push_arg(amount),
-                )
-                .returns::<Result<(), PSP22Error>>()
-                .try_invoke();
-
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
+            let mut psp22: PSP22Ref = self.core_contract.into();
+            match psp22.transfer(to, amount) {
+                Ok(_) => Ok(()),
                 _ => Err(AirdropError::TransferFailed),
             }
         }

@@ -1,0 +1,22 @@
+[package]
+name = "fiapo-nft-collections"
+version = "1.0.0"
+authors = ["Don Fiapo Team"]
+edition = "2021"
+license = "MIT"
+description = "NFT Collections contract for Don Fiapo marketplace — collectible art albums"
+
+[dependencies]
+ink = { version = "~4.2.1", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+fiapo-traits = { path = "../traits", default-features = false, features = ["ink-as-dependency"] }
+fiapo-logics = { path = "../../logics", default-features = false }
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = ["ink/std", "scale/std", "scale-info/std", "fiapo-traits/std", "fiapo-logics/std"]
+ink-as-dependency = []

@@ -46,14 +46,45 @@ export interface NFTData {
 }
 
 export interface Listing {
+  nftId: number;
   seller: string;
-  tokenId: number;
   price: bigint;
-  isAuction: boolean;
-  auctionEnd: number;
+  nftTier: number;
+  /** 0=LUNES (nativo), 1=FIAPO (PSP22) */
+  currency: number;
+  active: boolean;
+}
+
+export interface Auction {
+  auctionId: number;
+  nftId: number;
+  seller: string;
+  minPrice: bigint;
   highestBid: bigint;
   highestBidder: string | null;
-  isActive: boolean;
+  endTime: number;
+  nftTier: number;
+  /** 0=LUNES (nativo), 1=FIAPO (PSP22) */
+  currency: number;
+  active: boolean;
+  finalized: boolean;
+}
+
+export interface TradeOffer {
+  tradeId: number;
+  nftIdOffered: number;
+  offerer: string;
+  nftIdWanted: number;
+  wantedTier: number | null;
+  counterparty: string | null;
+  active: boolean;
+}
+
+export interface MarketplaceStats {
+  totalVolume: bigint;
+  totalFeesCollected: bigint;
+  totalAuctionsCompleted: number;
+  totalTradesCompleted: number;
 }
 
 // ===== Method name mapping (Rust snake_case to JS camelCase) =====
@@ -96,14 +127,36 @@ export const METHOD_MAP = {
   getStakingConfig: "get_staking_config",
   getRankingData: "get_ranking_data",
   getGovernanceStats: "get_governance_stats",
-  // Marketplace
-  listNftForSale: "list_nft_for_sale",
-  listNftForAuction: "list_nft_for_auction",
+  // Marketplace — Listings
+  listNft: "list_nft",
   buyNft: "buy_nft",
-  bidNft: "bid_nft",
+  buyNftWithCode: "buy_nft_with_code",
   cancelListing: "cancel_listing",
-  settleAuction: "settle_auction",
   getListing: "get_listing",
   getActiveListings: "get_active_listings",
+  getMinPrice: "get_min_price",
+  isIcoSalesCompleted: "is_ico_sales_completed",
+  // Marketplace — Auctions
+  createAuction: "create_auction",
+  placeBid: "place_bid",
+  finalizeAuction: "finalize_auction",
+  cancelAuction: "cancel_auction",
+  getAuction: "get_auction",
+  getActiveAuctions: "get_active_auctions",
+  // Marketplace — Trades
+  createTrade: "create_trade",
+  acceptTrade: "accept_trade",
+  cancelTrade: "cancel_trade",
+  getTrade: "get_trade",
+  getActiveTrades: "get_active_trades",
+  // Marketplace — Stats
+  getMarketplaceStats: "get_stats",
+  getPaymentMode: "payment_mode",
+  // ICO
   areAllNftsSold: "are_all_nfts_sold",
+  isIcoActive: "is_ico_active",
+  // Evolution
+  getEvolutionStats: "get_evolution_stats",
+  getRarityStats: "get_rarity_stats",
+  getUserEvolutions: "get_user_evolutions",
 };

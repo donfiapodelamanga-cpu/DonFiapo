@@ -11,6 +11,7 @@ use fiapo_traits::{AccountId, Balance};
 
 #[ink::contract]
 mod fiapo_lottery {
+    use fiapo_logics::traits::psp22::{PSP22, PSP22Ref};
     use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
@@ -407,24 +408,11 @@ mod fiapo_lottery {
             Ok(result)
         }
 
-        /// Cross-contract call para transferir prêmios
+        /// Core: transfer via PSP22Ref (selector correto do trait IPSP22)
         fn call_core_transfer_prize(&self, to: AccountId, amount: Balance) -> Result<(), LotteryError> {
-            use ink::env::call::{build_call, ExecutionInput, Selector};
- 
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
-                        .push_arg(to)
-                        .push_arg(amount),
-                )
-                .returns::<Result<(), u8>>()
-                .try_invoke();
- 
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
+            let mut psp22: PSP22Ref = self.core_contract.into();
+            match psp22.transfer(to, amount) {
+                Ok(_) => Ok(()),
                 _ => Err(LotteryError::Unauthorized),
             }
         }
@@ -485,3 +473,6 @@ mod fiapo_lottery {
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_lottery::*;

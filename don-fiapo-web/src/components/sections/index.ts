@@ -13,3 +13,4 @@ export { RewardsSystemSection } from './rewards-system';
 export { SupplyInfoSection } from './supply-info';
 export { NFTEvolutionSection } from './nft-evolution-section';
 export { MiningBanner } from './mining-banner';
+export { ExchangeListingsSection } from './exchange-listings';

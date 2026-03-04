@@ -60,12 +60,9 @@ export function getTierRequirements(tier: 'Bronze' | 'Silver' | 'Gold'): string 
 }
 
 export function getTierCommission(tier: 'Bronze' | 'Silver' | 'Gold'): number {
-  const commissions = {
-    Bronze: 5,
-    Silver: 7,
-    Gold: 10,
-  };
-  return commissions[tier];
+  // Parceiro commission is flat 7% regardless of tier (ICO NFT sales)
+  // Tier affects status/benefits, not commission rate
+  return 7;
 }
 
 // ============ Hooks ============

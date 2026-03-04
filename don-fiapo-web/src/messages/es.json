@@ -1,11 +1,13 @@
 {
   "metadata": {
-    "title": "Don Fiapo Dela Manga - El Alfa de las Memecoins",
-    "description": "Él no ladra — él decreta. La blockchain ahora tiene una monarquía. Únete al reinado."
+    "title": "Don Fiapo De la Manga - El Alfa de las Memecoins",
+    "description": "Él no ladra — él decreta. La blockchain ahora tiene una monarquía. Únete al reinado.",
+    "keywords": "memecoin, criptomoneda, NFT, staking, airdrop, DeFi, Lunes, Don Fiapo, blockchain, token, ICO, jugar para ganar, web3"
   },
   "nav": {
     "home": "Inicio",
     "ico": "ICO/NFTs",
+    "marketplace": "Marketplace",
     "staking": "Staking",
     "simulations": "Simulaciones",
     "games": "Juegos",
@@ -14,6 +16,7 @@
     "affiliate": "Afiliados",
     "governance": "Gobernanza",
     "ranking": "Ranking",
+    "dashboard": "Panel",
     "wallet": "Billetera",
     "docs": "Docs",
     "connectWallet": "Conectar Billetera",
@@ -21,7 +24,7 @@
   },
   "hero": {
     "badge": "El Rey del Humor Descentralizado",
-    "title": "Don Fiapo Dela Manga",
+    "title": "Don Fiapo De la Manga",
     "subtitle": "El Alfa de las Memecoins",
     "description": "Él no ladra — él decreta. La blockchain ahora tiene una monarquía. Únete al reinado.",
     "cta": {
@@ -70,25 +73,25 @@
     "phase2": {
       "title": "Fase 2 — Conquista del Reino",
       "items": [
-        "Airdrops",
-        "Listados en DEX",
-        "Campaña \"De Fiapo a Rey\""
+        "ICO - Minería vía NFTs",
+        "Marketplace"
       ]
     },
     "phase3": {
       "title": "Fase 3 — El Imperio de los Memes",
       "items": [
-        "Staking gamificado",
-        "NFTs",
-        "Token $OSSIN"
+        "Staking",
+        "Recompensas de la Comunidad",
+        "Nueva Colección de NFTs",
+        "Listado en Lunex",
+        "Inicio de Listados CEX"
       ]
     },
     "phase4": {
       "title": "Fase 4 — Dominación Global",
       "items": [
-        "Merch",
-        "Juego \"Carrera Real del Fiapo\"",
-        "Alianzas"
+        "Lanzamiento de Juegos",
+        "Distribución de Airdrop"
       ]
     }
   },
@@ -115,18 +118,18 @@
     "subtitle": "O eres un plebeyo del FUD, o eres un Fiapeiro Real.",
     "buy": "Comprar $FIAPO",
     "whitepaper": "Descargar Whitepaper",
-    "telegram": "Unirse a Telegram/Discord",
+    "telegram": "Unirse a Telegram",
     "social": "Seguir al Don"
   },
   "footer": {
-    "tagline": "Don Fiapo Dela Manga es un meme, pero es serio.",
+    "tagline": "Don Fiapo De la Manga es un meme, pero es serio.",
     "links": {
       "whitepaper": "Whitepaper",
       "faq": "FAQ",
       "contract": "Contrato Lunes",
       "contact": "Contacto de la Corte"
     },
-    "copyright": "© 2025 Don Fiapo Dela Manga. Todos los derechos reservados."
+    "copyright": "© 2025 Don Fiapo De la Manga. Todos los derechos reservados."
   },
   "staking": {
     "title": "Staking Real",
@@ -183,6 +186,28 @@
       "potential": "+ Bono de Prestigio Potencial: {amount} FIAPO!",
       "bonusLabel": "¡Ganaste un bono extra de:",
       "vestingInfo": "El bono se liberará después de que finalice la ICO con un período de vesting de 30 días."
+    },
+    "errors": {
+      "ICONotActive": "La venta de NFTs no está activa en este momento.",
+      "NFTNotFound": "NFT no encontrado.",
+      "NotNFTOwner": "No eres el propietario de este NFT.",
+      "NFTInactive": "Este NFT está inactivo.",
+      "MiningNotStarted": "La minería aún no ha comenzado.",
+      "MiningEnded": "La minería ha terminado.",
+      "NoTokensToClaim": "No hay tokens para reclamar.",
+      "InsufficientNFTs": "NFTs insuficientes para esta operación.",
+      "InvalidNFTCount": "Cantidad de NFTs inválida para evolución.",
+      "InvalidNFTType": "Tipo de NFT inválido.",
+      "MaxSupplyReached": "Se ha alcanzado el límite máximo de NFTs de este tier.",
+      "PaymentRequired": "Pago requerido para esta operación.",
+      "PaymentAmountMismatch": "Monto de pago incorrecto.",
+      "PaymentAlreadyUsed": "Este pago ya ha sido utilizado.",
+      "InvalidTransactionHash": "Hash de transacción inválido.",
+      "FreeMintAlreadyUsed": "Ya has alcanzado el límite de 5 Free Mints.",
+      "EvolutionNotAllowed": "Evolución no permitida para este NFT.",
+      "CoreContractError": "Error al comunicar con el contrato Core.",
+      "Unauthorized": "No tienes permiso para esta operación.",
+      "ContractReverted": "Operación rechazada (Posible límite alcanzado o error de lógica)."
     }
   },
   "airdrop": {
@@ -229,6 +254,18 @@
     "viewMore": "Ver Más",
     "seeAll": "Ver Todo"
   },
+  "modal": {
+    "badge": "Decreto Real",
+    "headline": "¡MILLONES EN AIRDROPS TE ESPERAN!",
+    "body": "Por orden de Su Majestad Don Fiapo, ¡las puertas del Tesoro Real están abiertas! Estamos distribuyendo MILLONES DE DÓLARES en valor a nuestra comunidad leal. Asegura tu estatus noble en el Reino y reclama tu parte del Airdrop de $FIAPO antes de que lleguen los civiles.",
+    "signature": "Su Majestad Don Fiapo De la Manga, Soberano del Reino",
+    "stat1": "Pool de Airdrop $FIAPO",
+    "stat2": "Gratis para Reclamar",
+    "stat3": "Bono de Referido",
+    "cta": "RECLAMA TU AIRDROP REAL AHORA",
+    "telegramBtn": "Unirse al Círculo Interno Real",
+    "privacyFooter": "Por decreto de la Corona, todos los súbditos leales recibirán su parte."
+  },
   "Games": {
     "title": "Arena Real",
     "subtitle": "Desafía tu suerte y habilidad en los juegos del reino.",
@@ -237,7 +274,60 @@
     "singlePlayer": "Un Jugador",
     "spin": {
       "title": "Rueda de la Fortuna Real",
-      "description": "Gira la rueda para ganar premios increíbles, incluido el tesoro del Don."
+      "description": "Gira la rueda para ganar premios increíbles, incluido el tesoro del Don.",
+      "youHave": "Tienes",
+      "spinsLeft": "giros restantes",
+      "lastPrize": "Último Premio:",
+      "buySpins": "Comprar Giros",
+      "spinBtn": "GIRAR",
+      "spinSingular": "Giro",
+      "spinsPlural": "Giros",
+      "payment": {
+        "title": "Confirmar Compra",
+        "description": "Estás a punto de comprar un paquete de giros para la Rueda de la Fortuna Real.",
+        "package": "Paquete:",
+        "disclaimer": "El monto será debitado de tu billetera conectada. Asegúrate de tener saldo suficiente.",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar Pago"
+      },
+      "prizes": {
+        "p100k": {
+          "name": "100k $FIAPO",
+          "desc": "¡Jackpot! 100.000 $FIAPO"
+        },
+        "p50k": {
+          "name": "50k $FIAPO",
+          "desc": "50.000 $FIAPO"
+        },
+        "p1k": {
+          "name": "1k $FIAPO",
+          "desc": "1.000 $FIAPO"
+        },
+        "p100": {
+          "name": "100 $FIAPO",
+          "desc": "100 $FIAPO"
+        },
+        "p05": {
+          "name": "0.5 $FIAPO",
+          "desc": "0.5 $FIAPO"
+        },
+        "usdt5": {
+          "name": "5 USDT",
+          "desc": "5 USDT Efectivo"
+        },
+        "usdt1": {
+          "name": "1 USDT",
+          "desc": "1 USDT Efectivo"
+        },
+        "boost": {
+          "name": "Boost de Staking",
+          "desc": "+0.1% APY por 5h"
+        },
+        "nothing": {
+          "name": "Nada",
+          "desc": "¡Más suerte la próxima vez!"
+        }
+      }
     },
     "tug": {
       "title": "Tira y Afloja",

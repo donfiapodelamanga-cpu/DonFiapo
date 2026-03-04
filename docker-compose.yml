@@ -24,6 +24,24 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3000
       - ORACLE_SERVICE_URL=http://oracle-service:3000
-
+      - ADMIN_API_KEY=donfiapo-admin-secret-dev
+    volumes:
+      - ./don-fiapo-web/prisma/dev.db:/app/prisma/dev.db
     depends_on:
       - oracle-service
+
+  don-fiapo-admin:
+    build:
+      context: ./don-fiapo-admin
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./don-fiapo-admin/.env
+    environment:
+      - WEB_API_URL=http://don-fiapo-web:3000
+      - ADMIN_API_KEY=donfiapo-admin-secret-dev
+    volumes:
+      - ./don-fiapo-admin/prisma/dev.db:/app/prisma/dev.db
+    depends_on:
+      - don-fiapo-web

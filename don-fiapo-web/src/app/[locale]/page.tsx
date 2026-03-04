@@ -9,7 +9,8 @@ import {
   RoadmapSection,
   StakingPreviewSection,
   CTASection,
-  MiningBanner
+  MiningBanner,
+  ExchangeListingsSection
 } from "@/components/sections";
 
 export default function HomePage() {
@@ -17,6 +18,7 @@ export default function HomePage() {
     <>
       <HeroSection />
       <MiningBanner />
+      <ExchangeListingsSection />
       <TokenomicsSection />
       <SupplyInfoSection />
       <NFTEvolutionSection />

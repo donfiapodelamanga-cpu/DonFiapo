@@ -21,6 +21,16 @@ export function MiningBanner() {
         return () => clearTimeout(timer);
     }, []);
 
+    useEffect(() => {
+        if (!isVisible) return;
+
+        const autoDismissTimer = setTimeout(() => {
+            setIsVisible(false);
+        }, 20000);
+
+        return () => clearTimeout(autoDismissTimer);
+    }, [isVisible]);
+
     if (!isVisible) return null;
 
     return (
@@ -71,7 +81,7 @@ export function MiningBanner() {
                             }
                         </p>
 
-                        <Link href="/ico/mint" className="block">
+                        <Link href="/ico/mint" className="block" onClick={() => setIsVisible(false)}>
                             <Button size="lg" className="w-full group bg-golden hover:bg-golden/80 text-black font-bold shadow-[0_0_15px_rgba(255,215,0,0.2)] hover:shadow-[0_0_25px_rgba(255,215,0,0.4)] transition-all">
                                 <Pickaxe className="w-4 h-4 mr-2 group-hover:-translate-y-1 group-hover:rotate-12 transition-transform" />
                                 {hasFreeMint ? "Claim Free NFT" : "Start Mining Now"}

@@ -16,7 +16,8 @@ import path from 'path';
 import { SolanaVerifier } from './solana-verifier';
 import { LunesContractClient, ConfirmPaymentResult } from './lunes-contract';
 import { PaymentRepository, PendingPayment } from './db';
-import { OracleWatcher } from './watcher'; // NEW IMPORT
+import { OracleWatcher } from './watcher';
+import { NobleWatcher } from './noble-watcher'; // NEW IMPORT
 
 // Load environment - priority: process.env > .env local > .env root
 // Only load from files if not already set in environment
@@ -30,6 +31,7 @@ const config = {
   usdtReceiverAddress: process.env.USDT_RECEIVER_ADDRESS || '',
   lunesRpcUrls: (process.env.LUNES_RPC_URL || 'wss://ws.lunes.io').split(',').map(url => url.trim()),
   contractAddress: process.env.CONTRACT_ADDRESS || '',
+  nobleContractAddress: process.env.NOBLE_CONTRACT_ADDRESS || '', // Add this
   oracleSeed: process.env.ORACLE_SEED || '//OracleAccount',
   minConfirmations: parseInt(process.env.MIN_CONFIRMATIONS || '12', 10),
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || '10000', 10),
@@ -47,7 +49,8 @@ const config = {
 // Clientes
 let solanaVerifier: SolanaVerifier;
 let lunesClient: LunesContractClient;
-let oracleWatcher: OracleWatcher; // Declare oracleWatcher
+let oracleWatcher: OracleWatcher;
+let nobleWatcher: NobleWatcher; // Declare nobleWatcher
 
 // Rate Limiting (Simple In-Memory)
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -120,7 +123,7 @@ async function initialize(): Promise<void> {
     config.contractAddress || 'MockContractAddress',
     config.oracleSeed
   );
-  
+
   // Só conecta se não estiver em modo mock
   if (!config.enableMock) {
     await lunesClient.connect();
@@ -138,6 +141,18 @@ async function initialize(): Promise<void> {
     console.log('✅ Oracle Watcher iniciado');
   } else {
     console.log('⏸️  Oracle Watcher desabilitado em modo mock');
+  }
+
+  // Inicializa Noble Watcher se endereço configurado
+  if (!config.enableMock && config.nobleContractAddress) {
+    nobleWatcher = new NobleWatcher(
+      config.lunesRpcUrls,
+      config.nobleContractAddress
+    );
+    await nobleWatcher.start();
+    console.log('✅ Noble Watcher inicializado');
+  } else if (!config.nobleContractAddress) {
+    console.log('⚠️  Noble Contract Address not set - Skipping Noble Watcher');
   }
 }
 

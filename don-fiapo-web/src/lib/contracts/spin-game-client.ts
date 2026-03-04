@@ -116,18 +116,18 @@ export class SpinGameClient {
    */
   static getPrizeList(): { index: number; name: string; description: string; color: string }[] {
     return [
-      { index: 0, name: '100.000 $FIAPO', description: 'Jackpot! 100.000 tokens FIAPO', color: '#FFD700' },
-      { index: 1, name: '50.000 $FIAPO', description: '50.000 tokens FIAPO', color: '#FFA500' },
-      { index: 2, name: '0.5 $FIAPO', description: '0.5 token FIAPO', color: '#1ABC9C' },
-      { index: 3, name: '5 USDT', description: '5 dólares em USDT', color: '#27AE60' },
-      { index: 4, name: '1.000 $FIAPO', description: '1.000 tokens FIAPO', color: '#3498DB' },
-      { index: 5, name: '0.5 $FIAPO', description: '0.5 token FIAPO', color: '#1ABC9C' },
-      { index: 6, name: '1 USDT', description: '1 dólar em USDT', color: '#2ECC71' },
-      { index: 7, name: 'Boost de Staking', description: '+0.1% APY por 5 horas', color: '#F39C12' },
-      { index: 8, name: '0.5 $FIAPO', description: '0.5 token FIAPO', color: '#1ABC9C' },
-      { index: 9, name: '100 $FIAPO', description: '100 tokens FIAPO', color: '#9B59B6' },
-      { index: 10, name: '0.5 $FIAPO', description: '0.5 token FIAPO', color: '#1ABC9C' },
-      { index: 11, name: 'Nada', description: 'Mais sorte na próxima!', color: '#95A5A6' },
+      { index: 0, name: 'prizes.p10k.name', description: 'prizes.p10k.desc', color: '#FFD700' },
+      { index: 1, name: 'prizes.p5k.name', description: 'prizes.p5k.desc', color: '#FFA500' },
+      { index: 2, name: 'prizes.p05.name', description: 'prizes.p05.desc', color: '#1ABC9C' },
+      { index: 3, name: 'prizes.usdt2.name', description: 'prizes.usdt2.desc', color: '#27AE60' },
+      { index: 4, name: 'prizes.p500.name', description: 'prizes.p500.desc', color: '#3498DB' },
+      { index: 5, name: 'prizes.p05.name', description: 'prizes.p05.desc', color: '#1ABC9C' },
+      { index: 6, name: 'prizes.usdt050.name', description: 'prizes.usdt050.desc', color: '#2ECC71' },
+      { index: 7, name: 'prizes.boost.name', description: 'prizes.boost.desc', color: '#F39C12' },
+      { index: 8, name: 'prizes.p05.name', description: 'prizes.p05.desc', color: '#1ABC9C' },
+      { index: 9, name: 'prizes.p50.name', description: 'prizes.p50.desc', color: '#9B59B6' },
+      { index: 10, name: 'prizes.p05.name', description: 'prizes.p05.desc', color: '#E67E22' },
+      { index: 11, name: 'prizes.nothing.name', description: 'prizes.nothing.desc', color: '#95A5A6' },
     ];
   }
 }

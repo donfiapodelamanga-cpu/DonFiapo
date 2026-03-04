@@ -38,6 +38,8 @@ services:
       - app_network
     depends_on:
       - oracle-service
+    volumes:
+      - don_fiapo_web_db:/app/db
 
   # Nginx Reverse Proxy
   nginx:
@@ -66,6 +68,7 @@ services:
 
 volumes:
   oracle_data:
+  don_fiapo_web_db:
 
 
 networks:

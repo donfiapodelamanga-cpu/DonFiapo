@@ -233,10 +233,20 @@ async function main() {
     const affiliate = await deployContract(api, deployer, 'fiapo_affiliate', affiliatePath, 'new',
         [core.address], 'Affiliate');
 
+    // --- 11b. NOBLE AFFILIATE ---
+    const noblePath = path.join(__dirname, '../don_fiapo/target/ink/noble_affiliate/noble_affiliate.contract');
+    const noble = await deployContract(api, deployer, 'noble_affiliate', noblePath, 'new',
+        [core.address], 'Noble Affiliate');
+
+    // --- 11c. NFT COLLECTIONS ---
+    const nftCollPath = path.join(__dirname, '../don_fiapo/target/ink/fiapo_nft_collections/fiapo_nft_collections.contract');
+    const nftCollections = await deployContract(api, deployer, 'fiapo_nft_collections', nftCollPath, 'new',
+        [core.address, TEAM_WALLET], 'NFT Collections');
+
     // --- 12. GOVERNANCE ---
     const governPath = path.join(__dirname, '../don_fiapo/target/ink/fiapo_governance/fiapo_governance.contract');
     const governance = await deployContract(api, deployer, 'fiapo_governance', governPath, 'new',
-        [core.address, [deployer.address]], 'Governance');
+        [core.address], 'Governance');
 
     // --- 13. TIMELOCK ---
     const timelockPath = path.join(__dirname, '../don_fiapo/target/ink/fiapo_timelock/fiapo_timelock.contract');
@@ -287,6 +297,18 @@ async function main() {
     // Lottery: Set Oracle
     await callContract(api, deployer, lottery.address, lottery.abi, 'setOracleContract', [oracle.address], 'Lottery -> Oracle');
 
+    // Noble: Link to ICO, Staking, Marketplace
+    // ICO -> Noble
+    try { await callContract(api, deployer, ico.address, ico.abi, 'setNobleContract', [noble.address], 'ICO -> Noble'); } catch(e) { console.warn('  ICO->Noble config skipped:', e.message); }
+    // Staking -> Noble, Affiliate, Rewards
+    try { await callContract(api, deployer, staking.address, staking.abi, 'setNobleContract', [noble.address], 'Staking -> Noble'); } catch(e) { console.warn('  Staking->Noble config skipped:', e.message); }
+    try { await callContract(api, deployer, staking.address, staking.abi, 'setAffiliateContract', [affiliate.address], 'Staking -> Affiliate'); } catch(e) { console.warn('  Staking->Affiliate config skipped:', e.message); }
+    try { await callContract(api, deployer, staking.address, staking.abi, 'setRewardsContract', [rewards.address], 'Staking -> Rewards'); } catch(e) { console.warn('  Staking->Rewards config skipped:', e.message); }
+    // Marketplace -> Noble
+    try { await callContract(api, deployer, marketplace.address, marketplace.abi, 'setNobleContract', [noble.address], 'Marketplace -> Noble'); } catch(e) { console.warn('  Marketplace->Noble config skipped:', e.message); }
+    // NFT Collections -> Marketplace, Treasury
+    try { await callContract(api, deployer, nftCollections.address, nftCollections.abi, 'setMarketplaceContract', [marketplace.address], 'NFTColl -> Marketplace'); } catch(e) { console.warn('  NFTColl->Marketplace config skipped:', e.message); }
+
     console.log('\n═══════════════════════════════════════════');
     console.log(`CORE_ADDRESS=${core.address}`);
     console.log(`STAKING_ADDRESS=${staking.address}`);
@@ -302,6 +324,8 @@ async function main() {
     console.log(`SECURITY_ADDRESS=${security.address}`);
     console.log(`TIMELOCK_ADDRESS=${timelock.address}`);
     console.log(`UPGRADE_ADDRESS=${upgrade.address}`);
+    console.log(`NOBLE_ADDRESS=${noble.address}`);
+    console.log(`NFT_COLLECTIONS_ADDRESS=${nftCollections.address}`);
     console.log('═══════════════════════════════════════════\n');
 
     // Save to file
@@ -321,6 +345,8 @@ async function main() {
         security: security.address,
         timelock: timelock.address,
         upgrade: upgrade.address,
+        noble_affiliate: noble.address,
+        nft_collections: nftCollections.address,
         network: 'Local Testnet'
     };
     fs.writeFileSync(path.join(__dirname, 'last_deploy_ecosystem.json'), JSON.stringify(info, null, 2));

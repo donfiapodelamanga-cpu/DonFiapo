@@ -40,7 +40,7 @@ const GamesPage: FC = () => {
 
   return (
     <div className="relative overflow-hidden py-24">
-      <div 
+      <div
         className="absolute inset-0 bg-repeat bg-center opacity-5"
         style={{ backgroundImage: 'url(/images/hero-bg.png)' }}
       />
@@ -51,21 +51,21 @@ const GamesPage: FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <GameCard 
+          <GameCard
             title={t('spin.title')}
             description={t('spin.description')}
             isMultiplayer={false}
             href="/games/spin"
             icon={<Target className="w-12 h-12" />}
           />
-          <GameCard 
+          <GameCard
             title={t('tug.title')}
             description={t('tug.description')}
             isMultiplayer={true}
             comingSoon
             icon={<Dog className="w-12 h-12" />}
           />
-          <GameCard 
+          <GameCard
             title={t('meme.title')}
             description={t('meme.description')}
             isMultiplayer={true}

@@ -1,7 +1,8 @@
 {
   "metadata": {
-    "title": "Don Fiapo Dela Manga - L'Alpha des Memecoins",
-    "description": "Il n'aboie pas — il décrète. La blockchain a maintenant une monarchie. Rejoignez le règne."
+    "title": "Don Fiapo De la Manga - L'Alpha des Memecoins",
+    "description": "Il n'aboie pas — il décrète. La blockchain a maintenant une monarchie. Rejoignez le règne.",
+    "keywords": "memecoin, cryptomonnaie, NFT, staking, airdrop, DeFi, Lunes, Don Fiapo, blockchain, jeton, ICO, jouer pour gagner, web3"
   },
   "nav": {
     "home": "Accueil",
@@ -15,6 +16,7 @@
     "affiliate": "Affiliés",
     "governance": "Gouvernance",
     "ranking": "Classement",
+    "dashboard": "Tableau de Bord",
     "wallet": "Portefeuille",
     "docs": "Docs",
     "connectWallet": "Connecter Portefeuille",
@@ -22,7 +24,7 @@
   },
   "hero": {
     "badge": "Le Roi de l'Humour Décentralisé",
-    "title": "Don Fiapo Dela Manga",
+    "title": "Don Fiapo De la Manga",
     "subtitle": "L'Alpha des Memecoins",
     "description": "Il n'aboie pas — il décrète. La blockchain a maintenant une monarchie. Rejoignez le règne.",
     "cta": {
@@ -71,25 +73,25 @@
     "phase2": {
       "title": "Phase 2 — Conquête du Royaume",
       "items": [
-        "Airdrops",
-        "Listages DEX",
-        "Campagne \"De Fiapo à Roi\""
+        "ICO - Minage via NFTs",
+        "Marketplace"
       ]
     },
     "phase3": {
       "title": "Phase 3 — L'Empire des Mèmes",
       "items": [
-        "Staking gamifié",
-        "NFTs",
-        "Token $OSSIN"
+        "Staking",
+        "Récompenses Communautaires",
+        "Nouvelle Collection NFT",
+        "Listing sur Lunex",
+        "Début des Listings CEX"
       ]
     },
     "phase4": {
       "title": "Phase 4 — Domination Mondiale",
       "items": [
-        "Merch",
-        "Jeu \"Course Royale du Fiapo\"",
-        "Partenariats"
+        "Lancement des Jeux",
+        "Distribution d'Airdrop"
       ]
     }
   },
@@ -116,18 +118,18 @@
     "subtitle": "Soit vous êtes un plébéien du FUD, soit vous êtes un Fiapeiro Royal.",
     "buy": "Acheter $FIAPO",
     "whitepaper": "Télécharger Whitepaper",
-    "telegram": "Rejoindre Telegram/Discord",
+    "telegram": "Rejoindre Telegram",
     "social": "Suivre le Don"
   },
   "footer": {
-    "tagline": "Don Fiapo Dela Manga est un mème, mais c'est sérieux.",
+    "tagline": "Don Fiapo De la Manga est un mème, mais c'est sérieux.",
     "links": {
       "whitepaper": "Whitepaper",
       "faq": "FAQ",
       "contract": "Contrat Lunes",
       "contact": "Contact de la Cour"
     },
-    "copyright": "© 2025 Don Fiapo Dela Manga. Tous droits réservés."
+    "copyright": "© 2025 Don Fiapo De la Manga. Tous droits réservés."
   },
   "staking": {
     "title": "Staking Royal",
@@ -184,6 +186,28 @@
       "potential": "+ Bonus de Prestige Potentiel : {amount} FIAPO !",
       "bonusLabel": "Vous avez gagné un bonus supplémentaire de :",
       "vestingInfo": "Le bonus sera libéré après la fin de l'ICO avec une période de vesting de 30 jours."
+    },
+    "errors": {
+      "ICONotActive": "La vente de NFTs n'est pas active pour le moment.",
+      "NFTNotFound": "NFT introuvable.",
+      "NotNFTOwner": "Vous n'êtes pas le propriétaire de ce NFT.",
+      "NFTInactive": "Ce NFT est inactif.",
+      "MiningNotStarted": "Le minage n'a pas encore commencé.",
+      "MiningEnded": "Le minage est terminé.",
+      "NoTokensToClaim": "Aucun token à réclamer.",
+      "InsufficientNFTs": "NFTs insuffisants pour cette opération.",
+      "InvalidNFTCount": "Quantité de NFTs invalide pour l'évolution.",
+      "InvalidNFTType": "Type de NFT invalide.",
+      "MaxSupplyReached": "La limite maximale de NFTs de ce niveau a été atteinte.",
+      "PaymentRequired": "Paiement requis pour cette opération.",
+      "PaymentAmountMismatch": "Montant du paiement incorrect.",
+      "PaymentAlreadyUsed": "Ce paiement a déjà été utilisé.",
+      "InvalidTransactionHash": "Hash de transaction invalide.",
+      "FreeMintAlreadyUsed": "Vous avez déjà atteint la limite de 5 Free Mints.",
+      "EvolutionNotAllowed": "Évolution non autorisée pour ce NFT.",
+      "CoreContractError": "Erreur de communication avec le contrat Core.",
+      "Unauthorized": "Vous n'avez pas la permission pour cette opération.",
+      "ContractReverted": "Opération refusée (Limite possible atteinte ou erreur logique)."
     }
   },
   "airdrop": {
@@ -229,6 +253,18 @@
     "connect": "Connecter",
     "viewMore": "Voir Plus",
     "seeAll": "Voir Tout"
+  },
+  "modal": {
+    "badge": "Décret Royal",
+    "headline": "DES MILLIONS EN AIRDROPS VOUS ATTENDENT !",
+    "body": "Par ordre de Sa Majesté Don Fiapo, les portes du Trésor Royal sont ouvertes ! Nous distribuons DES MILLIONS DE DOLLARS en valeur à notre communauté fidèle. Assurez votre statut noble dans le Royaume et réclamez votre part de l'Airdrop $FIAPO avant l'arrivée des civils.",
+    "signature": "Sa Majesté Don Fiapo De la Manga, Souverain du Royaume",
+    "stat1": "Pool d'Airdrop $FIAPO",
+    "stat2": "Gratuit à Réclamer",
+    "stat3": "Bonus de Parrainage",
+    "cta": "RÉCLAMEZ VOTRE AIRDROP ROYAL MAINTENANT",
+    "telegramBtn": "Rejoindre le Cercle Intérieur Royal",
+    "privacyFooter": "Par décret de la Couronne, tous les sujets fidèles recevront leur part."
   },
   "Games": {
     "title": "Arène Royale",

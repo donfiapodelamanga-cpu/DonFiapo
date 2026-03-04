@@ -22,6 +22,7 @@ pub type PSP22Result<T> = core::result::Result<T, PSP22Error>;
 /// Error types for PSP22 token operations
 #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[allow(clippy::cast_possible_truncation)]
 pub enum PSP22Error {
     /// Custom error with message
     Custom(String),
@@ -41,6 +42,18 @@ pub enum PSP22Error {
     SystemPaused,
     /// Max supply exceeded
     MaxSupplyExceeded,
+}
+
+/// Error types for Rewards operations
+#[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum RewardsError {
+    Unauthorized,
+    NoRewardsAvailable,
+    AlreadyClaimed,
+    RankingNotActive,
+    InsufficientParticipants,
+    InvalidConfiguration,
 }
 
 /// PSP22 Token Standard Interface
@@ -118,6 +131,10 @@ pub trait IStaking {
     /// Returns total staked amount across all pools
     #[ink(message)]
     fn total_staked(&self) -> Balance;
+
+    /// Returns all position IDs for a user
+    #[ink(message)]
+    fn get_user_positions(&self, user: AccountId) -> Vec<u64>;
 }
 
 /// ICO/NFT Contract Interface

@@ -2,9 +2,9 @@
  * API Configuration
  */
 
-// Lunes Network RPC endpoints - uses only env variable for testnet/mainnet switching
+// Lunes Network RPC endpoints - uses env variable for testnet/mainnet switching
 export const LUNES_RPC_ENDPOINTS = [
-  'ws://127.0.0.1:9944',
+  process.env.NEXT_PUBLIC_LUNES_RPC || 'ws://127.0.0.1:9944',
 ];
 
 
@@ -20,7 +20,26 @@ export const API_CONFIG = {
 
   // Contract addresses (replace with actual deployed addresses)
   contracts: {
+    // Core PSP22 Token
+    core: process.env.NEXT_PUBLIC_CORE_CONTRACT || '',
+
+    // ICO & NFT Mining (legacy donFiapo for backward compatibility)
     donFiapo: process.env.NEXT_PUBLIC_ICO_CONTRACT || '',
+    ico: process.env.NEXT_PUBLIC_ICO_CONTRACT || '',
+
+    // Other ecosystem contracts
+    staking: process.env.NEXT_PUBLIC_STAKING_CONTRACT || '',
+    affiliate: process.env.NEXT_PUBLIC_AFFILIATE_CONTRACT || '',
+    governance: process.env.NEXT_PUBLIC_GOVERNANCE_CONTRACT || '',
+    rewards: process.env.NEXT_PUBLIC_REWARDS_CONTRACT || '',
+    marketplace: process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT || '',
+    lottery: process.env.NEXT_PUBLIC_LOTTERY_CONTRACT || '',
+    spinGame: process.env.NEXT_PUBLIC_SPIN_GAME_CONTRACT || '',
+    airdrop: process.env.NEXT_PUBLIC_AIRDROP_CONTRACT || '',
+    oracleMultisig: process.env.NEXT_PUBLIC_ORACLE_MULTISIG_CONTRACT || '',
+    security: process.env.NEXT_PUBLIC_SECURITY_CONTRACT || '',
+    timelock: process.env.NEXT_PUBLIC_TIMELOCK_CONTRACT || '',
+    upgrade: process.env.NEXT_PUBLIC_UPGRADE_CONTRACT || '',
   },
 
   // Solana configuration
@@ -36,7 +55,7 @@ export const API_CONFIG = {
     name: 'Don Fiapo',
     symbol: 'FIAPO',
     decimals: 8,
-    totalSupply: 300_000_000_000,
+    totalSupply: 600_000_000_000,
   },
 
   // Staking pools configuration (keyed by URL slug)
@@ -87,12 +106,12 @@ export const API_CONFIG = {
   // IPFS hashes uploaded via Pinata on 2025-12-30
   nftTiers: [
     { id: 0, name: 'The Shovel of the Commoner Miner', shortName: 'Free', price: 0, dailyMining: 5, totalMining: 560, miningDays: 112, supply: 10_000, categoryTotal: 5_600_000, image: '/nfts/tier1-free.png', color: 'bg-green-500', ipfsImage: 'ipfs://bafybeiegeqvx36cqwjnuexq5rqimd4gtzitnc6havjdxixvrsrnhnugwie', ipfsMetadata: 'ipfs://bafkreialowx7hkvxs43pzep3dnnli7u47rdz5hdzjag3suf6lchr2xrsfy', evolutionRequirement: 5, burnReward: 100, prestigeBonus: { first: 100, last: 1000 } },
-    { id: 1, name: 'The Pickaxe of the Royal Guard', shortName: 'Bronze', price: 10, dailyMining: 50, totalMining: 5_600, miningDays: 112, supply: 50_000, categoryTotal: 280_000_000, image: '/nfts/tier2-bronze.png', color: 'bg-amber-600', ipfsImage: 'ipfs://bafybeia6hp4i42r22l7rotv536bawcmb3jbm2zxqpuifti464hhjaa7qt4', ipfsMetadata: 'ipfs://bafkreiaqq6fqo34o5da7qc7m3ibluh7cvchf6xbt6lkyp65gnncdwak5jy', evolutionRequirement: 2, burnReward: 500, prestigeBonus: { first: 10_000, last: 100_000 } },
-    { id: 2, name: 'The Candelabrum of the Explorer', shortName: 'Silver', price: 30, dailyMining: 150, totalMining: 16_800, miningDays: 112, supply: 40_000, categoryTotal: 672_000_000, image: '/nfts/tier3-silver.png', color: 'bg-slate-400', ipfsImage: 'ipfs://bafybeicalundyfevl3lwcje2cwrwsxk6rfaihi7ufaxlnxebr6vy6qwmay', ipfsMetadata: 'ipfs://bafkreigp7z6enxowwzsiarpcxboutxxpbyb7f2roqgb35hxqxeob3f2epa', evolutionRequirement: 2, burnReward: 1500, prestigeBonus: { first: 25_000, last: 250_000 } },
-    { id: 3, name: "The Power to Unlock Kingdom's Wealth", shortName: 'Gold', price: 55, dailyMining: 300, totalMining: 33_600, miningDays: 112, supply: 30_000, categoryTotal: 1_008_000_000, image: '/nfts/tier4-gold.png', color: 'bg-yellow-500', ipfsImage: 'ipfs://bafybeid7nxupxhudefbvd36nd45nd3cxfqiybzrbaor2infnjq3hoalanm', ipfsMetadata: 'ipfs://bafkreidn5klyignb7y6skguanaixee2tnhi32tyfehsufn2paqvcuspuwu', evolutionRequirement: 2, burnReward: 5000, prestigeBonus: { first: 50_000, last: 500_000 } },
-    { id: 4, name: 'The Royal Treasure Map', shortName: 'Platinum', price: 100, dailyMining: 500, totalMining: 56_000, miningDays: 112, supply: 20_000, categoryTotal: 1_120_000_000, image: '/nfts/tier5-platinum.png', color: 'bg-cyan-400', ipfsImage: 'ipfs://bafybeidaesu4zssaeh2upn7tpe664iqn2v5tr6focmrrd753sxnkitissa', ipfsMetadata: 'ipfs://bafkreigyljgp6pt3ukb3xghngurb6akdkvbqp7l4geqxtp7btneruqtyhe', evolutionRequirement: 2, burnReward: 15_000, prestigeBonus: { first: 75_000, last: 750_000 } },
-    { id: 5, name: 'The Golden Mango Eye', shortName: 'Diamond', price: 250, dailyMining: 1_200, totalMining: 134_400, miningDays: 112, supply: 5_000, categoryTotal: 672_000_000, image: '/nfts/tier6-diamond.png', color: 'bg-blue-500', ipfsImage: 'ipfs://bafybeicydbtys4etbit3xyyn2jcovcntoqjkrwyfvoh7si6ykh7is3skdu', ipfsMetadata: 'ipfs://bafkreienipvdroutcqyf2gmf4zm7a2ttoewooam5wtjl7cmpfqqp3urzwi', evolutionRequirement: 2, burnReward: 50_000, prestigeBonus: { first: 100_000, last: 1_000_000 } },
-    { id: 6, name: 'The Royal Scepter of Don Himself', shortName: 'Royal', price: 500, dailyMining: 2_500, totalMining: 280_000, miningDays: 112, supply: 2_000, categoryTotal: 560_000_000, image: '/nfts/tier7-royal.png', color: 'bg-golden', ipfsImage: 'ipfs://bafybeifjhbupjwplkknvixya223saxdcn2zkhrmir7o7xrbzhywlp5irce', ipfsMetadata: 'ipfs://bafkreidg7cyym2ggwrywbdbx45mvnjfufnd25qjpvymmbmqne4dfkmj4uy', evolutionRequirement: 0, burnReward: 100_000, prestigeBonus: { first: 1_000_000, last: 1_000_000 } },
+    { id: 1, name: 'The Pickaxe of the Royal Guard', shortName: 'Bronze', price: 14, dailyMining: 50, totalMining: 5_600, miningDays: 112, supply: 50_000, categoryTotal: 280_000_000, image: '/nfts/tier2-bronze.png', color: 'bg-amber-600', ipfsImage: 'ipfs://bafybeia6hp4i42r22l7rotv536bawcmb3jbm2zxqpuifti464hhjaa7qt4', ipfsMetadata: 'ipfs://bafkreiaqq6fqo34o5da7qc7m3ibluh7cvchf6xbt6lkyp65gnncdwak5jy', evolutionRequirement: 2, burnReward: 500, prestigeBonus: { first: 10_000, last: 100_000 } },
+    { id: 2, name: 'The Candelabrum of the Explorer', shortName: 'Silver', price: 41, dailyMining: 150, totalMining: 16_800, miningDays: 112, supply: 40_000, categoryTotal: 672_000_000, image: '/nfts/tier3-silver.png', color: 'bg-slate-400', ipfsImage: 'ipfs://bafybeicalundyfevl3lwcje2cwrwsxk6rfaihi7ufaxlnxebr6vy6qwmay', ipfsMetadata: 'ipfs://bafkreigp7z6enxowwzsiarpcxboutxxpbyb7f2roqgb35hxqxeob3f2epa', evolutionRequirement: 2, burnReward: 1500, prestigeBonus: { first: 25_000, last: 250_000 } },
+    { id: 3, name: "The Power to Unlock Kingdom's Wealth", shortName: 'Gold', price: 75, dailyMining: 300, totalMining: 33_600, miningDays: 112, supply: 30_000, categoryTotal: 1_008_000_000, image: '/nfts/tier4-gold.png', color: 'bg-yellow-500', ipfsImage: 'ipfs://bafybeid7nxupxhudefbvd36nd45nd3cxfqiybzrbaor2infnjq3hoalanm', ipfsMetadata: 'ipfs://bafkreidn5klyignb7y6skguanaixee2tnhi32tyfehsufn2paqvcuspuwu', evolutionRequirement: 2, burnReward: 5000, prestigeBonus: { first: 50_000, last: 500_000 } },
+    { id: 4, name: 'The Royal Treasure Map', shortName: 'Platinum', price: 136, dailyMining: 500, totalMining: 56_000, miningDays: 112, supply: 20_000, categoryTotal: 1_120_000_000, image: '/nfts/tier5-platinum.png', color: 'bg-cyan-400', ipfsImage: 'ipfs://bafybeidaesu4zssaeh2upn7tpe664iqn2v5tr6focmrrd753sxnkitissa', ipfsMetadata: 'ipfs://bafkreigyljgp6pt3ukb3xghngurb6akdkvbqp7l4geqxtp7btneruqtyhe', evolutionRequirement: 2, burnReward: 15_000, prestigeBonus: { first: 75_000, last: 750_000 } },
+    { id: 5, name: 'The Golden Mango Eye', shortName: 'Diamond', price: 340, dailyMining: 1_200, totalMining: 134_400, miningDays: 112, supply: 5_000, categoryTotal: 672_000_000, image: '/nfts/tier6-diamond.png', color: 'bg-blue-500', ipfsImage: 'ipfs://bafybeicydbtys4etbit3xyyn2jcovcntoqjkrwyfvoh7si6ykh7is3skdu', ipfsMetadata: 'ipfs://bafkreienipvdroutcqyf2gmf4zm7a2ttoewooam5wtjl7cmpfqqp3urzwi', evolutionRequirement: 2, burnReward: 50_000, prestigeBonus: { first: 100_000, last: 1_000_000 } },
+    { id: 6, name: 'The Royal Scepter of Don Himself', shortName: 'Royal', price: 680, dailyMining: 2_500, totalMining: 280_000, miningDays: 112, supply: 2_000, categoryTotal: 560_000_000, image: '/nfts/tier7-royal.png', color: 'bg-golden', ipfsImage: 'ipfs://bafybeifjhbupjwplkknvixya223saxdcn2zkhrmir7o7xrbzhywlp5irce', ipfsMetadata: 'ipfs://bafkreidg7cyym2ggwrywbdbx45mvnjfufnd25qjpvymmbmqne4dfkmj4uy', evolutionRequirement: 0, burnReward: 100_000, prestigeBonus: { first: 1_000_000, last: 1_000_000 } },
   ],
 
   // Visual rarity configuration

@@ -153,13 +153,13 @@ APY Total: 45%
 
 | Período | Supply Circulante | Volume Queimado | Taxa de Deflação |
 |---------|------------------|-----------------|------------------|
-| Início | 300.000.000.000 | 0 | 0% |
-| 1 ano | 285.000.000.000 | 15B | 5% |
-| 2 anos | 256.500.000.000 | 43.5B | 14.5% |
-| 5 anos | 177.000.000.000 | 123B | 41% |
-| 10 anos | 100.000.000.000 | 200B | 66.7% |
+| Início | 600.000.000.000 | 0 | 0% |
+| 1 ano | 570.000.000.000 | 30B | 5% |
+| 2 anos | 513.000.000.000 | 87B | 14.5% |
+| 5 anos | 354.000.000.000 | 246B | 41% |
+| 10 anos | 100.000.000.000 | 500B | 83.3% |
 
-**Meta**: Reduzir de 300 bilhões para 100 milhões (99.97% de queima total)
+**Meta**: Reduzir de 600 bilhões para 100 milhões (99.98% de queima total)
 
 ---
 

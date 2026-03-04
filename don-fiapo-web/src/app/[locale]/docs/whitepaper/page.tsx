@@ -257,7 +257,7 @@ export default function WhitepaperPage() {
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="bg-background rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">Max Supply</p>
-                    <p className="text-2xl font-bold text-golden">300 Bi</p>
+                    <p className="text-2xl font-bold text-golden">600 Bi</p>
                   </div>
                   <div className="bg-background rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">Initial Supply</p>
@@ -272,29 +272,33 @@ export default function WhitepaperPage() {
                 <div>
                   <h4 className="font-bold mb-3">Token Distribution</h4>
                   <div className="grid md:grid-cols-2 gap-3">
+                    <div className="flex justify-between items-center p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                      <span className="text-amber-400 font-medium">Pre-sale</span>
+                      <span className="text-2xl font-bold text-amber-400">25%</span>
+                    </div>
                     <div className="flex justify-between items-center p-3 bg-golden/10 rounded-lg border border-golden/30">
                       <span className="text-golden font-medium">Staking Fund</span>
-                      <span className="text-2xl font-bold text-golden">80%</span>
+                      <span className="text-2xl font-bold text-golden">51.67%</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-background rounded-lg">
                       <span>Airdrop</span>
-                      <span className="font-bold">7%</span>
+                      <span className="font-bold">5.08%</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-background rounded-lg">
                       <span>Marketing</span>
-                      <span className="font-bold">5%</span>
+                      <span className="font-bold">3.42%</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-background rounded-lg">
                       <span>Charity Donations</span>
-                      <span className="font-bold">5%</span>
+                      <span className="font-bold">3.42%</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-background rounded-lg">
                       <span>IEO/ICO</span>
-                      <span className="font-bold">2%</span>
+                      <span className="font-bold">10.67%</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-background rounded-lg">
                       <span>Team</span>
-                      <span className="font-bold">1%</span>
+                      <span className="font-bold">0.75%</span>
                     </div>
                   </div>
                 </div>
@@ -652,10 +656,10 @@ export default function WhitepaperPage() {
                 </p>
                 <h4 className="font-bold mt-4">Roadmap Highlights</h4>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li>• <strong className="text-green-500">Q1 2026:</strong> Token launch, staking, NFT mint</li>
-                  <li>• <strong className="text-blue-400">Q2 2026:</strong> DEX listings, partnerships</li>
-                  <li>• <strong className="text-purple-500">Q3 2026:</strong> Mobile app, gamification</li>
-                  <li>• <strong className="text-golden">Q4 2026:</strong> Cross-chain expansion</li>
+                  <li>• <strong className="text-muted-foreground">Phase 1:</strong> The Coronation (Complete)</li>
+                  <li>• <strong className="text-golden">Phase 2:</strong> Kingdom Conquest (ICO & Marketplace)</li>
+                  <li>• <strong className="text-blue-400">Phase 3:</strong> The Meme Empire (Staking & CEX)</li>
+                  <li>• <strong className="text-purple-500">Phase 4:</strong> Global Domination (Games & Airdrop)</li>
                 </ul>
               </div>
             </section>

@@ -85,12 +85,29 @@ export default function AffiliatePage() {
       // Claim rewards via direct contract call
       console.log("[Affiliate] Claiming rewards:", info.pendingRewards.toString());
       const contract = await import('@/lib/api/contract');
+
+      // Check if the method exists before calling
+      if (typeof contract.claimAffiliateRewards !== 'function') {
+        addToast("warning", "Coming Soon!", "Reward claiming will be available in the next contract update.");
+        return;
+      }
+
       await contract.claimAffiliateRewards(lunesAddress!);
 
       addToast("success", "Rewards Claimed!", `Successfully claimed ${formatAffiliateBalance(info.pendingRewards)} FIAPO`);
       refetchInfo();
     } catch (err) {
-      addToast("error", "Claim Failed", err instanceof Error ? err.message : "Unknown error");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+
+      // Friendly error messages for known issues
+      if (errorMessage.includes('not a function') || errorMessage.includes('is not a function')) {
+        addToast("warning", "Coming Soon!", "This feature will be available in the next update. Stay tuned! 🚀");
+      } else if (errorMessage.includes('not available') || errorMessage.includes('offline')) {
+        addToast("warning", "Network Unavailable", "Please check your connection and try again.");
+      } else {
+        addToast("error", "Claim Failed", "Unable to claim rewards at this time. Please try again later.");
+      }
+      console.warn("[Affiliate] Claim error:", errorMessage);
     }
   };
 
@@ -221,7 +238,7 @@ export default function AffiliatePage() {
                   {t("referralLink")}
                 </CardTitle>
                 <CardDescription>
-                  Share your unique link and earn 5% of all referral purchases
+                  Share your unique link and earn 2.5% of all referral purchases
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -335,7 +352,7 @@ export default function AffiliatePage() {
                   {[
                     { step: "1", title: "Share Your Link", desc: "Copy and share your unique referral link" },
                     { step: "2", title: "Friends Join", desc: "When someone uses your link to buy NFTs or tokens" },
-                    { step: "3", title: "Earn Rewards", desc: "Receive 5% of their purchase amount in FIAPO" },
+                    { step: "3", title: "Earn Rewards", desc: "Receive 2.5% of their purchase amount in FIAPO" },
                     { step: "4", title: "Claim Anytime", desc: "Withdraw your rewards to your wallet" },
                   ].map((item, i) => (
                     <div key={i} className="flex gap-4">
@@ -364,9 +381,9 @@ export default function AffiliatePage() {
           <h2 className="text-2xl font-bold text-golden text-center mb-8">Referral Tiers</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { tier: "Bronze", referrals: "1-10", bonus: "5%", color: "bg-orange-600", boostBps: "+0.5%/ref" },
-              { tier: "Silver", referrals: "11-50", bonus: "7%", color: "bg-gray-400", boostBps: "+0.5%/ref" },
-              { tier: "Gold", referrals: "50+", bonus: "10%", color: "bg-golden", boostBps: "+0.5%/ref" },
+              { tier: "Bronze", referrals: "1-10", bonus: "2.5%", color: "bg-orange-600", boostBps: "+0.5%/ref" },
+              { tier: "Silver", referrals: "11-50", bonus: "3.5%", color: "bg-gray-400", boostBps: "+0.5%/ref" },
+              { tier: "Gold", referrals: "50+", bonus: "5%", color: "bg-golden", boostBps: "+0.5%/ref" },
             ].map((tier, i) => (
               <Card key={i} className={`bg-card text-center ${info?.tier === tier.tier ? 'ring-2 ring-golden' : ''}`}>
                 <CardContent className="pt-6">
@@ -432,6 +449,13 @@ export default function AffiliatePage() {
                       </div>
                     </div>
                   ))}
+
+                  {leaderboard.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No affiliates on the leaderboard yet.</p>
+                      <p className="text-sm mt-2">Start referring to claim the #1 spot! 🥇</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -439,7 +463,7 @@ export default function AffiliatePage() {
         </motion.div>
 
         {/* Your Referrals */}
-        {lunesConnected && referrals.length > 0 && (
+        {lunesConnected && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -483,6 +507,13 @@ export default function AffiliatePage() {
                         />
                       </div>
                     ))}
+
+                    {referrals.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>You haven't referred anyone yet.</p>
+                        <p className="text-sm mt-2">Share your link and earn 5% rewards! 🚀</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

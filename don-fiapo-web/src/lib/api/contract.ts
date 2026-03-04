@@ -294,7 +294,7 @@ export async function initializeContract(): Promise<ContractPromise | null> {
       let connectedApi: ApiPromise | null = null;
       const triedEndpoints: string[] = [];
 
-      const endpoints = ['ws://127.0.0.1:9944'];
+      const endpoints = API_CONFIG.lunesRpcEndpoints;
       for (let i = 0; i < endpoints.length; i++) {
         const endpoint = endpoints[i];
         triedEndpoints.push(endpoint);
@@ -348,22 +348,51 @@ export async function initializeContract(): Promise<ContractPromise | null> {
 
 /**
  * Get token balance for an account
+ * Note: The ICO contract may not expose PSP22 balanceOf directly.
+ * This fetches from the contract's internal query if available.
  */
 export async function getBalance(address: string): Promise<bigint> {
   const contractInstance = await initializeContract();
   if (!contractInstance) return BigInt(0);
 
-  const { result, output } = await contractInstance.query.balanceOf(
-    address, // caller
-    getGasLimit(contractInstance.api),
-    address  // account to check
-  );
+  try {
+    // Try psp22_balance_of first (PSP22 trait method)
+    if (contractInstance.query['psp22::balanceOf']) {
+      const { result, output } = await contractInstance.query['psp22::balanceOf'](
+        address,
+        getGasLimit(contractInstance.api),
+        address
+      );
+      if (result.isOk && output) {
+        const val = output.toHuman();
+        if (typeof val === 'string') return BigInt(val.replace(/,/g, ''));
+        if (typeof val === 'object' && val && 'Ok' in val) {
+          const okVal = (val as any).Ok;
+          if (typeof okVal === 'string') return BigInt(okVal.replace(/,/g, ''));
+        }
+      }
+    }
 
-  if (result.isOk && output) {
-    return BigInt(output.toHuman() as string);
+    // Fallback: Try snake_case balance_of
+    if (contractInstance.query.balance_of) {
+      const { result, output } = await contractInstance.query.balance_of(
+        address,
+        getGasLimit(contractInstance.api),
+        address
+      );
+      if (result.isOk && output) {
+        const val = output.toHuman();
+        if (typeof val === 'string') return BigInt(val.replace(/,/g, ''));
+      }
+    }
+
+    // If no PSP22 method available, return 0
+    console.info('[Contract] PSP22 balanceOf not available on this contract');
+    return BigInt(0);
+  } catch (err) {
+    console.warn('[Contract] Error fetching token balance:', err);
+    return BigInt(0);
   }
-
-  return BigInt(0);
 }
 
 /**
@@ -402,7 +431,7 @@ export async function getStakingPosition(address: string, stakingType: string): 
   const contractInstance = await initializeContract();
   if (!contractInstance) return null;
 
-  const { result, output } = await contractInstance.query.getStakingPosition(
+  const { result, output } = await contractInstance.query.get_staking_position(
     address,
     getGasLimit(contractInstance.api),
     address,
@@ -495,7 +524,7 @@ export async function claimRewards(
   if (!contractInstance) throw new Error('Contract not available - network offline');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.claimRewards(
+  const tx = contractInstance.tx.claim_rewards(
     getGasLimit(contractInstance.api),
     stakingType
   );
@@ -528,7 +557,7 @@ export async function getUserNFTs(address: string): Promise<{
   const contractInstance = await initializeContract();
   if (!contractInstance) return [];
 
-  const { result, output } = await contractInstance.query.getUserNfts(
+  const { result, output } = await contractInstance.query.get_user_nfts(
     address,
     getGasLimit(contractInstance.api),
     address
@@ -567,7 +596,7 @@ export async function getUserNFTs(address: string): Promise<{
       if (isNaN(nftId)) return null;
 
       try {
-        const detailQuery = await contractInstance.query.getNft(
+        const detailQuery = await contractInstance.query.get_nft(
           address,
           getGasLimit(contractInstance.api),
           nftId
@@ -659,7 +688,7 @@ export async function mintNFT(
   if (nftType === 0) {
     console.log('[Contract] Simulating Free Mint (dry-run)...');
     try {
-      const { result, output } = await contractInstance.query.mintFree(
+      const { result, output } = await contractInstance.query.mint_free(
         address,
         { gasLimit, storageDepositLimit: null }
       );
@@ -683,7 +712,7 @@ export async function mintNFT(
 
     // Free Mint - mint_free() takes no args
     console.log('[Contract] Executing Free Mint (mint_free)');
-    tx = contractInstance.tx.mintFree(
+    tx = contractInstance.tx.mint_free(
       { gasLimit, storageDepositLimit: null }
     );
   } else {
@@ -695,7 +724,7 @@ export async function mintNFT(
     // Dry Run Paid
     console.log('[Contract] Simulating Paid Mint (dry-run)...');
     try {
-      const { result, output } = await contractInstance.query.mintPaid(
+      const { result, output } = await contractInstance.query.mint_paid(
         address,
         { gasLimit, storageDepositLimit: null },
         nftType,
@@ -718,7 +747,7 @@ export async function mintNFT(
     }
 
     console.log('[Contract] Executing Paid Mint (mint_paid)');
-    tx = contractInstance.tx.mintPaid(
+    tx = contractInstance.tx.mint_paid(
       { gasLimit, storageDepositLimit: null },
       nftType,
       proof.transaction_hash
@@ -749,7 +778,7 @@ export async function claimMinedTokens(
   if (!contractInstance) throw new Error('Contract not available - network offline');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.claimTokens(
+  const tx = contractInstance.tx.claim_tokens(
     getGasLimit(contractInstance.api),
     tokenId
   );
@@ -778,7 +807,7 @@ export async function getAirdropStatus(address: string): Promise<{
   const contractInstance = await initializeContract();
   if (!contractInstance) return { eligible: false, amount: BigInt(0), claimed: false };
 
-  const { result, output } = await contractInstance.query.getAirdropStatus(
+  const { result, output } = await contractInstance.query.get_airdrop_status(
     address,
     getGasLimit(contractInstance.api),
     address
@@ -807,7 +836,7 @@ export async function claimAirdrop(
   if (!contractInstance) throw new Error('Contract not available - network offline');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.claimAirdrop(
+  const tx = contractInstance.tx.claim_airdrop(
     getGasLimit(contractInstance.api),
     proof
   );
@@ -847,7 +876,7 @@ export async function getIcoNftConfigs(): Promise<ContractNFTConfig[] | null> {
   if (!contractInstance) return null;
 
   try {
-    const { result, output } = await contractInstance.query.getIcoNftConfigs(
+    const { result, output } = await contractInstance.query.get_ico_nft_configs(
       API_CONFIG.contracts.donFiapo,
       getGasLimit(contractInstance.api)
     );
@@ -921,7 +950,7 @@ export async function getICOStats(): Promise<ICOStats | null> {
   if (!contractInstance) return null;
 
   try {
-    const { result, output } = await contractInstance.query.getStats(
+    const { result, output } = await contractInstance.query.get_stats(
       API_CONFIG.contracts.donFiapo,
       getGasLimit(contractInstance.api)
     );
@@ -969,7 +998,7 @@ export async function getAffiliateInfo(address: string): Promise<{
   const contractInstance = await initializeContract();
   if (!contractInstance) return { referralCode: '', referredBy: null, totalReferrals: 0, totalEarnings: BigInt(0) };
 
-  const { result, output } = await contractInstance.query.getAffiliateInfo(
+  const { result, output } = await contractInstance.query.get_affiliate_info(
     address,
     getGasLimit(contractInstance.api),
     address
@@ -999,7 +1028,7 @@ export async function registerWithReferral(
   if (!contractInstance) throw new Error('Contract not available - network offline');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.registerAffiliate(
+  const tx = contractInstance.tx.register_affiliate(
     getGasLimit(contractInstance.api),
     referralCode
   );
@@ -1042,7 +1071,7 @@ export async function getStakingPoolConfig(stakingType: string): Promise<{
 
       const mappedType = typeMap[stakingType] || 'DonFiapo';
 
-      const { result, output } = await contractInstance.query.getStakingConfig(
+      const { result, output } = await contractInstance.query.get_staking_config(
         contractInstance.address,
         getGasLimit(contractInstance.api),
         mappedType
@@ -1085,6 +1114,12 @@ export async function getRankingData(rankingType: string): Promise<any[]> {
     const contractInstance = await initializeContract();
     if (!contractInstance) return [];
 
+    // Check if the method exists in the contract
+    if (typeof contractInstance.query.get_ranking_data !== 'function') {
+      console.log('[Contract] get_ranking_data not available in contract');
+      return [];
+    }
+
     // Map frontend rankingType to contract enum
     const typeMap: Record<string, string> = {
       'holders': 'Holders',
@@ -1097,7 +1132,7 @@ export async function getRankingData(rankingType: string): Promise<any[]> {
 
     const mappedType = typeMap[rankingType.toLowerCase()] || 'General';
 
-    const { result, output } = await contractInstance.query.getRankingData(
+    const { result, output } = await contractInstance.query.get_ranking_data(
       contractInstance.address,
       getGasLimit(contractInstance.api),
       mappedType
@@ -1128,7 +1163,7 @@ export async function getCoreGovernanceStats(): Promise<{
     const contractInstance = await initializeContract();
     if (!contractInstance) return { totalProposals: 0, activeProposals: 0, totalVotes: 0, totalParticipants: 0, treasuryBalance: BigInt(0) };
 
-    const { result, output } = await contractInstance.query.getGovernanceStats(
+    const { result, output } = await contractInstance.query.get_governance_stats(
       contractInstance.address,
       getGasLimit(contractInstance.api)
     );
@@ -1220,7 +1255,7 @@ export async function getAirdropStats(): Promise<{
   try {
     const contractInstance = await initializeContract();
     if (contractInstance) {
-      const { result, output } = await contractInstance.query.getAirdropStats(
+      const { result, output } = await contractInstance.query.get_airdrop_stats(
         contractInstance.address,
         getGasLimit(contractInstance.api)
       );
@@ -1275,7 +1310,7 @@ export async function getUserAirdropData(address: string): Promise<AirdropUserDa
     const contractInstance = await initializeContract();
     if (!contractInstance) throw new Error('Not connected');
 
-    const { result, output } = await contractInstance.query.getUserAirdropData(
+    const { result, output } = await contractInstance.query.get_user_airdrop_data(
       address,
       getGasLimit(contractInstance.api),
       address
@@ -1360,7 +1395,7 @@ export async function checkAirdropEligibility(address: string): Promise<{
     const contractInstance = await initializeContract();
     if (!contractInstance) throw new Error('Not connected');
 
-    const { result, output } = await contractInstance.query.isEligible(
+    const { result, output } = await contractInstance.query.is_eligible(
       address,
       getGasLimit(contractInstance.api),
       address
@@ -1436,7 +1471,7 @@ export async function getNFTVisualAttributes(nftId: number): Promise<NFTVisualAt
   }
 
   try {
-    const { result, output } = await contractInstance.query.getNft(
+    const { result, output } = await contractInstance.query.get_nft(
       contractInstance.address,
       getGasLimit(contractInstance.api),
       nftId
@@ -1481,7 +1516,7 @@ export async function getEffectiveMiningRate(nftId: number): Promise<bigint> {
   if (!contractInstance) return BigInt(0);
 
   try {
-    const { result, output } = await contractInstance.query.getEffectiveMiningRate(
+    const { result, output } = await contractInstance.query.get_effective_mining_rate(
       contractInstance.address,
       getGasLimit(contractInstance.api),
       nftId
@@ -1509,7 +1544,7 @@ export async function getPrestigeBonus(nftId: number): Promise<{ amount: bigint;
   if (!contractInstance) return null;
 
   try {
-    const { result, output } = await contractInstance.query.getPrestigeInfo(
+    const { result, output } = await contractInstance.query.get_prestige_info(
       contractInstance.address,
       getGasLimit(contractInstance.api),
       nftId
@@ -1554,7 +1589,7 @@ export async function claimPrestigeBonus(
   if (!contractInstance) throw new Error('Contract not available');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.claimPrestigeBonus(
+  const tx = contractInstance.tx.claim_prestige_bonus(
     getGasLimit(contractInstance.api),
     nftId
   );
@@ -1581,9 +1616,12 @@ export async function getEvolutionStats(): Promise<{ totalEvolutions: number; to
     return { totalEvolutions: 0, totalBurned: 0 };
   }
 
+  // Use Alice as default caller for queries to avoid potential issues with contract address as origin
+  const caller = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
+
   try {
-    const { result, output } = await contractInstance.query.getEvolutionStats(
-      contractInstance.address,
+    const { result, output } = await contractInstance.query.get_evolution_stats(
+      caller,
       getGasLimit(contractInstance.api)
     );
 
@@ -1592,10 +1630,20 @@ export async function getEvolutionStats(): Promise<{ totalEvolutions: number; to
       console.log('[Contract] Evolution Stats Raw:', data);
 
       const stats = data?.Ok || data;
-      return {
-        totalEvolutions: parseNum(stats?.totalEvolutions || stats?.total_evolutions || 0),
-        totalBurned: parseNum(stats?.totalNftsBurned || stats?.total_nfts_burned || 0),
-      };
+      let totalEvolutions = 0;
+      let totalBurned = 0;
+
+      if (Array.isArray(stats)) {
+        // Tuple (u64, u64) -> ['10', '500']
+        totalEvolutions = parseNum(stats[0]);
+        totalBurned = parseNum(stats[1]);
+      } else {
+        // Object fallback
+        totalEvolutions = parseNum(stats?.totalEvolutions || stats?.total_evolutions || 0);
+        totalBurned = parseNum(stats?.totalNftsBurned || stats?.total_nfts_burned || 0);
+      }
+
+      return { totalEvolutions, totalBurned };
     }
   } catch (e) {
     console.warn('Failed to fetch evolution stats:', e);
@@ -1620,9 +1668,12 @@ export async function getRarityStats(): Promise<{
     return { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0, total: 0 };
   }
 
+  // Use Alice as default caller for queries to avoid potential issues with contract address as origin
+  const caller = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
+
   try {
-    const { result, output } = await contractInstance.query.getRarityStats(
-      contractInstance.address,
+    const { result, output } = await contractInstance.query.get_rarity_stats(
+      caller,
       getGasLimit(contractInstance.api)
     );
 
@@ -1631,16 +1682,42 @@ export async function getRarityStats(): Promise<{
       console.log('[Contract] Rarity Stats Raw:', data);
 
       const stats = data?.Ok || data;
-      const counts = stats?.rarityCounts || stats?.rarity_counts || {};
+      // return type: Vec<(VisualRarity, u32)> -> [['Common', '10'], ...] or similar
 
-      return {
-        common: parseNum(counts?.common || 0),
-        uncommon: parseNum(counts?.uncommon || 0),
-        rare: parseNum(counts?.rare || 0),
-        epic: parseNum(counts?.epic || 0),
-        legendary: parseNum(counts?.legendary || 0),
-        total: parseNum(stats?.totalRolls || stats?.total_rolls || 0),
-      };
+      let common = 0, uncommon = 0, rare = 0, epic = 0, legendary = 0;
+      let total = 0;
+
+      const list = Array.isArray(stats) ? stats : (stats?.rarityCounts || stats?.rarity_counts || []);
+
+      if (Array.isArray(list)) {
+        list.forEach((item: any) => {
+          let rarity = '';
+          let countStr = '0';
+
+          if (Array.isArray(item)) {
+            // Tuple ['Common', '10']
+            rarity = item[0];
+            countStr = item[1];
+          } else if (item && typeof item === 'object') {
+            // Object { Common: 10 } ?? Unlikely for Vec<(Enum, u32)> but possible in some formats
+            // Actually Vec<(Enum, u32)> usually maps to array of arrays in .toHuman()
+            // But let's handle { rarity: 'Common', count: 10 } just in case
+            rarity = item.rarity || Object.keys(item)[0];
+            countStr = item.count || item[rarity];
+          }
+
+          const count = parseNum(countStr);
+          total += count;
+
+          if (rarity === 'Common') common = count;
+          else if (rarity === 'Uncommon') uncommon = count;
+          else if (rarity === 'Rare') rare = count;
+          else if (rarity === 'Epic') epic = count;
+          else if (rarity === 'Legendary') legendary = count;
+        });
+      }
+
+      return { common, uncommon, rare, epic, legendary, total };
     }
   } catch (e) {
     console.warn('Failed to fetch rarity stats:', e);
@@ -1683,9 +1760,12 @@ export async function getUserEvolutions(address: string): Promise<EvolutionRecor
 
   // Contract results
   let contractRecords: EvolutionRecord[] = [];
+  // Use Alice as default caller for queries to avoid potential issues with contract address as origin
+  const caller = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
+
   try {
-    const { result, output } = await contractInstance.query.getUserEvolutions(
-      contractInstance.address,
+    const { result, output } = await contractInstance.query.get_user_evolutions(
+      caller,
       getGasLimit(contractInstance.api),
       address
     );
@@ -1762,7 +1842,7 @@ export async function evolveNFTs(
     console.log('[evolveNFTs] 3. Estimating gas...');
     let gasRequired;
     try {
-      const { gasRequired: estGas, result, output } = await contractInstance.query.evolveNfts(
+      const { gasRequired: estGas, result, output } = await contractInstance.query.evolve_nfts(
         address,
         getGasLimit(contractInstance.api),
         nftIdsBigInt,
@@ -1788,7 +1868,7 @@ export async function evolveNFTs(
 
     // Execute transaction
     console.log('[evolveNFTs] 4. Sending transaction...');
-    const tx = contractInstance.tx.evolveNfts(
+    const tx = contractInstance.tx.evolve_nfts(
       { gasLimit: gasRequired },
       nftIdsBigInt,
       targetTier
@@ -1897,7 +1977,7 @@ export async function canEvolveNFTs(nftIds: number[], targetTier: number, addres
     // Use evolveNfts query as a dry-run check (simulating logic)
     // Rust: fn evolve_nfts(...) -> Result<EvolutionResult, ICOError>
     // Note: The UI calls this "canEvolve" but the contract method is "evolve_nfts" (tx) called as query.
-    const { result, output } = await contractInstance.query.evolveNfts(
+    const { result, output } = await contractInstance.query.evolve_nfts(
       address,
       getGasLimit(contractInstance.api),
       nftIdsBigInt,
@@ -1954,7 +2034,7 @@ export async function claimAffiliateRewards(address: string): Promise<string> {
   if (!contractInstance) throw new Error('Contract not available - network offline');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.claimAffiliateRewards(
+  const tx = contractInstance.tx.claim_affiliate_rewards(
     getGasLimit(contractInstance.api)
   );
 
@@ -2015,7 +2095,7 @@ export async function createProposal(
   if (!contractInstance) throw new Error('Contract not available - network offline');
   const injector = await getInjector(address);
 
-  const tx = contractInstance.tx.createProposal(
+  const tx = contractInstance.tx.create_proposal(
     getGasLimit(contractInstance.api),
     proposalType,
     title,
@@ -2054,7 +2134,7 @@ export async function getNFT(nftId: number): Promise<NFTData | null> {
     const contractInstance = await initializeContract();
     if (!contractInstance) return null;
 
-    const { result, output } = await contractInstance.query.getNft(
+    const { result, output } = await contractInstance.query.get_nft(
       contractInstance.address,
       getGasLimit(contractInstance.api),
       nftId
@@ -2153,7 +2233,7 @@ export async function getFreeMintCooldown(): Promise<number> {
   if (!contractInstance) return 0;
 
   try {
-    const { result, output } = await contractInstance.query.getFreeMintCooldown(
+    const { result, output } = await contractInstance.query.get_free_mint_cooldown(
       contractInstance.address,
       { gasLimit: -1 }
     );
@@ -2175,7 +2255,7 @@ export async function getRemainingCooldown(address: string): Promise<number> {
   if (!contractInstance) return 0;
 
   try {
-    const { result, output } = await contractInstance.query.getRemainingCooldown(
+    const { result, output } = await contractInstance.query.get_remaining_cooldown(
       contractInstance.address,
       { gasLimit: -1 },
       address
@@ -2191,18 +2271,21 @@ export async function getRemainingCooldown(address: string): Promise<number> {
 }
 
 /**
- * ========== MARKETPLACE METHODS ==========
+ * ========== MARKETPLACE (migrado para marketplace-api.ts) ==========
+ * As funções de marketplace agora estão em @/lib/api/marketplace-api.ts
+ * pois o marketplace é um contrato separado do ICO.
+ * Mantido aqui apenas areAllNFTsSold que é uma query do ICO.
  */
 
 /**
- * Check if the ICO is sold out
+ * Check if the ICO is sold out (ICO contract query)
  */
 export async function areAllNFTsSold(): Promise<boolean> {
   const contractInstance = await initializeContract();
   if (!contractInstance) return false;
 
   try {
-    const { result, output } = await contractInstance.query.areAllNftsSold(
+    const { result, output } = await contractInstance.query.are_all_nfts_sold(
       contractInstance.address,
       { gasLimit: -1 }
     );
@@ -2217,156 +2300,6 @@ export async function areAllNFTsSold(): Promise<boolean> {
 }
 
 /**
- * Get all active listing IDs
- */
-export async function getActiveListings(): Promise<number[]> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return [];
-
-  try {
-    const { result, output } = await contractInstance.query.getActiveListings(
-      contractInstance.address,
-      { gasLimit: -1 }
-    );
-
-    if (result.isOk && output) {
-      const data = output.toHuman() as any;
-      if (!data || !data.Ok) return [];
-      return (data.Ok as string[]).map(id => parseNum(id));
-    }
-  } catch (e) {
-    console.error('Failed to fetch active listings:', e);
-  }
-  return [];
-}
-
-/**
- * Get listing details for an NFT
- */
-export async function getListing(tokenId: number): Promise<any | null> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return null;
-
-  try {
-    const { result, output } = await contractInstance.query.getListing(
-      contractInstance.address,
-      { gasLimit: -1 },
-      tokenId
-    );
-
-    if (result.isOk && output) {
-      const data = output.toHuman() as any;
-      if (!data) return null;
-
-      // The output is an Option, resolve it
-      const val = data.Ok || data;
-      if (!val || val === 'None') return null;
-
-      return {
-        seller: val.seller,
-        tokenId: parseNum(val.tokenId),
-        price: parseBigInt(val.price),
-        isAuction: val.isAuction,
-        auctionEnd: parseNum(val.auctionEnd),
-        highestBid: parseBigInt(val.highestBid),
-        highestBidder: val.highestBidder,
-        isActive: val.isActive
-      };
-    }
-  } catch (e) {
-    console.error('Failed to fetch listing:', e);
-  }
-  return null;
-}
-
-/**
- * List an NFT for direct sale
- */
-export async function listNFTForSale(address: string, tokenId: number, price: string): Promise<any> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return null;
-  const injector = await getInjector(address);
-
-  return contractInstance.tx.listNftForSale(
-    { gasLimit: getGasLimit(api).gasLimit, storageDepositLimit: null },
-    tokenId,
-    price
-  ).signAndSend(address, { signer: injector.signer });
-}
-
-/**
- * List an NFT for auction
- */
-export async function listNFTForAuction(address: string, tokenId: number, minPrice: string, duration: number): Promise<any> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return null;
-  const injector = await getInjector(address);
-
-  return contractInstance.tx.listNftForAuction(
-    { gasLimit: getGasLimit(api).gasLimit, storageDepositLimit: null },
-    tokenId,
-    minPrice,
-    duration
-  ).signAndSend(address, { signer: injector.signer });
-}
-
-/**
- * Buy an NFT (direct sale)
- */
-export async function buyNFT(address: string, tokenId: number, price: string): Promise<any> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return null;
-  const injector = await getInjector(address);
-
-  return contractInstance.tx.buyNft(
-    { gasLimit: getGasLimit(api).gasLimit, storageDepositLimit: null, value: price },
-    tokenId
-  ).signAndSend(address, { signer: injector.signer });
-}
-
-/**
- * Bid on an NFT auction
- */
-export async function bidNFT(address: string, tokenId: number, amount: string): Promise<any> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return null;
-  const injector = await getInjector(address);
-
-  return contractInstance.tx.bidNft(
-    { gasLimit: getGasLimit(api).gasLimit, storageDepositLimit: null, value: amount },
-    tokenId
-  ).signAndSend(address, { signer: injector.signer });
-}
-
-/**
- * Cancel an NFT listing
- */
-export async function cancelListing(address: string, tokenId: number): Promise<any> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return null;
-  const injector = await getInjector(address);
-
-  return contractInstance.tx.cancelListing(
-    { gasLimit: getGasLimit(api).gasLimit, storageDepositLimit: null },
-    tokenId
-  ).signAndSend(address, { signer: injector.signer });
-}
-
-/**
- * Settle an ended auction
- */
-export async function settleAuction(address: string, tokenId: number): Promise<any> {
-  const contractInstance = await initializeContract();
-  if (!contractInstance) return null;
-  const injector = await getInjector(address);
-
-  return contractInstance.tx.settleAuction(
-    { gasLimit: getGasLimit(api).gasLimit, storageDepositLimit: null },
-    tokenId
-  ).signAndSend(address, { signer: injector.signer });
-}
-
-/**
  * Check if user has reached the free mint limit (Max 5)
  * Returns true if limit reached (>= 5 mints used)
  */
@@ -2375,7 +2308,7 @@ export async function hasReachedFreeMintLimit(address: string): Promise<boolean>
   if (!contractInstance) return false;
 
   try {
-    const { result, output } = await contractInstance.query.hasFreeMint(
+    const { result, output } = await contractInstance.query.has_free_mint(
       address,
       getGasLimit(contractInstance.api),
       address
@@ -2391,3 +2324,137 @@ export async function hasReachedFreeMintLimit(address: string): Promise<boolean>
   }
   return false;
 }
+
+/**
+ * Transfer PSP22 tokens to another account
+ */
+export async function transfer(
+  address: string,
+  to: string,
+  amount: bigint,
+  data: any[] = []
+): Promise<string> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) throw new Error('Contract not available - network offline');
+  const injector = await getInjector(address);
+
+  // Note: PSP22 transfer signature: transfer(to, value, data)
+  const tx = contractInstance.tx.transfer(
+    getGasLimit(contractInstance.api),
+    to,
+    amount.toString(),
+    data
+  );
+
+  return new Promise((resolve, reject) => {
+    tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
+      if (status.isFinalized) {
+        if (dispatchError) {
+          reject(new Error(decodeContractError(dispatchError)));
+        } else {
+          resolve(txHash.toHex());
+        }
+      }
+    }).catch(reject);
+  });
+}
+
+/**
+ * List NFT for fixed-price sale on the marketplace
+ */
+export async function listNFTForSale(
+  address: string,
+  tokenId: number,
+  price: string
+): Promise<string> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) throw new Error('Contract not available - network offline');
+  const injector = await getInjector(address);
+
+  const tx = contractInstance.tx.list_nft_for_sale(
+    getGasLimit(contractInstance.api),
+    tokenId,
+    price
+  );
+
+  return new Promise((resolve, reject) => {
+    tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
+      if (status.isFinalized) {
+        if (dispatchError) {
+          reject(new Error(decodeContractError(dispatchError)));
+        } else {
+          resolve(txHash.toHex());
+        }
+      }
+    }).catch(reject);
+  });
+}
+
+/**
+ * List NFT for auction on the marketplace
+ */
+export async function listNFTForAuction(
+  address: string,
+  tokenId: number,
+  minBid: string,
+  durationSeconds: number
+): Promise<string> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) throw new Error('Contract not available - network offline');
+  const injector = await getInjector(address);
+
+  const tx = contractInstance.tx.list_nft_for_auction(
+    getGasLimit(contractInstance.api),
+    tokenId,
+    minBid,
+    durationSeconds
+  );
+
+  return new Promise((resolve, reject) => {
+    tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
+      if (status.isFinalized) {
+        if (dispatchError) {
+          reject(new Error(decodeContractError(dispatchError)));
+        } else {
+          resolve(txHash.toHex());
+        }
+      }
+    }).catch(reject);
+  });
+}
+
+/**
+ * Transfer Native Lunes
+ */
+export async function transferNative(
+  address: string,
+  to: string,
+  amount: bigint
+): Promise<string> {
+  const contractInstance = await initializeContract();
+  if (!contractInstance) throw new Error('Contract not available - network offline');
+  const injector = await getInjector(address);
+  const api = contractInstance.api;
+
+  // Native transfer: balances.transfer(dest, value)
+  // or balances.transferKeepAlive
+  const tx = api.tx.balances.transferKeepAlive(to, amount.toString());
+
+  return new Promise((resolve, reject) => {
+    tx.signAndSend(address, { signer: injector.signer }, ({ status, txHash, dispatchError }) => {
+      if (status.isFinalized) {
+        if (dispatchError) {
+          if (dispatchError.isModule) {
+            const decoded = api.registry.findMetaError(dispatchError.asModule);
+            reject(new Error(`${decoded.section}.${decoded.name}: ${decoded.docs.join(' ')}`));
+          } else {
+            reject(new Error(dispatchError.toString()));
+          }
+        } else {
+          resolve(txHash.toHex());
+        }
+      }
+    }).catch(reject);
+  });
+}
+

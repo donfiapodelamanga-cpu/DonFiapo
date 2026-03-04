@@ -31,7 +31,7 @@ mod fiapo_core {
     pub const SCALE: u128 = 100_000_000; // 10^8
 
     /// Tokenomics conforme requisitos
-    pub const MAX_SUPPLY: u128 = 300_000_000_000 * SCALE; // 300 bilhões
+    pub const MAX_SUPPLY: u128 = 600_000_000_000 * SCALE; // 600 bilhões
     pub const MIN_SUPPLY: u128 = 100_000_000 * SCALE;     // 100 milhões (target de queima)
 
     /// Taxa de transação padrão (0.6%)
@@ -267,6 +267,13 @@ mod fiapo_core {
             if self.paused {
                 return Err(PSP22Error::SystemPaused);
             }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn transfer_ownership(&mut self, new_owner: AccountId) -> PSP22Result<()> {
+            self.ensure_owner()?;
+            self.owner = new_owner;
             Ok(())
         }
 
@@ -677,3 +684,6 @@ mod fiapo_core {
 
     // ==================== Tests ====================
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_core::*;

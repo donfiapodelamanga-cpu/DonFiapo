@@ -96,13 +96,15 @@ Aqui está a estrutura de rotas (URLs) e o conteúdo principal de cada página, 
 3.  **SEÇÃO 3 — Tokenomics da Realeza**
     *   **Título:** `O Tesouro Real do Reino de Fiapo`
     *   **Tabela:** Atributos do token ($FIAPO)
-        *   Total Supply: 300 Bilhões $FIAPO
+        *   Total Supply: 600 Bilhões $FIAPO
         *   Mango Burn: Queima cíclica até 100M
-        *   Cavalaria (Staking Rewards): 30%
-        *   Ordem dos Fiapeiros (Airdrop): 2%
-        *   Tesouro Real (Marketing): 20%
-        *   Liquidez + LP Locked: 30%
-        *   Time e Mint Inicial: 18% (Time: 1% + Mint: 13%)
+        *   Pré-venda: 25% (150Bi)
+        *   Fundo de Staking: 51.67% (310Bi)
+        *   IEO/ICO: 10.67% (64Bi)
+        *   Airdrop: 5.08% (30.5Bi)
+        *   Marketing: 3.42% (20.5Bi)
+        *   Caridade: 3.42% (20.5Bi)
+        *   Equipe: 0.75% (4.5Bi)
     *   **Nota Realenga:** `Cada transação é um tributo. Cada holder, um nobre. Cada meme, um decreto.`
 
 4.  **SEÇÃO 4 — A Ordem dos Fiapeiros**

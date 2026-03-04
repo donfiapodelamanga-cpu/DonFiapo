@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  builder:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.builder
+    container_name: fiapo-contract-builder
+    volumes:
+      - ../artifacts:/workspace/artifacts
+    environment:
+      - CARGO_HOME=/usr/local/cargo
+      - RUSTUP_HOME=/usr/local/rustup

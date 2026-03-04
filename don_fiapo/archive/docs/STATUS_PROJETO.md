@@ -10,7 +10,7 @@ Projeto de contrato inteligente Don Fiapo ($FIAPO) desenvolvido com metodologia 
 
 **Funcionalidades Implementadas:**
 - Token PSP22 nativo com nome "Don Fiapo" e símbolo "$FIAPO"
-- 8 decimais, supply máximo de 300 bilhões, mínimo de 100 milhões
+- 8 decimais, supply máximo de 600 bilhões, mínimo de 100 milhões
 - Sistema de taxas automático de 0,6% sobre transferências
 - Distribuição de taxas: 30% queima, 50% staking, 20% recompensas
 - Funções administrativas de mint/burn com controle de acesso

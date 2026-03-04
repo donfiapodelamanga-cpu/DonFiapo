@@ -1,7 +1,8 @@
 {
   "metadata": {
-    "title": "Don Fiapo Dela Manga - The Alpha of Memecoins",
-    "description": "He doesn't bark — he decrees. The blockchain now has a monarchy. Join the reign."
+    "title": "Don Fiapo De la Manga - The Alpha of Memecoins",
+    "description": "He doesn't bark — he decrees. The blockchain now has a monarchy. Join the reign.",
+    "keywords": "memecoin, cryptocurrency, NFT, staking, airdrop, DeFi, Lunes, Don Fiapo, blockchain, token, ICO, play to earn, web3"
   },
   "nav": {
     "home": "Home",
@@ -15,6 +16,7 @@
     "affiliate": "Affiliate",
     "governance": "Governance",
     "ranking": "Ranking",
+    "dashboard": "Dashboard",
     "wallet": "Wallet",
     "docs": "Docs",
     "connectWallet": "Connect Wallet",
@@ -22,7 +24,7 @@
   },
   "hero": {
     "badge": "The King of Decentralized Humor",
-    "title": "Don Fiapo Dela Manga",
+    "title": "Don Fiapo De la Manga",
     "subtitle": "The Alpha of Memecoins",
     "description": "He doesn't bark — he decrees. The blockchain now has a monarchy. Join the reign.",
     "cta": {
@@ -71,25 +73,25 @@
     "phase2": {
       "title": "Phase 2 — Kingdom Conquest",
       "items": [
-        "Airdrops",
-        "DEX Listings",
-        "\"From Fiapo to King\" Campaign"
+        "ICO - Mining via NFTs",
+        "Marketplace"
       ]
     },
     "phase3": {
       "title": "Phase 3 — The Meme Empire",
       "items": [
-        "Gamified Staking",
-        "NFTs",
-        "$OSSIN Token"
+        "Staking",
+        "Community Rewards",
+        "New NFT Collection",
+        "Lunex Listing",
+        "Start of CEX Listings"
       ]
     },
     "phase4": {
       "title": "Phase 4 — Global Domination",
       "items": [
-        "Merch",
-        "\"Royal Fiapo Race\" Game",
-        "Partnerships"
+        "Game Release",
+        "Airdrop Distribution"
       ]
     }
   },
@@ -116,18 +118,18 @@
     "subtitle": "Either you're a FUD peasant, or you're a Royal Fiapeiro.",
     "buy": "Buy $FIAPO",
     "whitepaper": "Download Whitepaper",
-    "telegram": "Join Telegram/Discord",
+    "telegram": "Join Telegram",
     "social": "Follow the Don"
   },
   "footer": {
-    "tagline": "Don Fiapo Dela Manga is a meme, but it's serious.",
+    "tagline": "Don Fiapo De la Manga is a meme, but it's serious.",
     "links": {
       "whitepaper": "Whitepaper",
       "faq": "FAQ",
       "contract": "Lunes Contract",
       "contact": "Court Contact"
     },
-    "copyright": "© 2025 Don Fiapo Dela Manga. All rights reserved."
+    "copyright": "© 2025 Don Fiapo De la Manga. All rights reserved."
   },
   "staking": {
     "title": "Royal Staking",
@@ -252,6 +254,18 @@
     "viewMore": "View More",
     "seeAll": "See All"
   },
+  "modal": {
+    "badge": "Royal Decree",
+    "headline": "MILLIONS IN AIRDROPS AWAIT!",
+    "body": "By order of His Majesty Don Fiapo, the gates to the Royal Treasury are open! We are distributing MILLIONS OF DOLLARS in value to our loyal community. Secure your noble status in the Kingdom and claim your share of the $FIAPO Airdrop before the civilians arrive.",
+    "signature": "His Majesty Don Fiapo De la Manga, Sovereign of the Kingdom",
+    "stat1": "$FIAPO Airdrop Pool",
+    "stat2": "Free to Claim",
+    "stat3": "Referral Bonus",
+    "cta": "CLAIM YOUR ROYAL AIRDROP NOW",
+    "telegramBtn": "Join the Royal Inner Circle",
+    "privacyFooter": "By decree of the Crown, all loyal subjects shall receive their share."
+  },
   "Games": {
     "title": "Royal Arena",
     "subtitle": "Challenge your luck and skill in the kingdom's games.",
@@ -275,6 +289,44 @@
         "disclaimer": "The amount will be debited from your connected wallet. Ensure you have sufficient balance.",
         "cancel": "Cancel",
         "confirm": "Confirm Payment"
+      },
+      "prizes": {
+        "p100k": {
+          "name": "100k $FIAPO",
+          "desc": "Jackpot! 100,000 $FIAPO"
+        },
+        "p50k": {
+          "name": "50k $FIAPO",
+          "desc": "50,000 $FIAPO"
+        },
+        "p1k": {
+          "name": "1k $FIAPO",
+          "desc": "1,000 $FIAPO"
+        },
+        "p100": {
+          "name": "100 $FIAPO",
+          "desc": "100 $FIAPO"
+        },
+        "p05": {
+          "name": "0.5 $FIAPO",
+          "desc": "0.5 $FIAPO"
+        },
+        "usdt5": {
+          "name": "5 USDT",
+          "desc": "5 USDT Cash"
+        },
+        "usdt1": {
+          "name": "1 USDT",
+          "desc": "1 USDT Cash"
+        },
+        "boost": {
+          "name": "Staking Boost",
+          "desc": "+0.1% APY for 5h"
+        },
+        "nothing": {
+          "name": "Nothing",
+          "desc": "Better luck next time!"
+        }
       }
     },
     "tug": {

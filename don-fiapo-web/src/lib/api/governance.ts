@@ -74,104 +74,21 @@ export interface UserVote {
   timestamp: number;
 }
 
-// ============ Mock Data ============
+// ============ Default empty states (contract not yet deployed) ============
 
-const MOCK_PROPOSALS: Proposal[] = [
-  {
-    id: 1,
-    proposer: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-    proposalType: 'ConfigChange',
-    title: "Increase Staking APY to 12%",
-    description: "Proposal to increase the maximum APY for Don Fiapo staking pool from 10% to 12% to incentivize more participation.",
-    createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
-    votingStart: Date.now() - 5 * 24 * 60 * 60 * 1000,
-    votingEnd: Date.now() + 2 * 24 * 60 * 60 * 1000,
-    executionTime: Date.now() + 4 * 24 * 60 * 60 * 1000,
-    status: 'Active',
-    votesFor: 2450000,
-    votesAgainst: 890000,
-    votesAbstain: 120000,
-    executed: false,
-  },
-  {
-    id: 2,
-    proposer: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-    proposalType: 'ConfigChange',
-    title: "Add New NFT Tier - Emperor",
-    description: "Create a new ultra-rare Emperor tier NFT with exclusive benefits including 50,000 FIAPO/day mining rate and VIP governance voting power.",
-    createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
-    votingStart: Date.now() - 3 * 24 * 60 * 60 * 1000,
-    votingEnd: Date.now() + 4 * 24 * 60 * 60 * 1000,
-    executionTime: Date.now() + 6 * 24 * 60 * 60 * 1000,
-    status: 'Active',
-    votesFor: 1890000,
-    votesAgainst: 1200000,
-    votesAbstain: 50000,
-    executed: false,
-  },
-  {
-    id: 3,
-    proposer: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-    proposalType: 'AcceleratedBurn',
-    title: "Accelerate Burn Rate by 50%",
-    description: "Increase the burn rate from 30% to 45% of transaction fees for the next 30 days to reduce circulating supply faster.",
-    createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000,
-    votingStart: Date.now() - 15 * 24 * 60 * 60 * 1000,
-    votingEnd: Date.now() - 8 * 24 * 60 * 60 * 1000,
-    executionTime: Date.now() - 6 * 24 * 60 * 60 * 1000,
-    status: 'Executed',
-    votesFor: 3200000,
-    votesAgainst: 800000,
-    votesAbstain: 200000,
-    executed: true,
-  },
-  {
-    id: 4,
-    proposer: "5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw",
-    proposalType: 'ExchangeListing',
-    title: "Partnership with DEX Jupiter",
-    description: "Approve strategic partnership with Jupiter DEX for improved liquidity and cross-chain swaps integration.",
-    createdAt: Date.now() - 20 * 24 * 60 * 60 * 1000,
-    votingStart: Date.now() - 20 * 24 * 60 * 60 * 1000,
-    votingEnd: Date.now() - 13 * 24 * 60 * 60 * 1000,
-    executionTime: Date.now() - 11 * 24 * 60 * 60 * 1000,
-    status: 'Rejected',
-    votesFor: 1100000,
-    votesAgainst: 2900000,
-    votesAbstain: 150000,
-    executed: false,
-  },
-  {
-    id: 5,
-    proposer: "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL",
-    proposalType: 'InfluencerMarketing',
-    title: "Marketing Campaign with Crypto Influencer",
-    description: "Allocate 5,000 USDT from marketing fund for promotional content with a verified crypto influencer on YouTube (500k+ subscribers).",
-    createdAt: Date.now() - 25 * 24 * 60 * 60 * 1000,
-    votingStart: Date.now() - 25 * 24 * 60 * 60 * 1000,
-    votingEnd: Date.now() - 18 * 24 * 60 * 60 * 1000,
-    executionTime: Date.now() - 16 * 24 * 60 * 60 * 1000,
-    status: 'Executed',
-    votesFor: 2800000,
-    votesAgainst: 600000,
-    votesAbstain: 100000,
-    executed: true,
-  },
-];
-
-const MOCK_STATS: GovernanceStats = {
-  totalProposals: 24,
-  activeProposals: 2,
-  passedProposals: 18,
-  rejectedProposals: 4,
-  totalVoters: 1234,
-  totalGovernors: 5,
+const EMPTY_STATS: GovernanceStats = {
+  totalProposals: 0,
+  activeProposals: 0,
+  passedProposals: 0,
+  rejectedProposals: 0,
+  totalVoters: 0,
+  totalGovernors: 0,
   quorumPercentage: 60,
   votingPeriodDays: 7,
   timelockPeriodDays: 2,
 };
 
-const MOCK_CONFIG: GovernanceConfig = {
+const DEFAULT_CONFIG: GovernanceConfig = {
   minGovernors: 3,
   quorumBps: 6000,
   votingPeriod: 7 * 24 * 60 * 60,
@@ -195,14 +112,11 @@ export async function getProposals(filter?: ProposalStatus): Promise<Proposal[]>
     const contract = await initializeContract();
     
     if (!contract) {
-      console.log('[Governance] Using mock data');
-      if (filter) {
-        return MOCK_PROPOSALS.filter(p => p.status === filter);
-      }
-      return MOCK_PROPOSALS;
+      console.info('[Governance] Contract not available — no proposals');
+      return [];
     }
 
-    const { result, output } = await contract.query.getProposals(
+    const { result, output } = await contract.query.get_proposals(
       contract.address,
       { gasLimit: -1 },
       filter
@@ -212,10 +126,10 @@ export async function getProposals(filter?: ProposalStatus): Promise<Proposal[]>
       return (output.toJSON() as any[]).map(parseProposal);
     }
 
-    return filter ? MOCK_PROPOSALS.filter(p => p.status === filter) : MOCK_PROPOSALS;
+    return [];
   } catch (error) {
     console.error('[Governance] Error fetching proposals:', error);
-    return filter ? MOCK_PROPOSALS.filter(p => p.status === filter) : MOCK_PROPOSALS;
+    return [];
   }
 }
 
@@ -227,10 +141,10 @@ export async function getProposal(id: number): Promise<Proposal | null> {
     const contract = await initializeContract();
     
     if (!contract) {
-      return MOCK_PROPOSALS.find(p => p.id === id) || null;
+      return null;
     }
 
-    const { result, output } = await contract.query.getProposal(
+    const { result, output } = await contract.query.get_proposal(
       contract.address,
       { gasLimit: -1 },
       id
@@ -240,10 +154,10 @@ export async function getProposal(id: number): Promise<Proposal | null> {
       return parseProposal(output.toJSON());
     }
 
-    return MOCK_PROPOSALS.find(p => p.id === id) || null;
+    return null;
   } catch (error) {
     console.error('[Governance] Error fetching proposal:', error);
-    return MOCK_PROPOSALS.find(p => p.id === id) || null;
+    return null;
   }
 }
 
@@ -255,10 +169,10 @@ export async function getGovernanceStats(): Promise<GovernanceStats> {
     const contract = await initializeContract();
     
     if (!contract) {
-      return MOCK_STATS;
+      return EMPTY_STATS;
     }
 
-    const { result, output } = await contract.query.getGovernanceStats(
+    const { result, output } = await contract.query.get_governance_stats(
       contract.address,
       { gasLimit: -1 }
     );
@@ -267,10 +181,10 @@ export async function getGovernanceStats(): Promise<GovernanceStats> {
       return parseGovernanceStats(output.toJSON());
     }
 
-    return MOCK_STATS;
+    return EMPTY_STATS;
   } catch (error) {
     console.error('[Governance] Error fetching stats:', error);
-    return MOCK_STATS;
+    return EMPTY_STATS;
   }
 }
 
@@ -282,10 +196,10 @@ export async function getGovernanceConfig(): Promise<GovernanceConfig> {
     const contract = await initializeContract();
     
     if (!contract) {
-      return MOCK_CONFIG;
+      return DEFAULT_CONFIG;
     }
 
-    const { result, output } = await contract.query.getGovernanceConfig(
+    const { result, output } = await contract.query.get_governance_config(
       contract.address,
       { gasLimit: -1 }
     );
@@ -294,10 +208,10 @@ export async function getGovernanceConfig(): Promise<GovernanceConfig> {
       return parseGovernanceConfig(output.toJSON());
     }
 
-    return MOCK_CONFIG;
+    return DEFAULT_CONFIG;
   } catch (error) {
     console.error('[Governance] Error fetching config:', error);
-    return MOCK_CONFIG;
+    return DEFAULT_CONFIG;
   }
 }
 
@@ -322,7 +236,7 @@ export async function canCreateProposal(address: string): Promise<{
       };
     }
 
-    const { result, output } = await contract.query.canCreateProposal(
+    const { result, output } = await contract.query.can_create_proposal(
       contract.address,
       { gasLimit: -1 },
       address
@@ -374,7 +288,7 @@ export async function canVote(address: string, proposalId: number): Promise<{
       };
     }
 
-    const { result, output } = await contract.query.canVote(
+    const { result, output } = await contract.query.can_vote(
       contract.address,
       { gasLimit: -1 },
       address,
@@ -418,7 +332,7 @@ export async function getUserVote(address: string, proposalId: number): Promise<
       return null;
     }
 
-    const { result, output } = await contract.query.getVote(
+    const { result, output } = await contract.query.get_vote(
       contract.address,
       { gasLimit: -1 },
       proposalId,
@@ -455,7 +369,7 @@ export async function isGovernor(address: string): Promise<boolean> {
       return false;
     }
 
-    const { result, output } = await contract.query.isGovernor(
+    const { result, output } = await contract.query.is_governor(
       contract.address,
       { gasLimit: -1 },
       address

@@ -413,3 +413,6 @@ mod fiapo_security {
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_security::*;

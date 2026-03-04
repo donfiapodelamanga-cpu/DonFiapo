@@ -1,0 +1,306 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite" // Pode ser trocado para "postgresql" em produção
+}
+
+// ==========================================
+// 👑 USERS & WALLETS
+// ==========================================
+model User {
+  id              String   @id @default(uuid())
+  role            String   @default("USER") // USER, ADMIN
+  rank            String   @default("PLEBEU") // PLEBEU, CAVALEIRO, NOBRE, GENERAL, ALPHA
+  
+  // Integrações Sociais (Off-chain)
+  xId             String?  @unique // Twitter ID (OAuth)
+  xUsername       String?
+  xAccessToken    String?  // OAuth 2.0 access token (encrypted at rest)
+  xRefreshToken   String?  // OAuth 2.0 refresh token
+  xTokenExpiresAt DateTime?
+  xAccountCreatedAt DateTime? // Para detectar contas novas (< 30 dias)
+  xFollowersCount Int?
+  xFollowingCount Int?
+  telegramId      String?  @unique
+  telegramUsername String?
+  
+  // Pontuações
+  offchainScore   Float    @default(0.0)
+  onchainScore    Float    @default(0.0)
+  multiplier      Float    @default(1.0)
+  totalScore      Float    @default(0.0)
+  
+  // Status de Conta e Segurança
+  isBanned        Boolean  @default(false)
+  trustScore      Int      @default(100) // 0 a 100, diminui com suspeitas de fraude
+  lastIpAddress   String?
+  deviceFingerprint String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relacionamentos
+  wallets         Wallet[]
+  completions     MissionCompletion[]
+  migrations      TokenMigration[]
+  fraudFlags      FraudFlag[]
+  referralsMade   Referral[] @relation("Referrer")
+  referralsGot    Referral[] @relation("Referred")
+  earlyBirdClaim  EarlyBirdClaim?
+  spinResults     SpinResult[]
+  spinPurchases   SpinPurchase[]
+}
+
+model Wallet {
+  id              String   @id @default(uuid())
+  address         String   @unique
+  network         String   // LUNES, SOLANA
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPrimary       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+// ==========================================
+// ⚔️ MISSIONS ENGINE
+// ==========================================
+model Mission {
+  id              String   @id @default(uuid())
+  name            String
+  description     String
+  type            String   // OFFCHAIN, ONCHAIN
+  platform        String   // X, TELEGRAM, MINIAPP, WALLET, NFT, SMART_CONTRACT, REFERRAL
+  
+  // Regras de Pontuação
+  basePoints      Float
+  multiplier      Float    @default(1.0)
+  
+  // Regras de Execução
+  maxCompletions  Int      @default(1) // 1 = única vez. > 1 = diária/recorrente
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean  @default(true)
+  
+  // CMS Status Management
+  status          String   @default("ACTIVE") // ACTIVE, PAUSED, DRAFT, ARCHIVED
+  priority        Int      @default(0) // Higher = pinned to top (referral missions use 100+)
+  category        String?  // Optional grouping label (e.g. "Referral", "Social", etc.)
+  
+  // Validação (OAuth / API)
+  targetUrl       String?
+  requiredKeyword String?  // Para comentários no X
+  actionType      String?  // FOLLOW, LIKE, REPOST, COMMENT, CONNECT_WALLET, STAKE, SWAP, REFER_FREE, REFER_NFT
+  
+  // Relacionamentos
+  rewardPoolId    String?
+  rewardPool      RewardPool? @relation(fields: [rewardPoolId], references: [id])
+  completions     MissionCompletion[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MissionCompletion {
+  id              String   @id @default(uuid())
+  userId          String
+  missionId       String
+  
+  status          String   @default("PENDING") // PENDING, VERIFIED, REJECTED
+  earnedPoints    Float    @default(0.0)
+  
+  // Metadados da validação (Ex: Tweet ID do usuário, Hash da Tx)
+  proofMetadata   String?
+  
+  completedAt     DateTime @default(now())
+  verifiedAt      DateTime?
+  recheckAt       DateTime? // Agendado para re-verificação assíncrona
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission         Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, missionId, completedAt]) // Evita duplicidade exata
+}
+
+// ==========================================
+// MIGRATION (BRIDGE SOLANA -> LUNES)
+// ==========================================
+
+model TokenMigration {
+  id              String   @id @default(cuid())
+  userId          String
+  solanaTxHash    String   @unique
+  solanaSender    String
+  lunesRecipient  String
+  amountSolana    Float    // Amount sent by user
+  amountLunes     Float    // Amount to receive (amountSolana + 2% bonus)
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedAt      DateTime?
+  rejectionReason String?
+  lunesTxHash     String?  // The transaction hash of the payout on Lunes
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 💰 REWARD POOLS
+// ==========================================
+
+model RewardPool {
+  id              String   @id @default(uuid())
+  name            String
+  type            String   // OFFCHAIN, ONCHAIN, EARLY_BIRD
+  totalAmount     Float    // Ex: 100000 LUNES
+  distributed     Float    @default(0.0)
+  isActive        Boolean  @default(true)
+
+  // Early Bird distribution
+  maxSlots        Int?     // Ex: 30000 slots
+  slotsClaimed    Int      @default(0)
+  linesPerSlot    Float?   // Calculated: totalAmount / maxSlots
+
+  missions        Mission[]
+  earlyBirdClaims EarlyBirdClaim[]
+  createdAt       DateTime @default(now())
+}
+
+model EarlyBirdClaim {
+  id                   String    @id @default(uuid())
+  userId               String    @unique // one claim per user
+  poolId               String
+  slotNumber           Int       // position (1 = first)
+  lunesAmount          Float     // amount allocated
+  claimedAt            DateTime  @default(now())
+
+  // Distribution tracking
+  distributionStatus   String    @default("PENDING") // PENDING, SENT, FAILED
+  distributionTxHash   String?   // on-chain tx hash when sent
+  distributedAt        DateTime?
+  distributedBy        String?   // admin email
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pool         RewardPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 🎰 SPIN GAME
+// ==========================================
+model SpinResult {
+  id           String   @id @default(uuid())
+  userId       String
+  prizeIndex   Int
+  prizeLabel   String
+  prizeSublabel String  @default("")
+  tier         String   @default("common")
+  playedAt     DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SpinPurchase {
+  id           String   @id @default(uuid())
+  userId       String
+  spins        Int
+  priceUsdt    Float
+  paymentId    String?  @unique
+  solanaTxHash String?  @unique
+  status       String   @default("PENDING") // PENDING, CONFIRMED, EXPIRED
+  createdAt    DateTime @default(now())
+  confirmedAt  DateTime?
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 🛡️ ANTI-FRAUD & REFERRALS
+// ==========================================
+model FraudFlag {
+  id              String   @id @default(uuid())
+  userId          String
+  reason          String   // Ex: "Desfez o Retweet", "Mesmo IP de carteira suspeita"
+  severity        String   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  flaggedAt       DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Referral {
+  id              String   @id @default(uuid())
+  referrerId      String   // Quem convidou
+  referredId      String   @unique // Quem foi convidado
+  status          String   @default("PENDING") // PENDING, QUALIFIED, FLAGGED, REJECTED
+  activityType    String?  // Type of qualifying activity: SOCIAL, NFT_MINT, WALLET_CONNECT, etc.
+  earnedPoints    Float    @default(0) // Points awarded to referrer for this referral
+  
+  // Anti-fraud tracking
+  ipAddress       String?  // IP of referred user at referral time
+  fingerprint     String?  // Device fingerprint of referred user
+  userAgent       String?  // Browser user agent for pattern detection
+  fraudScore      Int      @default(0) // 0 = clean, 100 = certain fraud
+  flagReason      String?  // Human-readable reason if flagged/rejected
+  qualifiedAt     DateTime? // When the referral was qualified (for cooldown checks)
+  
+  createdAt       DateTime @default(now())
+
+  referrer        User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred        User     @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 🎯 REFERRAL MILESTONES
+// ==========================================
+model ReferralMilestone {
+  id              String   @id @default(uuid())
+  tier            Int      @unique // 1, 5, 10, 30, 50, 100, 1000, 5000, 10000
+  name            String   // Display name (e.g. "Arauto Real", "Conquistador")
+  bonusPoints     Float    // Bonus points awarded when milestone is reached
+  badge           String?  // Badge/icon identifier
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
+
+model ReferralMilestoneAward {
+  id              String   @id @default(uuid())
+  userId          String
+  milestoneTier   Int      // The tier that was reached
+  bonusPoints     Float    // Points awarded
+  awardedAt       DateTime @default(now())
+
+  @@unique([userId, milestoneTier])
+}
+
+// ==========================================
+// OUTROS (Legado)
+// ==========================================
+model Subscriber {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  source    String?
+}
+
+model Noble {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  walletAddress   String   @unique
+  tier            String   @default("Silver")
+  status          String   @default("Probation")
+  createdAt       DateTime @default(now())
+  referralCode    String?  @unique
+  solanaWallet    String?
+  totalSales      Float    @default(0.0)
+  totalReferrals  Int      @default(0)
+}
+
+model AdminWallet {
+  id              String   @id @default(uuid())
+  name            String
+  address         String   @unique
+  role            String   
+  description     String?
+  createdAt       DateTime @default(now())
+}

@@ -18,6 +18,9 @@ mod fiapo_ico {
     use super::*;
     use ink::prelude::{string::String, vec::Vec, vec};
     use ink::storage::Mapping;
+    
+    // Cross-contract: PSP22Ref garante selector correto do trait IPSP22
+    use fiapo_logics::traits::psp22::{PSP22, PSP22Ref};
 
     /// Constantes do sistema
     pub const MINING_PERIOD_DAYS: u64 = 112;
@@ -97,6 +100,20 @@ mod fiapo_ico {
         pub position: u32,
         /// Timestamp quando ficou elegível
         pub eligible_at: u64,
+    }
+
+    /// Registro de uma evolução realizada por um usuário
+    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    pub struct EvolutionRecord {
+        pub id: u64,
+        pub owner: AccountId,
+        pub burned_nft_ids: Vec<u64>,
+        pub source_tier: u8,
+        pub result_nft_id: u64,
+        pub result_tier: u8,
+        pub bonus_applied_bps: u16,
+        pub timestamp: u64,
     }
 
     /// Valores de Prestige Bonus por tier [early_100%, early_75%, early_50%, last_survivor]
@@ -300,6 +317,8 @@ mod fiapo_ico {
         oracle_contract: Option<AccountId>,
         /// Contrato Marketplace (autorizado a transferir NFTs)
         marketplace_contract: Option<AccountId>,
+        /// Contrato Order of the Nobles (Afiliados Especiais)
+        noble_contract: Option<AccountId>,
         /// Owner do contrato
         owner: AccountId,
         /// Se o ICO está ativo
@@ -338,6 +357,16 @@ mod fiapo_ico {
         ico_finalized_at: u64,
         /// Mining boosts ativos por usuário (Data de fim do boost)
         user_mining_boost: Mapping<AccountId, u64>,
+        
+        // --- Evolution Stats & History ---
+        /// Contagem total de evoluções
+        total_evolutions: u64,
+        /// Total de NFTs queimados em evoluções
+        total_nfts_burned: u64,
+        /// Contagem de NFTs por raridade visual
+        rarity_counts: Mapping<VisualRarity, u32>,
+        /// Histórico de evoluções por usuário
+        user_evolutions: Mapping<AccountId, Vec<EvolutionRecord>>,
     }
 
     impl FiapoICO {
@@ -351,6 +380,7 @@ mod fiapo_ico {
                 core_contract,
                 oracle_contract: None,
                 marketplace_contract: None,
+                noble_contract: None,
                 owner: caller,
                 ico_active: true,
                 mining_active: true,
@@ -368,8 +398,13 @@ mod fiapo_ico {
                 total_claimed: 0,
                 prestige_eligible: Mapping::default(),
                 prestige_claimed: Mapping::default(),
+
                 ico_finalized_at: 0,
                 user_mining_boost: Mapping::default(),
+                total_evolutions: 0,
+                total_nfts_burned: 0,
+                rarity_counts: Mapping::default(),
+                user_evolutions: Mapping::default(),
             };
 
             // Inicializa configurações dos tiers
@@ -390,9 +425,9 @@ mod fiapo_ico {
                 daily_mining_rate: 5_u128.saturating_mul(SCALE),
                 active: true,
             });
-            // Tier 2: $10, 5600 tokens, 50/dia
+            // Tier 2: $13.50 -> 1350 cents (was $10)
             self.tier_configs.insert(1, &TierConfig {
-                price_usdt_cents: 1000,
+                price_usdt_cents: 1350,
                 max_supply: 50_000,
                 minted: 0,
                 minted_evolution: 0,
@@ -401,9 +436,9 @@ mod fiapo_ico {
                 daily_mining_rate: 50_u128.saturating_mul(SCALE),
                 active: true,
             });
-            // Tier 3: $30, 16800 tokens, 150/dia
+            // Tier 3: $40.50 -> 4050 cents (was $30)
             self.tier_configs.insert(2, &TierConfig {
-                price_usdt_cents: 3000,
+                price_usdt_cents: 4050,
                 max_supply: 40_000,
                 minted: 0,
                 minted_evolution: 0,
@@ -412,9 +447,9 @@ mod fiapo_ico {
                 daily_mining_rate: 150_u128.saturating_mul(SCALE),
                 active: true,
             });
-            // Tier 4: $55, 33600 tokens, 300/dia
+            // Tier 4: $74.25 -> 7425 cents (was $55)
             self.tier_configs.insert(3, &TierConfig {
-                price_usdt_cents: 5500,
+                price_usdt_cents: 7425,
                 max_supply: 30_000,
                 minted: 0,
                 minted_evolution: 0,
@@ -423,9 +458,9 @@ mod fiapo_ico {
                 daily_mining_rate: 300_u128.saturating_mul(SCALE),
                 active: true,
             });
-            // Tier 5: $100, 56000 tokens, 500/dia
+            // Tier 5: $135.00 -> 13500 cents (was $100)
             self.tier_configs.insert(4, &TierConfig {
-                price_usdt_cents: 10000,
+                price_usdt_cents: 13500,
                 max_supply: 20_000,
                 minted: 0,
                 minted_evolution: 0,
@@ -434,9 +469,9 @@ mod fiapo_ico {
                 daily_mining_rate: 500_u128.saturating_mul(SCALE),
                 active: true,
             });
-            // Tier 6: $250, 134400 tokens, 1200/dia
+            // Tier 6: $337.50 -> 33750 cents (was $250)
             self.tier_configs.insert(5, &TierConfig {
-                price_usdt_cents: 25000,
+                price_usdt_cents: 33750,
                 max_supply: 5_000,
                 minted: 0,
                 minted_evolution: 0,
@@ -445,9 +480,9 @@ mod fiapo_ico {
                 daily_mining_rate: 1200_u128.saturating_mul(SCALE),
                 active: true,
             });
-            // Tier 7: $500, 280000 tokens, 2500/dia
+            // Tier 7: $675.00 -> 67500 cents (was $500)
             self.tier_configs.insert(6, &TierConfig {
-                price_usdt_cents: 50000,
+                price_usdt_cents: 67500,
                 max_supply: 2_000,
                 minted: 0,
                 minted_evolution: 0,
@@ -539,6 +574,30 @@ mod fiapo_ico {
         #[ink(message)]
         pub fn total_nfts(&self) -> u64 {
             self.next_nft_id.saturating_sub(1)
+        }
+
+        /// Retorna estatísticas de evolução
+        #[ink(message)]
+        pub fn get_evolution_stats(&self) -> (u64, u64) {
+            (self.total_evolutions, self.total_nfts_burned)
+        }
+
+        /// Retorna estatísticas de raridade
+        #[ink(message)]
+        pub fn get_rarity_stats(&self) -> Vec<(VisualRarity, u32)> {
+            let mut stats = Vec::new();
+            stats.push((VisualRarity::Common, self.rarity_counts.get(VisualRarity::Common).unwrap_or(0)));
+            stats.push((VisualRarity::Uncommon, self.rarity_counts.get(VisualRarity::Uncommon).unwrap_or(0)));
+            stats.push((VisualRarity::Rare, self.rarity_counts.get(VisualRarity::Rare).unwrap_or(0)));
+            stats.push((VisualRarity::Epic, self.rarity_counts.get(VisualRarity::Epic).unwrap_or(0)));
+            stats.push((VisualRarity::Legendary, self.rarity_counts.get(VisualRarity::Legendary).unwrap_or(0)));
+            stats
+        }
+
+        /// Retorna histórico de evoluções de um usuário
+        #[ink(message)]
+        pub fn get_user_evolutions(&self, user: AccountId) -> Vec<EvolutionRecord> {
+            self.user_evolutions.get(user).unwrap_or_default()
         }
 
         // ==================== Minting Functions ====================
@@ -637,6 +696,114 @@ mod fiapo_ico {
             self.mint_nft_internal(user, nft_tier, config.price_usdt_cents as u128, false)
         }
 
+        /// Mint pago com código de afiliado Noble (Apenas Oracle)
+        #[ink(message)]
+        pub fn mint_paid_for_with_code(
+            &mut self, 
+            user: AccountId, 
+            tier: u8, 
+            affiliate_code: Hash
+        ) -> Result<u64, ICOError> {
+            let caller = self.env().caller();
+
+            // Apenas Oracle pode chamar
+            if Some(caller) != self.oracle_contract {
+                return Err(ICOError::Unauthorized);
+            }
+
+            if !self.ico_active {
+                return Err(ICOError::ICONotActive);
+            }
+
+            if tier == 0 {
+                return Err(ICOError::PaymentRequired);
+            }
+
+            let nft_tier = NFTTier::from_u8(tier).ok_or(ICOError::InvalidNFTType)?;
+            let config = self.tier_configs.get(tier).ok_or(ICOError::InvalidNFTType)?;
+
+            if config.minted >= config.max_supply {
+                return Err(ICOError::MaxSupplyReached);
+            }
+
+            let price = config.price_usdt_cents;
+            
+            // Calculate Markup Share for Noble (12% of Markup)
+            // Markup is the 35% increase. 
+            // Original Price = Price / 1.35. (Approx)
+            // Markup = Price - (Price / 1.35)
+            // Or simpler: Price = Base + 0.35 Base = 1.35 Base.
+            // Markup = 0.35 Base.
+            // Noble Share = 0.12 * Markup.
+            // Noble Share = 0.12 * 0.35 * Base = 0.042 * Base.
+            // Noble Share = 0.042 * (Price / 1.35) = 0.0311... * Price.
+            // Let's us integer math:
+            // Base = (Price * 100) / 135.
+            // Markup = Price - Base.
+            // Noble Share = (Markup * 12) / 100.
+            
+            if let Some(noble_contract) = self.noble_contract {
+                // Calculate
+                let base_price = (price.saturating_mul(100)).saturating_div(135);
+                let markup = price.saturating_sub(base_price);
+                let noble_share = markup.saturating_mul(12).saturating_div(100);
+
+                // Register Revenue (Cross Contract Call)
+                // Note: We send 0 value (Virtual Accounting) because funds are off-chain.
+                // call `register_revenue(code, source=0 (IcoNft), amount, payer)`
+                self.call_noble_register(noble_contract, affiliate_code, noble_share as u128, user)?;
+            }
+
+            // Atualiza total arrecadado
+            self.total_raised = self.total_raised.saturating_add(price);
+
+            // Minta o NFT
+            self.mint_nft_internal(user, nft_tier, price as u128, false)
+        }
+
+        /// Configura contrato Noble (apenas owner)
+        #[ink(message)]
+        pub fn set_noble_contract(&mut self, noble: AccountId) -> Result<(), ICOError> {
+            if self.env().caller() != self.owner {
+                return Err(ICOError::Unauthorized);
+            }
+            self.noble_contract = Some(noble);
+            Ok(())
+        }
+
+        /// Internal: Call Noble Register
+        fn call_noble_register(
+            &self,
+            noble_contract: AccountId,
+            code: Hash,
+            amount: u128,
+            payer: AccountId,
+        ) -> Result<(), ICOError> {
+             use ink::env::call::{build_call, ExecutionInput, Selector};
+             
+             // selector for "register_revenue"
+             let selector = ink::selector_bytes!("register_revenue");
+             
+             let result = build_call::<ink::env::DefaultEnvironment>()
+                .call(noble_contract)
+                .gas_limit(0)
+                .transferred_value(0) // Virtual
+                .exec_input(
+                    ExecutionInput::new(Selector::new(selector))
+                        .push_arg(code)
+                        .push_arg(0u8) // Enum RevenueSource::IcoNft = 0
+                        .push_arg(amount) // Base Amount
+                        .push_arg(payer)
+                )
+                .returns::<Result<(), ()>>() // We don't have NobleError here, accept generic
+                .try_invoke();
+
+            match result {
+                Ok(_) => Ok(()),
+                Err(_) => Err(ICOError::CoreContractError),
+            }
+        }
+
         /// Configura contrato Oracle (apenas owner)
         #[ink(message)]
         pub fn set_oracle_contract(&mut self, oracle: AccountId) -> Result<(), ICOError> {
@@ -661,6 +828,11 @@ mod fiapo_ico {
 
             // Determina raridade visual baseada em pseudo-random
             let visual_rarity = self.determine_rarity(nft_id);
+
+            // Update rarity counts
+            let mut rarity_count = self.rarity_counts.get(&visual_rarity).unwrap_or(0);
+            rarity_count = rarity_count.saturating_add(1);
+            self.rarity_counts.insert(&visual_rarity, &rarity_count);
 
             // Calcula prestige bonus (primeiros 10% do supply)
             let config = self.tier_configs.get(tier_u8).unwrap();
@@ -828,6 +1000,72 @@ mod fiapo_ico {
             Ok(())
         }
 
+        /// Transfere NFT via Marketplace com auto-claim de tokens pendentes para o seller.
+        /// Apenas o Marketplace autorizado pode chamar.
+        /// Retorna a quantidade de tokens claimed para o seller (0 se nada pendente).
+        #[ink(message)]
+        pub fn marketplace_transfer_nft(
+            &mut self,
+            from: AccountId,
+            to: AccountId,
+            nft_id: u64,
+        ) -> Result<u128, ICOError> {
+            let caller = self.env().caller();
+
+            // Apenas Marketplace autorizado
+            if Some(caller) != self.marketplace_contract {
+                return Err(ICOError::Unauthorized);
+            }
+
+            let mut nft = self.nfts.get(nft_id).ok_or(ICOError::NFTNotFound)?;
+            if nft.owner != from {
+                return Err(ICOError::NotNFTOwner);
+            }
+            if !nft.active {
+                return Err(ICOError::NFTInactive);
+            }
+
+            // Auto-claim tokens pendentes para o seller
+            let config = self.tier_configs.get(nft.tier.to_u8()).unwrap();
+            let pending = self.calculate_mined_tokens(&nft, &config);
+            if pending > 0 {
+                nft.tokens_claimed = nft.tokens_claimed.saturating_add(pending);
+                nft.last_mining_timestamp = self.env().block_timestamp();
+                self.total_claimed = self.total_claimed.saturating_add(pending);
+                // Transfere tokens pendentes para o seller via Core
+                self.call_core_transfer(from, pending)?;
+            }
+
+            // Transfere NFT para o buyer (timestamps mantidos = buyer herda vesting gasto)
+            nft.owner = to;
+            self.nfts.insert(nft_id, &nft);
+
+            // Atualiza listas de ownership
+            if let Some(mut from_nfts) = self.nfts_by_owner.get(from) {
+                from_nfts.retain(|&id| id != nft_id);
+                self.nfts_by_owner.insert(from, &from_nfts);
+            }
+            let mut to_nfts = self.nfts_by_owner.get(to).unwrap_or_default();
+            to_nfts.push(nft_id);
+            self.nfts_by_owner.insert(to, &to_nfts);
+
+            Ok(pending)
+        }
+
+        /// Retorna o preço ICO em USDT cents de um tier (para cálculo de preço mínimo)
+        #[ink(message)]
+        pub fn get_tier_price_cents(&self, tier: u8) -> u64 {
+            self.tier_configs.get(tier)
+                .map(|c| c.price_usdt_cents)
+                .unwrap_or(0)
+        }
+
+        /// Retorna se o ICO ainda está ativo (NFTs ainda à venda)
+        #[ink(message)]
+        pub fn is_ico_active(&self) -> bool {
+            self.ico_active
+        }
+
         /// Configura contrato Marketplace (apenas owner)
         #[ink(message)]
         pub fn set_marketplace_contract(&mut self, marketplace: AccountId) -> Result<(), ICOError> {
@@ -989,6 +1227,27 @@ mod fiapo_ico {
                 self.nfts.insert(nft_id, &new_nft);
             }
 
+            // Record the evolution history
+            let evolution_record = EvolutionRecord {
+                id: nft_id, // Unique ID of the resulting NFT
+                owner: caller,
+                burned_nft_ids: nft_ids.clone(),
+                source_tier: required_source_tier,
+                result_nft_id: nft_id,
+                result_tier: target_tier,
+                bonus_applied_bps: 0, // Calculated elsewhere if needed
+                timestamp: self.env().block_timestamp(),
+            };
+            
+            // Store the evolution record
+            let mut user_evos = self.user_evolutions.get(caller).unwrap_or_default();
+            user_evos.push(evolution_record);
+            self.user_evolutions.insert(caller, &user_evos);
+
+            // Update global evolution stats
+            self.total_evolutions = self.total_evolutions.saturating_add(1);
+            self.total_nfts_burned = self.total_nfts_burned.saturating_add(required_amount as u64);
+
             Self::env().emit_event(NFTEvolved {
                 new_nft_id: nft_id,
                 owner: caller,
@@ -1031,6 +1290,15 @@ mod fiapo_ico {
             Ok(())
         }
 
+        #[ink(message)]
+        pub fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), ICOError> {
+            if self.env().caller() != self.owner {
+                return Err(ICOError::Unauthorized);
+            }
+            self.owner = new_owner;
+            Ok(())
+        }
+
         /// Atualiza o contrato Core
         #[ink(message)]
         pub fn set_core_contract(&mut self, new_core: AccountId) -> Result<(), ICOError> {
@@ -1043,28 +1311,15 @@ mod fiapo_ico {
 
         // ==================== Cross-Contract Calls ====================
 
-        /// Chama Core.transfer para enviar tokens
+        /// Chama Core.transfer via PSP22Ref (selector correto do trait IPSP22)
         fn call_core_transfer(
             &self,
             to: AccountId,
             amount: Balance,
         ) -> Result<(), ICOError> {
-            use ink::env::call::{build_call, ExecutionInput, Selector};
- 
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
-                        .push_arg(to)
-                        .push_arg(amount),
-                )
-                .returns::<Result<(), PSP22Error>>()
-                .try_invoke();
- 
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
+            let mut psp22: PSP22Ref = self.core_contract.into();
+            match psp22.transfer(to, amount) {
+                Ok(_) => Ok(()),
                 _ => Err(ICOError::CoreContractError),
             }
         }
@@ -1268,7 +1523,7 @@ mod fiapo_ico {
             assert_eq!(free_config.max_supply, 10_000);
 
             let tier7_config = contract.get_tier_config(6).unwrap();
-            assert_eq!(tier7_config.price_usdt_cents, 50000);
+            assert_eq!(tier7_config.price_usdt_cents, 67500); // $675.00
             assert_eq!(tier7_config.max_supply, 2_000);
         }
 
@@ -1313,3 +1568,6 @@ mod fiapo_ico {
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_ico::*;

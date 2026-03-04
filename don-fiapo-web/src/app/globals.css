@@ -234,3 +234,13 @@ h6 {
   box-shadow: 0 0 15px rgba(201, 166, 91, 0.5);
   transform: scale(1.1);
 }
+
+/* ── Marquee ──────────────────────────────── */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee linear infinite;
+}

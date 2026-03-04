@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model AdminUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("operator") // superadmin, marketing, finance, commercial
+  status    String   @default("active")   // active, suspended
+  passwordHash String?
+  lastLoginAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  name      String
+  location  String?
+  createdAt DateTime @default(now())
+  wallets   Wallet[]
+}
+
+model Wallet {
+  id            String   @id @default(uuid())
+  name          String
+  address       String   @unique
+  seed          String?  // Administrative seed for server-side operations
+  symbol        String
+  network       String
+  branchId      String
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  createdAt     DateTime @default(now())
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  type        String   // deposit, withdrawal
+  amount      Float
+  status      String   @default("pending") // pending, completed, failed
+  description String?
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String
+  category    String   // Infra, Marketing, RH, Operational, etc.
+  amount      Float
+  currency    String   @default("USDT")
+  status      String   @default("pending") // pending, paid, canceled
+  dueDate     DateTime
+  paidAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Revenue {
+  id          String   @id @default(uuid())
+  description String
+  category    String   // Vendas, Taxas, Staking, Parcerias, Serviços, Outros
+  source      String?  // Origem específica (ex: "Venda FIAPO", "Comissão BitStorage")
+  amount      Float
+  currency    String   @default("USDT")
+  status      String   @default("confirmed") // confirmed, pending, canceled
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Campaign {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // Social Media, Influencer, PPC, Email, Video
+  status      String   @default("active") // active, paused, ended
+  reach       Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  budget      Float
+  spent       Float    @default(0)
+  ctrGoal     Float    @default(8.0) // Campaign-level CTR goal (%)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  dailyMetrics CampaignDailyMetric[]
+}
+
+model CampaignDailyMetric {
+  id          String   @id @default(uuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  date        DateTime // The calendar day this metric belongs to
+  reach       Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  spent       Float    @default(0) // Daily spend
+  impressions Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([campaignId, date])
+}
+
+model Sale {
+  id          String   @id @default(uuid())
+  product     String
+  customer    String
+  amount      Float
+  currency    String   @default("BRL") // BRL, USDT, FIAPO, LUNES
+  status      String   @default("completed") // completed, pending, failed
+  channel     String   // Website, Marketplace, App, Partner
+  source      String   @default("manual") // manual, nft, staking, spin, referral
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  // Attribution
+  partnerId   String?
+  partner     Partner? @relation(fields: [partnerId], references: [id])
+  nobleId     String?
+  noble       Noble?   @relation(fields: [nobleId], references: [id])
+  trackingCode String? // The tracking code used at time of sale
+  commissions PartnerCommission[]
+}
+
+model Partner {
+  id            String   @id @default(uuid())
+  name          String
+  type          String   // Exchange, Marketing, Integração, Educação, Marketplace, DeFi, Influenciador
+  status        String   @default("active") // active, inactive, pending
+  commissionPct Float    @default(5.0)  // Commission percentage (e.g. 5.0 = 5%)
+  commission    String   // Display string: "5%", "10%", etc.
+  revenue       Float    @default(0)    // Cached total revenue (updated on sale attribution)
+  sales         Int      @default(0)    // Cached total sales count
+  joinedAt      DateTime @default(now())
+  contact       String
+  trackingCode  String?  @unique  // Unique tracking identifier for attribution
+  
+  // Influencer-specific metadata (JSON)
+  influencerMeta String?  // {"platform":"youtube","handle":"@user","followers":50000,"niche":"crypto"}
+  
+  // Noble link — a partner can optionally be linked to a Noble affiliate
+  nobleId       String?  @unique
+  noble         Noble?   @relation(fields: [nobleId], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  salesRecords  Sale[]
+  commissions   PartnerCommission[]
+}
+
+model Noble {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  tier            String   @default("Silver") // Silver, Gold, Platinum
+  status          String   @default("Probation") // Active, Probation, Suspended, Removed
+  walletAddress   String   @unique
+  solanaWallet    String?
+  totalSales      Float    @default(0)   // Cached total attributed sales amount
+  totalReferrals  Int      @default(0)   // Cached referral count
+  totalCommission Float    @default(0)   // Cached total commission earned
+  referralCode    String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  partner         Partner?
+  salesRecords    Sale[]
+  commissions     PartnerCommission[]
+}
+
+// ==================== Commission Tracking ====================
+
+model PartnerCommission {
+  id            String   @id @default(uuid())
+  saleId        String
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  
+  // Who receives the commission (one or both)
+  partnerId     String?
+  partner       Partner? @relation(fields: [partnerId], references: [id])
+  nobleId       String?
+  noble         Noble?   @relation(fields: [nobleId], references: [id])
+  
+  recipientType String   // "partner", "noble", "commercial"
+  amount        Float    // Commission amount
+  rate          Float    // Rate applied (e.g. 5.0 for 5%)
+  currency      String   @default("BRL")
+  status        String   @default("pending") // pending, paid, canceled
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+}
+
+// ==================== NFT Collections (independente da ICO) ====================
+// Coleção = Álbum temático. Itens = NFTs individuais adicionados livremente.
+
+model NFTCollection {
+  id                    String   @id @default(uuid())
+  name                  String
+  symbol                String   // Código curto (ex: "DONX", "FIPUNK")
+  description           String?
+  coverImage            String?  // URL gateway da imagem de capa
+  coverIpfsHash         String?  // IPFS CID da capa (ex: bafybei...)
+  status                String   @default("draft") // draft, scheduled, active, paused, sold_out
+  launchDate            DateTime?
+  createdBy             String   // Email do admin que criou
+  contractAddress       String?  // Endereço do contrato nft_collections na Lunes
+  contractCollectionId  Int?     // ID da coleção no contrato on-chain
+  deployedAt            DateTime? // Quando foi sincronizado com o contrato
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  items                 NFTCollectionItem[]
+}
+
+model NFTCollectionItem {
+  id               String   @id @default(uuid())
+  collectionId     String
+  collection       NFTCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  name             String   // Ex: "O Rei Manga"
+  description      String?  // Descrição da arte
+  imageUrl         String?  // URL gateway da arte
+  ipfsHash         String?  // IPFS CID da arte (ex: bafybei...)
+  metadata         String?  // JSON com atributos extras (traits)
+  metadataIpfsHash String?  // IPFS CID do metadata JSON
+  price            Float    @default(0) // Preço por unidade
+  currency         String   @default("LUNES") // LUNES ou FIAPO
+  supply           Int      @default(1) // Quantidade de cópias disponíveis
+  mintedCount      Int      @default(0) // Quantas já foram mintadas
+  status           String   @default("available") // available, sold_out
+  rarity           String?  // Common, Uncommon, Rare, Epic, Legendary
+  onChainTokenId   Int?     // ID do token no contrato on-chain
+  syncedAt         DateTime? // Quando foi sincronizado com o contrato
+  mintedTo         String?  // JSON array de wallets (para múltiplas cópias)
+  mintedAt         DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ==================== System Wallets (managed by Finance team) ====================
+
+model SystemWallet {
+  id          String   @id @default(uuid())
+  key         String   @unique // Unique identifier: spin_fiapo, spin_usdt, spin_lunes, spin_revenue, treasury_solana, ico_receiver, etc.
+  label       String   // Display name: "Spin FIAPO Pool", "Treasury Solana", etc.
+  address     String   // Wallet address
+  network     String   // "lunes", "solana", "ethereum"
+  symbol      String   // "FIAPO", "USDT", "LUNES", "SOL"
+  purpose     String?  // Description of what this wallet is used for
+  isActive    Boolean  @default(true)
+  updatedBy   String?  // Email of last admin who updated
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== Audit & Tokenomics Tracking ====================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // CREATE, UPDATE, DELETE, MINT, APPROVE, REJECT, LOGIN, etc.
+  entity     String   // Noble, Campaign, Collection, Migration, Transaction, etc.
+  entityId   String?
+  details    String?  // JSON com detalhes da ação
+  adminEmail String
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
+model TokenDistribution {
+  id          String   @id @default(uuid())
+  category    String   @unique // presale, staking, airdrop, marketing, charity, ico, team
+  label       String   // Display name
+  planned     Float    // Quantidade planejada (em bilhões)
+  distributed Float    @default(0) // Quantidade já distribuída (em bilhões)
+  percentage  Float    // Percentual planejado
+  walletAddress String? // Endereço da wallet de distribuição
+  status      String   @default("pending") // pending, in_progress, completed
+  notes       String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+// ==================== On-Chain Transaction Cache ====================
+// Scalable index: populated by /api/admin/transactions/sync.
+// Automatically covers any wallet registered in SystemWallet.
+// externalId ensures idempotent upserts across repeated sync runs.
+
+model WalletTransaction {
+  id            String   @id @default(uuid())
+  walletKey     String   // SystemWallet.key (e.g. "spin_revenue", "treasury_solana")
+  walletAddress String?  // Cached address at time of indexing
+  network       String?  // "solana", "lunes"
+  externalId    String   @unique // e.g. "spinpurchase:uuid", "migration_in:cuid"
+  sourceType    String   // spin_purchase | spin_payout | migration_in | migration_out | contract_event
+  direction     String   // "in" | "out"
+  amount        Float
+  symbol        String   // "USDT", "FIAPO", "LUNES", "SOL"
+  status        String   @default("confirmed") // confirmed, pending, failed
+  description   String
+  fromAddress   String?
+  toAddress     String?
+  txHash        String?  // On-chain transaction hash (when available)
+  metadata      String?  // JSON blob with raw event data
+  onChainAt     DateTime // Timestamp from the source system (blockchain or app)
+  indexedAt     DateTime @default(now())
+}

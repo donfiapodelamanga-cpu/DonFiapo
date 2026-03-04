@@ -35,19 +35,21 @@ export class WhaleWatcher {
         try {
             console.log('🐋 Checking for new Whales...');
 
-            // 1. Fetch Top 100 Holders from Indexer (Mocked here)
             const topHolders = await this.fetchTopHolders();
 
-            // 2. Submit to Contract via LunesClient
-            // Note: LunesContractClient precisa de um método updateWhaleList
-            // Vamos assumir que adicionaremos isso ou apenas logamos por enquanto.
+            if (topHolders.length === 0) {
+                console.log('🐋 No whale data available (indexer not connected)');
+                return;
+            }
 
-            console.log(`🐋 Found ${topHolders.length} whales. Updating contract...`);
+            console.log(`🐋 Found ${topHolders.length} whales. Submitting to contract...`);
 
-            // await this.lunesClient.updateWhaleList(topHolders);
-            // (Método não existe ainda no client, necessitaria update no LunesContractClient)
-
-            console.log('🐋 Whale List Updated (Simulation)');
+            if (typeof (this.lunesClient as any).updateWhaleList === 'function') {
+                await (this.lunesClient as any).updateWhaleList(topHolders);
+                console.log('🐋 Whale list updated on-chain');
+            } else {
+                console.warn('🐋 LunesContractClient.updateWhaleList not implemented yet — skipping on-chain update');
+            }
 
         } catch (error) {
             console.error('🐋 Error in WhaleWatcher:', error);
@@ -55,11 +57,10 @@ export class WhaleWatcher {
     }
 
     private async fetchTopHolders(): Promise<string[]> {
-        // Mock implementation
-        return [
-            '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY', // Alice
-            '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty', // Bob
-            // ...
-        ];
+        // Requires an off-chain indexer to enumerate holders from the PSP22 Mapping.
+        // The contract does not expose an iterable holder list.
+        // When an indexer (e.g. SubQuery, Subsquid) is deployed, query it here.
+        console.info('🐋 fetchTopHolders: awaiting indexer integration');
+        return [];
     }
 }

@@ -663,3 +663,6 @@ pub mod royal_wheel {
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::royal_wheel::*;

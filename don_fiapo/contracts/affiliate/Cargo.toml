@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-ink.workspace = true
+ink = { version = "~4.2.1", default-features = false }
 scale.workspace = true
 scale-info = { workspace = true, optional = true }
 fiapo-traits = { path = "../traits", default-features = false, features = ["ink-as-dependency"] }

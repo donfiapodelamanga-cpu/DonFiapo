@@ -8,7 +8,7 @@ const supplyStats = [
   {
     icon: Coins,
     label: "Max Supply",
-    value: "300 Billion",
+    value: "600 Billion",
     subtext: "$FIAPO",
     color: "text-golden",
     bgColor: "bg-golden/10",
@@ -40,12 +40,13 @@ const supplyStats = [
 ];
 
 const fundDistribution = [
-  { label: "Staking Fund", value: "80%", color: "bg-green-500" },
-  { label: "Airdrop", value: "7%", color: "bg-purple-500" },
-  { label: "Marketing", value: "5%", color: "bg-blue-400" },
-  { label: "Donations", value: "5%", color: "bg-pink-500" },
-  { label: "IEO/ICO", value: "2%", color: "bg-golden" },
-  { label: "Team", value: "1%", color: "bg-gray-500" },
+  { label: "Pre-sale", value: "25%", color: "bg-amber-500" },
+  { label: "Staking Fund", value: "51.67%", color: "bg-green-500" },
+  { label: "Airdrop", value: "5.08%", color: "bg-purple-500" },
+  { label: "Marketing", value: "3.42%", color: "bg-blue-400" },
+  { label: "Donations", value: "3.42%", color: "bg-pink-500" },
+  { label: "IEO/ICO", value: "10.67%", color: "bg-golden" },
+  { label: "Team", value: "0.75%", color: "bg-gray-500" },
 ];
 
 export function SupplyInfoSection() {
@@ -137,7 +138,7 @@ export function SupplyInfoSection() {
           </Card>
 
           <p className="text-center text-sm text-muted-foreground mt-4">
-            🔥 80% of funds go directly to staking rewards - the highest in the industry!
+            🔥 51.67% staking rewards + 25% pre-sale + 10.67% IEO/ICO!
           </p>
         </motion.div>
       </div>

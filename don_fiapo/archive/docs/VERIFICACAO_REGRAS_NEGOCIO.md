@@ -14,24 +14,25 @@ Este documento apresenta uma análise detalhada da implementação das regras de
 
 ### ✅ IMPLEMENTADO CORRETAMENTE
 
-**Requisito:** Max Supply 300B, Min Supply 100M, 8 decimais
+**Requisito:** Max Supply 600B, Min Supply 100M, 8 decimais
 
 **Implementação Verificada:**
 ```rust
 // src/lib.rs
 pub const DECIMALS: u8 = 8;
 pub const SCALE: u128 = 10u128.pow(DECIMALS as u32);
-pub const MAX_SUPPLY: u128 = 300_000_000_000 * SCALE; // 300 bilhões
+pub const MAX_SUPPLY: u128 = 600_000_000_000 * SCALE; // 600 bilhões
 pub const MIN_SUPPLY: u128 = 100_000_000 * SCALE;     // 100 milhões
 ```
 
 **Distribuição Inicial:**
-- ✅ Fundo de Staking: 80%
-- ✅ Airdrop: 7%
-- ✅ Marketing: 5%
-- ✅ Doação para caridade: 5%
-- ✅ IEO/ICO: 2%
-- ✅ Equipe: 1%
+- ✅ Pré-venda: 25% (150Bi)
+- ✅ Fundo de Staking: 51.67% (310Bi)
+- ✅ IEO/ICO: 10.67% (64Bi)
+- ✅ Airdrop: 5.08% (30.5Bi)
+- ✅ Marketing: 3.42% (20.5Bi)
+- ✅ Doação para caridade: 3.42% (20.5Bi)
+- ✅ Equipe: 0.75% (4.5Bi)
 
 **Teste Verificado:** ✅ `InitialDistribution::calculate()` implementado corretamente
 

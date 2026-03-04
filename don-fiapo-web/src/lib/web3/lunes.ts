@@ -9,7 +9,7 @@ import type { PolkadotWalletProvider } from '@/lib/stores/wallet-store';
 // Lunes Network configuration
 export const LUNES_CONFIG = {
   name: 'Lunes Network',
-  rpc: ['ws://127.0.0.1:9944'],
+  rpc: [process.env.NEXT_PUBLIC_LUNES_RPC || 'ws://127.0.0.1:9944'],
   symbol: 'LUNES',
   decimals: 8,
   ss58Format: 42,

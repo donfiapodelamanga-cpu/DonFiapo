@@ -66,47 +66,9 @@ export interface RankingConfig {
   lastUpdated: number;
 }
 
-// ============ Mock Data for Development ============
+// ============ Empty state (contract not yet deployed) ============
 
-const MOCK_ADDRESSES = [
-  "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-  "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-  "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-  "5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw",
-  "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL",
-  "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY",
-  "5HpG9w8EBLe5XCrbczpwq5TSXvedjrBGCwqxK1iQ7qUsSWFc",
-];
-
-function generateMockWalletInfo(
-  address: string,
-  rank: number,
-  type: RankingType
-): WalletRankingInfo {
-  const baseBalance = BigInt(50_000_000 - rank * 5_000_000) * BigInt(10 ** 8);
-  const stakingBalance = BigInt(15_000_000 - rank * 1_500_000) * BigInt(10 ** 8);
-  const burnVolume = BigInt(5_000_000 - rank * 500_000) * BigInt(10 ** 8);
-
-  return {
-    address,
-    balance: baseBalance,
-    stakingBalance,
-    burnVolume,
-    transactionVolume: BigInt(1_000_000) * BigInt(10 ** 8),
-    stakingCount: Math.max(1, 10 - rank),
-    affiliateCount: Math.max(1, 150 - rank * 15),
-    governanceScore: Math.max(10, 100 - rank * 10),
-    rank,
-    rewardAmount: BigInt(200_000) * BigInt(10 ** 8),
-    rankingType: type,
-    lastUpdated: Date.now(),
-    isEligible: true,
-    totalScore: baseBalance + stakingBalance + burnVolume,
-  };
-}
-
-function generateMockRankingResult(type: RankingType, _maxSize: number = 7): RankingResult {
-  // Return empty ranking result (no data yet - contract not deployed)
+function emptyRankingResult(type: RankingType): RankingResult {
   return {
     rankingId: 0,
     rankingType: type,
@@ -149,13 +111,11 @@ export async function getRankingByType(type: RankingType): Promise<RankingResult
       }
     }
 
-    // Fallback to mock data with indicator
-    console.info(`[Ranking] Using demo data for ${type} (contract not available)`);
-    const mockResult = generateMockRankingResult(type);
-    return mockResult;
+    console.info(`[Ranking] No data for ${type} (contract not available)`);
+    return emptyRankingResult(type);
   } catch (error) {
-    console.info(`[Ranking] Using demo data for ${type}:`, error);
-    return generateMockRankingResult(type);
+    console.info(`[Ranking] Error fetching ${type}:`, error);
+    return emptyRankingResult(type);
   }
 }
 
@@ -282,7 +242,7 @@ export async function getWalletRankingInfo(
       return null;
     }
 
-    const { result, output } = await contract.query.getWalletRankingInfo(
+    const { result, output } = await contract.query.get_wallet_ranking_info(
       contract.address,
       { gasLimit: -1 },
       address,
@@ -311,10 +271,10 @@ export async function getRankingHistory(
     const contract = await initializeContract();
 
     if (!contract) {
-      return [generateMockRankingResult(type)];
+      return [];
     }
 
-    const { result, output } = await contract.query.getRankingHistory(
+    const { result, output } = await contract.query.get_ranking_history(
       contract.address,
       { gasLimit: -1 },
       type,
@@ -326,10 +286,10 @@ export async function getRankingHistory(
       return history.map(parseRankingResult);
     }
 
-    return [generateMockRankingResult(type)];
+    return [];
   } catch (error) {
     console.error('[Ranking] Error fetching history:', error);
-    return [generateMockRankingResult(type)];
+    return [];
   }
 }
 

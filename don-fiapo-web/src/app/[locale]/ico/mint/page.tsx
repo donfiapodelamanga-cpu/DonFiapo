@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Crown, Minus, Plus, CreditCard, Wallet, ArrowLeft, Check, Info, Loader2, Copy, ExternalLink, Clock, Sparkles, Flame } from "lucide-react";
+import { Crown, Minus, Plus, CreditCard, Wallet, ArrowLeft, Check, Info, Loader2, Copy, ExternalLink, Clock, Sparkles, Flame, Bell } from "lucide-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/toast";
 import { API_CONFIG } from "@/lib/api/config";
 import { ConnectWalletModal } from "@/components/wallet/connect-wallet-modal";
 import { PrestigeCelebration } from "@/components/ui/prestige-celebration";
+import { IcoWaitlistModal } from "@/components/modals/IcoWaitlistModal";
 
 // Consistent number formatting to avoid SSR hydration mismatch
 // Uses 'en-US' locale for consistent server/client rendering
@@ -54,6 +55,7 @@ export default function MintPage() {
   const [isMinting, setIsMinting] = useState(false);
   const [paymentStep, setPaymentStep] = useState<"idle" | "paying" | "verifying" | "success">("idle");
   const [isLunesModalOpen, setIsLunesModalOpen] = useState(false);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
   const [showPrestigeCelebration, setShowPrestigeCelebration] = useState(false);
   const [prestigeBonusAmount, setPrestigeBonusAmount] = useState(0);
   const [maxFreeMintsReached, setMaxFreeMintsReached] = useState(false);
@@ -81,9 +83,9 @@ export default function MintPage() {
     let burnedCount = 0;
     const nextTierConfig = nftConfigs?.[tier.id + 1];
     if (nextTierConfig) {
-      const nextEvoStr = nextTierConfig.mintedEvolution || nextTierConfig.minted_evolution || '0';
+      const nextEvoStr = (nextTierConfig as any).mintedEvolution || (nextTierConfig as any).minted_evolution || '0';
       const nextEvo = typeof nextEvoStr === 'string' ? parseInt(nextEvoStr) : nextEvoStr;
-      const req = tier.evolutionRequirement || 2;
+      const req = (tier as any).evolutionRequirement || 2;
       burnedCount = nextEvo * req;
     }
 
@@ -162,8 +164,15 @@ export default function MintPage() {
   const totalPrice = selectedTier.price * quantity;
   const maxQuantity = Math.min(5, selectedTier.available);
 
-  // Receiver wallet from config
-  const receiverWallet = API_CONFIG.solana.receiverWallet;
+  // Receiver wallet: fetch from system wallets (admin panel) with env fallback
+  const [receiverWallet, setReceiverWallet] = useState(API_CONFIG.solana.receiverWallet);
+  useEffect(() => {
+    import("@/lib/api/system-wallets").then(({ getSystemWalletAddress }) => {
+      getSystemWalletAddress("ico_receiver").then((addr) => {
+        if (addr) setReceiverWallet(addr);
+      });
+    });
+  }, []);
 
   // Handle automatic payment flow
   const handlePaidMint = async () => {
@@ -602,56 +611,17 @@ export default function MintPage() {
                       <Link href="/ico/my-nfts">View My NFTs</Link>
                     </Button>
                   </div>
-                ) : !lunesConnected ? (
-                  // Need Lunes wallet
-                  <Button
-                    size="xl"
-                    className="w-full"
-                    variant="outline"
-                    onClick={() => setIsLunesModalOpen(true)}
-                  >
-                    <Wallet className="w-5 h-5 mr-2" />
-                    Connect Lunes Wallet First
-                  </Button>
-                ) : selectedTier.price > 0 && !solanaConnected ? (
-                  // Need Solana wallet for payment - use official button
-                  <div className="w-full flex justify-center">
-                    <WalletMultiButton className="!bg-golden hover:!bg-golden/80 !rounded-xl !h-14 !text-background !font-bold !w-full" />
-                  </div>
                 ) : (
-                  // Ready to mint
+                  // Waitlist Mode - Always show this instead of Mint/Connect
                   <Button
                     size="xl"
                     className="w-full glow-gold"
-                    onClick={totalPrice === 0 ? handleFreeMint : handlePaidMint}
-                    disabled={isProcessingPayment || isMinting || (totalPrice === 0 && (cooldownRemaining > 0 || maxFreeMintsReached))}
+                    onClick={() => setIsWaitlistModalOpen(true)}
                   >
-                    {isProcessingPayment ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {paymentStep === "paying" ? "Confirm in Wallet..." : "Verifying Payment..."}
-                      </>
-                    ) : isMinting ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Minting Your NFT...
-                      </>
-                    ) : totalPrice === 0 && maxFreeMintsReached ? (
-                      <span className="flex items-center justify-center text-red-500">
-                        <Info className="w-5 h-5 mr-2" />
-                        Limit Reached (5/5)
-                      </span>
-                    ) : totalPrice === 0 && cooldownRemaining > 0 ? (
-                      <span className="flex items-center justify-center text-yellow-500">
-                        <Clock className="w-5 h-5 mr-2" />
-                        Cooldown: {formatCooldown(cooldownRemaining)}
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center">
-                        <CreditCard className="w-5 h-5 mr-2" />
-                        {totalPrice === 0 ? "Claim Free NFT" : `Pay $${totalPrice} & Mint`}
-                      </span>
-                    )}
+                    <span className="flex items-center justify-center">
+                      <Bell className="w-5 h-5 mr-2" />
+                      Join Priority Waitlist
+                    </span>
                   </Button>
                 )}
               </CardFooter>
@@ -664,6 +634,18 @@ export default function MintPage() {
       <ConnectWalletModal
         isOpen={isLunesModalOpen}
         onClose={() => setIsLunesModalOpen(false)}
+      />
+
+      {/* Lunes Wallet Modal */}
+      <ConnectWalletModal
+        isOpen={isLunesModalOpen}
+        onClose={() => setIsLunesModalOpen(false)}
+      />
+
+      {/* ICO Waitlist Modal */}
+      <IcoWaitlistModal
+        isOpen={isWaitlistModalOpen}
+        onClose={() => setIsWaitlistModalOpen(false)}
       />
 
       {/* Prestige Bonus Celebration with Confetti */}

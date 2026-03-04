@@ -43,13 +43,13 @@ export function CTASection() {
               </Link>
             </Button>
             <Button size="xl" variant="secondary" className="w-full sm:w-auto px-8" asChild>
-              <a href="https://t.me/donfiapo" target="_blank" rel="noopener noreferrer">
+              <a href="https://t.me/donfiapodela" target="_blank" rel="noopener noreferrer">
                 <Send className="w-5 h-5 mr-2" />
                 {t("telegram")}
               </a>
             </Button>
             <Button size="xl" variant="secondary" className="w-full sm:w-auto px-8" asChild>
-              <a href="https://twitter.com/donfiapo" target="_blank" rel="noopener noreferrer">
+              <a href="https://x.com/DonFiapo" target="_blank" rel="noopener noreferrer">
                 <Twitter className="w-5 h-5 mr-2" />
                 {t("social")}
               </a>

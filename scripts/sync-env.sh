@@ -74,14 +74,19 @@ while IFS='=' read -r key value; do
             # Esta variável NÃO deve ter prefixo NEXT_PUBLIC_ (privada)
             echo "LUNES_MNEMONIC=${value}" >> "$WEB_ENV"
             ;;
+        DATABASE_URL)
+            # Prisma/LibSQL — necessário para conexão local com SQLite
+            echo "DATABASE_URL=${value}" >> "$WEB_ENV"
+            ;;
     esac
 done < "$ROOT_ENV"
 
 # Sincroniza Metadados do Contrato (ABI)
 echo -e "${YELLOW}📄 Sincronizando metadados do contrato (ABI)...${NC}"
-METADATA_SRC="$ROOT_DIR/don_fiapo/target/ink/don_fiapo_contract.json"
-WEB3_META_DEST="$ROOT_DIR/don-fiapo-web/src/lib/web3/don_fiapo_contract.json"
-API_META_DEST="$ROOT_DIR/don-fiapo-web/src/lib/api/don_fiapo_contract.json"
+METADATA_SRC="$ROOT_DIR/don_fiapo/target/ink/fiapo_ico/fiapo_ico.json"
+WEB3_META_DEST="$ROOT_DIR/don-fiapo-web/src/lib/web3/fiapo_ico.json"
+API_META_DEST="$ROOT_DIR/don-fiapo-web/src/lib/contracts/fiapo_ico.json"
+# Backup/Legacy path if needed, or remove
 API_META_ALT_DEST="$ROOT_DIR/don-fiapo-web/src/lib/api/contract-metadata.json"
 
 if [ -f "$METADATA_SRC" ]; then

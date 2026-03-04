@@ -5,13 +5,14 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use fiapo_logics::traits::oracle::Oracle;
+
 #[ink::contract]
 mod fiapo_oracle_multisig {
+    use super::*;
     use ink::prelude::{string::String, vec, vec::Vec};
     use ink::storage::Mapping;
     use ink::env::call::{build_call, ExecutionInput, Selector};
-
-    // Tipos importados de `fiapo-traits`
 
     // ==================== Tipos e Enums ====================
 
@@ -43,7 +44,6 @@ mod fiapo_oracle_multisig {
         StakingEntry { amount: Balance, pool: u8 },
         NFTPurchase { tier: u8 },
         LotteryTicket { quantity: u32 },
-        SpinGameCredit { tier: u8, spins: u32 },
         GovernanceDeposit,
         Custom(String),
     }
@@ -107,7 +107,6 @@ mod fiapo_oracle_multisig {
         ico_contract: Option<AccountId>,
         staking_contract: Option<AccountId>,
         lottery_contract: Option<AccountId>,
-        spin_game_contract: Option<AccountId>,
         governance_contract: Option<AccountId>,
     }
 
@@ -136,7 +135,6 @@ mod fiapo_oracle_multisig {
                 ico_contract: None,
                 staking_contract: None,
                 lottery_contract: None,
-                spin_game_contract: None,
                 governance_contract: None,
             }
         }
@@ -195,7 +193,6 @@ mod fiapo_oracle_multisig {
                 "ico" => self.ico_contract = Some(address),
                 "staking" => self.staking_contract = Some(address),
                 "lottery" => self.lottery_contract = Some(address),
-                "spin_game" => self.spin_game_contract = Some(address),
                 "governance" => self.governance_contract = Some(address),
                 _ => return Err(OracleError::InvalidConfiguration),
             }
@@ -317,9 +314,6 @@ mod fiapo_oracle_multisig {
                 PaymentType::LotteryTicket { quantity } => {
                     self.call_lottery_buy_tickets_for(payment.beneficiary, *quantity)?;
                 }
-                PaymentType::SpinGameCredit { tier, spins } => {
-                    self.call_spin_game_credit(payment.beneficiary, *spins, *tier)?;
-                }
                 PaymentType::GovernanceDeposit => {
                     // A lógica de depósito de governança pode ser mais complexa
                     // e talvez precise de uma chamada específica.
@@ -344,10 +338,10 @@ mod fiapo_oracle_multisig {
                         .push_arg(user)
                         .push_arg(tier),
                 )
-                .returns::<Result<u64, u8>>()
+                .returns::<()>()
                 .try_invoke();
             match result {
-                Ok(Ok(Ok(_))) => Ok(()),
+                Ok(Ok(())) => Ok(()),
                 _ => Err(OracleError::CrossContractCallFailed),
             }
         }
@@ -364,10 +358,10 @@ mod fiapo_oracle_multisig {
                         .push_arg(amount)
                         .push_arg(pool),
                 )
-                .returns::<Result<u64, u8>>()
+                .returns::<()>()
                 .try_invoke();
             match result {
-                Ok(Ok(Ok(_))) => Ok(()),
+                Ok(Ok(())) => Ok(()),
                 _ => Err(OracleError::CrossContractCallFailed),
             }
         }
@@ -383,30 +377,10 @@ mod fiapo_oracle_multisig {
                         .push_arg(user)
                         .push_arg(quantity),
                 )
-                .returns::<Result<(), u8>>()
+                .returns::<()>()
                 .try_invoke();
             match result {
-                Ok(Ok(Ok(()))) => Ok(()),
-                _ => Err(OracleError::CrossContractCallFailed),
-            }
-        }
-
-        fn call_spin_game_credit(&self, user: AccountId, spins: u32, tier: u8) -> Result<(), OracleError> {
-            let contract = self.spin_game_contract.ok_or(OracleError::ContractNotConfigured)?;
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("credit_spins")))
-                        .push_arg(user)
-                        .push_arg(spins)
-                        .push_arg(tier),
-                )
-                .returns::<Result<(), u8>>()
-                .try_invoke();
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
+                Ok(Ok(())) => Ok(()),
                 _ => Err(OracleError::CrossContractCallFailed),
             }
         }
@@ -483,6 +457,34 @@ mod fiapo_oracle_multisig {
         }
     }
 
+    // ==================== Oracle Trait Implementation ====================
+    // Required for cross-contract calls via OracleRef (contract_ref!(Oracle))
+    // Selectors MUST match the trait definition in logics/traits/oracle.rs
+
+    impl Oracle for FiapoOracleMultisig {
+        #[ink(message)]
+        fn is_payment_confirmed(
+            &self,
+            tx_hash: String,
+            user: AccountId,
+            amount_cents: u64,
+            is_governance_deposit: bool,
+        ) -> bool {
+            if let Some(payment) = self.pending_payments.get(&tx_hash) {
+                if payment.status == PaymentStatus::Confirmed
+                   && payment.beneficiary == user
+                   && payment.amount_usdt == amount_cents
+                {
+                    return match payment.payment_type {
+                        PaymentType::GovernanceDeposit => is_governance_deposit,
+                        _ => !is_governance_deposit,
+                    }
+                }
+            }
+            false
+        }
+    }
+
     // ==================== Testes ====================
     #[cfg(test)]
     mod tests {
@@ -537,8 +539,8 @@ mod fiapo_oracle_multisig {
             let oracles = vec![accounts.alice, accounts.bob];
             let mut contract = FiapoOracleMultisig::new(oracles.clone(), 2);
 
-            // Configurar contratos mock
-            contract.set_contract_address(String::from("staking"), accounts.django).unwrap();
+            // Usa GovernanceDeposit pois não executa cross-contract call
+            // (chamadas build_call falham em ambiente de teste unitário ink!)
 
             // Primeira confirmação (alice)
             set_caller(accounts.alice);
@@ -547,7 +549,7 @@ mod fiapo_oracle_multisig {
                 String::from("SolanaAddress123"),
                 1000,
                 accounts.eve,
-                PaymentType::StakingEntry { amount: 10, pool: 1 },
+                PaymentType::GovernanceDeposit,
             );
 
             // Segunda confirmação (bob)
@@ -557,7 +559,7 @@ mod fiapo_oracle_multisig {
                 String::from("SolanaAddress123"),
                 1000,
                 accounts.eve,
-                PaymentType::StakingEntry { amount: 10, pool: 1 },
+                PaymentType::GovernanceDeposit,
             );
 
             assert!(result.is_ok());
@@ -568,3 +570,6 @@ mod fiapo_oracle_multisig {
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_oracle_multisig::*;

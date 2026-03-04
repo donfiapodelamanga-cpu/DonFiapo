@@ -1,25 +1,29 @@
 export const siteConfig = {
-  name: "Don Fiapo Dela Manga",
+  name: "Don Fiapo De la Manga",
   description: "He doesn't bark — he decrees. The blockchain now has a monarchy. Join the reign.",
-  url: "https://donfiapo.com",
-  ogImage: "https://donfiapo.com/og.jpg",
+  url: "https://donfiapo.fun",
+  ogImage: "https://donfiapo.fun/og.jpg",
   links: {
-    twitter: "https://twitter.com/donfiapo",
-    telegram: "https://t.me/donfiapo",
-    discord: "https://discord.gg/donfiapo",
-    github: "https://github.com/donfiapo",
+    twitter: "https://x.com/DonFiapo",
+    telegram: "https://t.me/donfiapodela",
+    github: "https://github.com/donfiapodelamanga-cpu/DonFiapo",
+    soquest: "https://soquest.xyz/space/donfiapo",
+    medium: "https://medium.com/@donfiapodelamanga",
+    solsale: "https://solsale.app/presale/2m8QMqiJW1iKv4W3eFbBujKHD9yHVYX1qiVPnPrDGGJP",
   },
+  icoLaunchDate: "2026-02-27T12:00:00Z", // Fixed launch date for countdown (30 days from Jan 28)
   tokenomics: {
-    totalSupply: "300,000,000,000",
+    totalSupply: "600,000,000,000",
     symbol: "$FIAPO",
     decimals: 8, // Fixed: Contract uses 8 decimals
     distribution: {
-      staking: 80,   // Fundo de Staking
-      airdrop: 7,    // Airdrop
-      marketing: 5,  // Marketing
-      charity: 5,    // Doação para caridade
-      ico: 2,        // IEO/ICO
-      team: 1,       // Equipe
+      presale: 25,      // Pré-venda (150B)
+      staking: 51.67,   // Fundo de Staking (310B)
+      airdrop: 5.08,    // Airdrop (30.5B)
+      marketing: 3.42,  // Marketing (20.5B)
+      charity: 3.42,    // Doação para caridade (20.5B)
+      ico: 10.67,       // IEO/ICO (64B)
+      team: 0.75,       // Equipe (4.5B)
     },
   },
   staking: {

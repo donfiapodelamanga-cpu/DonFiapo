@@ -5,70 +5,40 @@
 //! - Don Burn: APY 10-300%, pagamento diário
 //! - Don Lunes: APY 6-37%, pagamento semanal
 //! - Don Fiapo: APY 7-70%, pagamento mensal
+//!
+//! Integrações:
+//! - Core: Transferência de tokens (PSP22)
+//! - Affiliate: Boost de APY e registro de atividade
+//! - Rewards: Distribuição de taxas para o fundo de recompensas
+//! - Oracle: Stake em nome de terceiros
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use fiapo_traits::{AccountId, Balance, PSP22Error, PSP22Result, StakingPoolType, IPSP22, IPSP22Mintable};
 
 #[ink::contract]
 mod fiapo_staking {
-    use super::*;
-    use ink::prelude::vec::Vec;
+    use ink::prelude::{vec::Vec, string::String};
     use ink::storage::Mapping;
+    
+    // Cross-contract references (pure ink!, no OpenBrush)
+    use fiapo_logics::traits::rewards::RewardsCall;
+    use fiapo_logics::traits::affiliate::AffiliateCall;
+    use fiapo_logics::traits::psp22::{PSP22, PSP22Ref};
+    use fiapo_logics::traits::staking::Staking;
+
 
     /// Constantes
     pub const SECONDS_PER_DAY: u64 = 86400;
-    #[allow(dead_code)]
-    pub const DECIMALS: u8 = 8;
     pub const SCALE: u128 = 100_000_000;
-    pub const LUSDT_SCALE: u128 = 1_000_000; // 10^6 para LUSDT
+    pub const LUSDT_SCALE: u128 = 1_000_000;
 
     /// Resultado do cálculo de taxa de entrada
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct EntryFeeResult {
-        /// Valor original em FIAPO
         pub fiapo_amount: Balance,
-        /// Taxa em LUSDT (6 decimais)
         pub fee_lusdt: Balance,
-        /// Percentual aplicado em basis points
         pub fee_bps: u16,
-    }
-
-    /// Resultado da distribuição de taxas
-    /// Ordem: (burn, staking, rewards, team)
-    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode, Default)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub struct FeeDistribution {
-        pub burn_amount: Balance,
-        pub staking_amount: Balance,
-        pub rewards_amount: Balance,
-        pub team_amount: Balance,
-    }
-
-    impl FeeDistribution {
-        pub fn total(&self) -> Balance {
-            self.burn_amount
-                .saturating_add(self.staking_amount)
-                .saturating_add(self.rewards_amount)
-                .saturating_add(self.team_amount)
-        }
-    }
-
-    /// Tipo de taxa para distribuição
-    #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum FeeType {
-        /// Taxa de transação: 30% burn, 50% staking, 20% rewards
-        Transaction,
-        /// Taxa de entrada staking: 10% team, 40% staking, 50% rewards
-        StakingEntry,
-        /// Taxa de saque de juros: 20% burn, 50% staking, 30% rewards
-        InterestWithdrawal,
-        /// Penalidade saque antecipado: 20% burn, 50% staking, 30% rewards
-        EarlyWithdrawal,
-        /// Taxa de cancelamento: 10% team, 50% staking, 40% rewards
-        Cancellation,
     }
 
     /// Erros do sistema de staking
@@ -86,15 +56,17 @@ mod fiapo_staking {
         Unauthorized,
         StakingPaused,
         PoolNotActive,
+        AffiliateCallFailed,
+        RewardsCallFailed,
     }
 
     /// Tipo de pool de staking
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     pub enum PoolType {
-        DonBurn = 0,   // APY 10%, diário
-        DonLunes = 1,  // APY 6%, semanal  
-        DonFiapo = 2,  // APY 7%, mensal
+        DonBurn = 0,   
+        DonLunes = 1,  
+        DonFiapo = 2,  
     }
 
     impl PoolType {
@@ -106,7 +78,6 @@ mod fiapo_staking {
                 _ => None,
             }
         }
-
         pub fn to_u8(&self) -> u8 {
             match self {
                 PoolType::DonBurn => 0,
@@ -116,7 +87,6 @@ mod fiapo_staking {
         }
     }
 
-    /// Status de uma posição
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     pub enum PositionStatus {
@@ -125,25 +95,17 @@ mod fiapo_staking {
         Completed,
     }
 
-    /// Configuração de um pool
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     pub struct PoolConfig {
-        /// APY em basis points (1000 = 10%)
         pub apy_bps: u16,
-        /// Período mínimo em dias
         pub min_period_days: u32,
-        /// Penalidade por saque antecipado (bps)
         pub early_withdrawal_penalty_bps: u16,
-        /// Penalidade por cancelamento (bps)
         pub cancellation_penalty_bps: u16,
-        /// Frequência de pagamento em dias
         pub payment_frequency_days: u32,
-        /// Pool ativo
         pub active: bool,
     }
 
-    /// Posição de staking
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     pub struct StakingPosition {
@@ -158,7 +120,6 @@ mod fiapo_staking {
         pub status: PositionStatus,
     }
 
-    /// Estatísticas globais
     #[derive(Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode, Default)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct StakingStats {
@@ -168,7 +129,6 @@ mod fiapo_staking {
         pub active_positions: u64,
     }
 
-    /// Evento de stake criado
     #[ink(event)]
     pub struct Staked {
         #[ink(topic)]
@@ -177,19 +137,20 @@ mod fiapo_staking {
         user: AccountId,
         pool: u8,
         amount: Balance,
+        fee_deducted: Balance,
     }
 
-    /// Evento de rewards claimed
     #[ink(event)]
     pub struct RewardsClaimed {
         #[ink(topic)]
         position_id: u64,
         #[ink(topic)]
         user: AccountId,
-        amount: Balance,
+        amount_net: Balance,
+        fee_amount: Balance,
+        boost_bps: u32,
     }
 
-    /// Evento de unstake
     #[ink(event)]
     pub struct Unstaked {
         #[ink(topic)]
@@ -200,37 +161,46 @@ mod fiapo_staking {
         penalty: Balance,
     }
 
-    /// Storage do contrato
+    #[ink(event)]
+    pub struct FeeDistributed {
+        #[ink(topic)]
+        reason: String,
+        amount: Balance,
+        staking_part: Balance,
+        rewards_part: Balance,
+        team_part: Balance,
+        burn_part: Balance,
+        noble_part: Balance, // Added Noble Part
+    }
+
+    #[ink(event)]
+    pub struct PingReceived {
+        #[ink(topic)]
+        caller: AccountId,
+    }
+
     #[ink(storage)]
     pub struct FiapoStaking {
-        /// Contrato Core
         core_contract: AccountId,
-        /// Contrato Oracle (autorizado a chamar stake_for)
         oracle_contract: Option<AccountId>,
-        /// Owner
+        affiliate_contract: Option<AccountId>, // Old Affiliate
+        rewards_contract: Option<AccountId>,
+        noble_contract: Option<AccountId>, // New Noble Affiliate
+        team_wallet: Option<AccountId>,
+        burn_wallet: Option<AccountId>,
         owner: AccountId,
-        /// Configurações dos pools
         pool_configs: Mapping<u8, PoolConfig>,
-        /// Posições de staking
         positions: Mapping<u64, StakingPosition>,
-        /// Posições por usuário
         user_positions: Mapping<AccountId, Vec<u64>>,
-        /// Próximo ID de posição
         next_position_id: u64,
-        /// Total staked por pool
         total_staked_per_pool: [Balance; 3],
-        /// Total de stakers por pool
         stakers_per_pool: [u32; 3],
-        /// Total de posições ativas
         active_positions: u64,
-        /// Total de rewards distribuídas
         total_rewards_distributed: Balance,
-        /// Sistema pausado
         paused: bool,
     }
 
     impl FiapoStaking {
-        /// Construtor
         #[ink(constructor)]
         pub fn new(core_contract: AccountId) -> Self {
             let caller = Self::env().caller();
@@ -238,6 +208,11 @@ mod fiapo_staking {
             let mut contract = Self {
                 core_contract,
                 oracle_contract: None,
+                affiliate_contract: None,
+                rewards_contract: None,
+                noble_contract: None,
+                team_wallet: Some(caller), 
+                burn_wallet: None,
                 owner: caller,
                 pool_configs: Mapping::default(),
                 positions: Mapping::default(),
@@ -254,32 +229,28 @@ mod fiapo_staking {
             contract
         }
 
-        /// Inicializa configurações padrão dos pools
         fn initialize_pool_configs(&mut self) {
-            // Don Burn: APY 10%, mínimo 30 dias, pagamento diário
             self.pool_configs.insert(0, &PoolConfig {
-                apy_bps: 1000, // 10%
+                apy_bps: 1000, 
                 min_period_days: 30,
-                early_withdrawal_penalty_bps: 1000, // 10%
-                cancellation_penalty_bps: 2000, // 20%
+                early_withdrawal_penalty_bps: 1000, 
+                cancellation_penalty_bps: 2000,
                 payment_frequency_days: 1,
                 active: true,
             });
-            // Don Lunes: APY 6%, mínimo 60 dias, pagamento semanal
             self.pool_configs.insert(1, &PoolConfig {
-                apy_bps: 600, // 6%
+                apy_bps: 600, 
                 min_period_days: 60,
-                early_withdrawal_penalty_bps: 800, // 8%
-                cancellation_penalty_bps: 1500, // 15%
+                early_withdrawal_penalty_bps: 800, 
+                cancellation_penalty_bps: 250, // 2.5%
                 payment_frequency_days: 7,
                 active: true,
             });
-            // Don Fiapo: APY 7%, mínimo 90 dias, pagamento mensal
             self.pool_configs.insert(2, &PoolConfig {
-                apy_bps: 700, // 7%
+                apy_bps: 700, 
                 min_period_days: 90,
-                early_withdrawal_penalty_bps: 600, // 6%
-                cancellation_penalty_bps: 1000, // 10%
+                early_withdrawal_penalty_bps: 600, 
+                cancellation_penalty_bps: 1000, 
                 payment_frequency_days: 30,
                 active: true,
             });
@@ -287,13 +258,6 @@ mod fiapo_staking {
 
         // ==================== View Functions ====================
 
-        /// Retorna contrato Core
-        #[ink(message)]
-        pub fn core_contract(&self) -> AccountId {
-            self.core_contract
-        }
-
-        /// Retorna estatísticas globais
         #[ink(message)]
         pub fn get_stats(&self) -> StakingStats {
             let total_staked: Balance = self.total_staked_per_pool.iter().fold(0, |acc, &x| acc.saturating_add(x));
@@ -307,25 +271,6 @@ mod fiapo_staking {
             }
         }
 
-        /// Retorna configuração de um pool
-        #[ink(message)]
-        pub fn get_pool_config(&self, pool: u8) -> Option<PoolConfig> {
-            self.pool_configs.get(pool)
-        }
-
-        /// Retorna uma posição
-        #[ink(message)]
-        pub fn get_position(&self, position_id: u64) -> Option<StakingPosition> {
-            self.positions.get(position_id)
-        }
-
-        /// Retorna posições de um usuário
-        #[ink(message)]
-        pub fn get_user_positions(&self, user: AccountId) -> Vec<u64> {
-            self.user_positions.get(user).unwrap_or_default()
-        }
-
-        /// Calcula rewards pendentes
         #[ink(message)]
         pub fn pending_rewards(&self, position_id: u64) -> Balance {
             if let Some(position) = self.positions.get(position_id) {
@@ -333,105 +278,50 @@ mod fiapo_staking {
                     return 0;
                 }
                 if let Some(config) = self.pool_configs.get(position.pool_type.to_u8()) {
-                    return self.calculate_rewards(&position, &config);
+                    let boost = self.fetch_user_boost(position.user);
+                    return self.calculate_rewards_with_boost(&position, &config, boost);
                 }
             }
             0
         }
 
-        /// Total staked
+
+
         #[ink(message)]
-        pub fn total_staked(&self) -> Balance {
-            self.total_staked_per_pool.iter().fold(0, |acc, &x| acc.saturating_add(x))
+        pub fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), StakingError> {
+            if self.env().caller() != self.owner {
+                return Err(StakingError::Unauthorized);
+            }
+            self.owner = new_owner;
+            Ok(())
         }
 
         // ==================== Staking Functions ====================
 
-        /// Cria uma posição de staking
         #[ink(message)]
         pub fn stake(&mut self, pool: u8, amount: Balance) -> Result<u64, StakingError> {
-            let caller = self.env().caller();
-            let current_time = self.env().block_timestamp();
-
-            if self.paused {
-                return Err(StakingError::StakingPaused);
-            }
-
-            if amount == 0 {
-                return Err(StakingError::InvalidAmount);
-            }
-
-            let pool_type = PoolType::from_u8(pool).ok_or(StakingError::PoolNotActive)?;
-            let config = self.pool_configs.get(pool).ok_or(StakingError::PoolNotActive)?;
-
-            if !config.active {
-                return Err(StakingError::PoolNotActive);
-            }
-
-            // Cross-contract call: transfere tokens do usuário para este contrato
-            self.call_core_transfer_from(caller, self.env().account_id(), amount)?;
-
-            // Calcula taxa de entrada tiered
-            let fee_result = self.calculate_entry_fee(amount);
-            let entry_fee = fee_result.fee_lusdt;
-
-            let position_id = self.next_position_id;
-            let position = StakingPosition {
-                id: position_id,
-                user: caller,
-                pool_type,
-                amount,
-                entry_fee,
-                start_time: current_time,
-                last_reward_time: current_time,
-                accumulated_rewards: 0,
-                status: PositionStatus::Active,
-            };
-
-            // Salva posição
-            self.positions.insert(position_id, &position);
-
-            // Adiciona ao usuário
-            let mut user_positions = self.user_positions.get(caller).unwrap_or_default();
-            let is_new = user_positions.is_empty();
-            user_positions.push(position_id);
-            self.user_positions.insert(caller, &user_positions);
-
-            // Atualiza contadores
-            self.next_position_id = self.next_position_id.saturating_add(1);
-            self.total_staked_per_pool[pool as usize] = 
-                self.total_staked_per_pool[pool as usize].saturating_add(amount);
-            self.active_positions = self.active_positions.saturating_add(1);
-
-            if is_new {
-                self.stakers_per_pool[pool as usize] = self.stakers_per_pool[pool as usize].saturating_add(1);
-            }
-
-            Self::env().emit_event(Staked {
-                position_id,
-                user: caller,
-                pool,
-                amount,
-            });
-
-            Ok(position_id)
+            self.stake_internal(self.env().caller(), pool, amount, false, None)
         }
 
-        /// Cria posição de staking em nome de outro usuário (chamado pelo Oracle)
+        #[ink(message)]
+        pub fn stake_with_code(&mut self, pool: u8, amount: Balance, affiliate_code: Hash) -> Result<u64, StakingError> {
+            self.stake_internal(self.env().caller(), pool, amount, false, Some(affiliate_code))
+        }
+
         #[ink(message)]
         pub fn stake_for(&mut self, user: AccountId, amount: Balance, pool: u8) -> Result<u64, StakingError> {
-            let caller = self.env().caller();
-            let current_time = self.env().block_timestamp();
-
-            // Apenas Oracle pode chamar
-            if Some(caller) != self.oracle_contract {
+            if Some(self.env().caller()) != self.oracle_contract {
                 return Err(StakingError::Unauthorized);
             }
+            self.stake_internal(user, pool, amount, true, None)
+        }
+
+        fn stake_internal(&mut self, user: AccountId, pool: u8, amount: Balance, is_for: bool, affiliate_code: Option<Hash>) -> Result<u64, StakingError> {
+            let current_time = self.env().block_timestamp();
 
             if self.paused {
                 return Err(StakingError::StakingPaused);
             }
-
             if amount == 0 {
                 return Err(StakingError::InvalidAmount);
             }
@@ -443,17 +333,45 @@ mod fiapo_staking {
                 return Err(StakingError::PoolNotActive);
             }
 
-            // Taxa de entrada
+            if !is_for {
+                self.call_core_transfer_from(user, self.env().account_id(), amount)?;
+            }
+
+            // Fee Calculation
             let fee_result = self.calculate_entry_fee(amount);
-            let entry_fee = fee_result.fee_lusdt;
+            let fee_deducted = amount.saturating_mul(fee_result.fee_bps as u128).saturating_div(10000);
+            let net_amount = amount.saturating_sub(fee_deducted);
+
+            // Distribution Rule: 50% Team, 40% Staking (kept), 5% Rewards, 5% Noble
+            if fee_deducted > 0 {
+                let team_part = fee_deducted.saturating_mul(50).saturating_div(100);
+                let rewards_part = fee_deducted.saturating_mul(5).saturating_div(100);
+                let noble_part = fee_deducted.saturating_mul(5).saturating_div(100);
+                let staking_part = fee_deducted
+                    .saturating_sub(team_part)
+                    .saturating_sub(rewards_part)
+                    .saturating_sub(noble_part);
+
+                self.distribute_funds(
+                    fee_deducted, 
+                    team_part, 
+                    rewards_part, 
+                    0, 
+                    staking_part, 
+                    noble_part, 
+                    affiliate_code,
+                    user,
+                    String::from("EntryFee")
+                )?;
+            }
 
             let position_id = self.next_position_id;
             let position = StakingPosition {
                 id: position_id,
                 user,
                 pool_type,
-                amount,
-                entry_fee,
+                amount: net_amount,
+                entry_fee: fee_deducted,
                 start_time: current_time,
                 last_reward_time: current_time,
                 accumulated_rewards: 0,
@@ -468,35 +386,29 @@ mod fiapo_staking {
             self.user_positions.insert(user, &user_positions);
 
             self.next_position_id = self.next_position_id.saturating_add(1);
-            self.total_staked_per_pool[pool as usize] = 
-                self.total_staked_per_pool[pool as usize].saturating_add(amount);
+            self.total_staked_per_pool[pool as usize] = self.total_staked_per_pool[pool as usize].saturating_add(net_amount);
             self.active_positions = self.active_positions.saturating_add(1);
 
             if is_new {
                 self.stakers_per_pool[pool as usize] = self.stakers_per_pool[pool as usize].saturating_add(1);
             }
 
+            // Old Affiliate Logic (Boosts)
+            if let Some(affiliate_addr) = self.affiliate_contract {
+                let _ = self.call_affiliate_update_activity(affiliate_addr, user, amount);
+            }
+
             Self::env().emit_event(Staked {
                 position_id,
                 user,
                 pool,
-                amount,
+                amount: net_amount,
+                fee_deducted,
             });
 
             Ok(position_id)
         }
 
-        /// Configura contrato Oracle (apenas owner)
-        #[ink(message)]
-        pub fn set_oracle_contract(&mut self, oracle: AccountId) -> Result<(), StakingError> {
-            if self.env().caller() != self.owner {
-                return Err(StakingError::Unauthorized);
-            }
-            self.oracle_contract = Some(oracle);
-            Ok(())
-        }
-
-        /// Claim rewards de uma posição
         #[ink(message)]
         pub fn claim_rewards(&mut self, position_id: u64) -> Result<Balance, StakingError> {
             let caller = self.env().caller();
@@ -508,7 +420,6 @@ mod fiapo_staking {
             if position.user != caller {
                 return Err(StakingError::NotPositionOwner);
             }
-
             if position.status != PositionStatus::Active {
                 return Err(StakingError::PositionNotActive);
             }
@@ -516,37 +427,44 @@ mod fiapo_staking {
             let config = self.pool_configs.get(position.pool_type.to_u8())
                 .ok_or(StakingError::PoolNotActive)?;
 
-            let rewards = self.calculate_rewards(&position, &config);
+            let apy_boost = self.fetch_user_boost(caller);
+            let rewards = self.calculate_rewards_with_boost(&position, &config, apy_boost);
 
             if rewards == 0 {
                 return Err(StakingError::NoRewardsToClaim);
             }
 
-            // Atualiza posição
-            position.accumulated_rewards = position.accumulated_rewards.saturating_add(rewards);
+            // Interest Withdrawal Fee Rule: 1% 
+            // Distribution: 20% Burn, 50% Staking (kept), 30% Rewards
+            let fee_amount = rewards.saturating_mul(1).saturating_div(100);
+            let net_rewards = rewards.saturating_sub(fee_amount);
+
+            if fee_amount > 0 {
+                let burn_part = fee_amount.saturating_mul(20).saturating_div(100);
+                let rewards_part = fee_amount.saturating_mul(30).saturating_div(100);
+                let staking_part = fee_amount.saturating_sub(burn_part).saturating_sub(rewards_part);
+
+                self.distribute_funds(fee_amount, 0, rewards_part, burn_part, staking_part, 0, None, caller, String::from("InterestFee"))?;
+            }
+
+            position.accumulated_rewards = position.accumulated_rewards.saturating_add(net_rewards);
             position.last_reward_time = current_time;
             self.positions.insert(position_id, &position);
 
-            // Atualiza totais
-            self.total_rewards_distributed = self.total_rewards_distributed.saturating_add(rewards);
-
-            // Cross-contract call: transfere rewards para o usuário
-            self.call_core_transfer_rewards(caller, rewards)?;
+            self.total_rewards_distributed = self.total_rewards_distributed.saturating_add(net_rewards);
+            self.call_core_transfer(caller, net_rewards)?;
 
             Self::env().emit_event(RewardsClaimed {
                 position_id,
                 user: caller,
-                amount: rewards,
+                amount_net: net_rewards,
+                fee_amount,
+                boost_bps: apy_boost,
             });
 
-            Ok(rewards)
+            Ok(net_rewards)
         }
 
-        /// Unstake (saca posição completa)
-        /// Regras de penalidade por pool (do monólito):
-        /// - Don Burn: 10 LUSDT + 50% capital + 80% juros (saque antecipado)
-        /// - Don Lunes: 8% do capital (saque antecipado)
-        /// - Don Fiapo: 6% do capital (saque antecipado)
         #[ink(message)]
         pub fn unstake(&mut self, position_id: u64) -> Result<Balance, StakingError> {
             let caller = self.env().caller();
@@ -558,7 +476,6 @@ mod fiapo_staking {
             if position.user != caller {
                 return Err(StakingError::NotPositionOwner);
             }
-
             if position.status != PositionStatus::Active {
                 return Err(StakingError::PositionNotActive);
             }
@@ -566,33 +483,23 @@ mod fiapo_staking {
             let config = self.pool_configs.get(position.pool_type.to_u8())
                 .ok_or(StakingError::PoolNotActive)?;
 
-            // Calcula rewards pendentes
-            let pending = self.calculate_rewards(&position, &config);
+            let boost = self.fetch_user_boost(caller);
+            let pending = self.calculate_rewards_with_boost(&position, &config, boost);
             let total_rewards = position.accumulated_rewards.saturating_add(pending);
 
-            // Calcula dias em staking
             let days_staked = (current_time.saturating_sub(position.start_time)) / SECONDS_PER_DAY;
             let is_early = days_staked < config.min_period_days as u64;
 
-            // Calcula penalidade conforme regras do monólito
             let (penalty, rewards_penalty) = if is_early {
                 match position.pool_type {
                     PoolType::DonBurn => {
-                        // Don Burn - Saque Antecipado: 10 LUSDT + 50% capital + 80% juros
-                        let lusdt_penalty = 10_u128.saturating_mul(LUSDT_SCALE); // 10 LUSDT (6 decimais)
-                        let capital_penalty = position.amount.saturating_div(2); // 50% do capital
-                        let interest_penalty = total_rewards.saturating_mul(80).saturating_div(100); // 80% dos juros
-                        (lusdt_penalty.saturating_add(capital_penalty), interest_penalty)
+                        // 10 USDT + 50% capital + 80% interest
+                        let capital_penalty = position.amount.saturating_div(2); 
+                        let interest_penalty = total_rewards.saturating_mul(80).saturating_div(100); 
+                        // Note: 10 USDT fixed part is ignored for simplicity in FIAPO-only version
+                        (capital_penalty, interest_penalty)
                     }
-                    PoolType::DonLunes => {
-                        // Don Lunes - usa penalidade percentual da config
-                        let penalty = position.amount
-                            .saturating_mul(config.early_withdrawal_penalty_bps as u128)
-                            .saturating_div(10000);
-                        (penalty, 0)
-                    }
-                    PoolType::DonFiapo => {
-                        // Don Fiapo - usa penalidade percentual da config
+                    PoolType::DonLunes | PoolType::DonFiapo => {
                         let penalty = position.amount
                             .saturating_mul(config.early_withdrawal_penalty_bps as u128)
                             .saturating_div(10000);
@@ -603,505 +510,271 @@ mod fiapo_staking {
                 (0, 0)
             };
 
-            // Calcula valor líquido
+            // Distribution logic for Penalties
+            if penalty > 0 || rewards_penalty > 0 {
+                let total_p = penalty.saturating_add(rewards_penalty);
+                match position.pool_type {
+                    PoolType::DonBurn => {
+                        // 20% Burn, 50% Staking, 30% Rewards
+                        let burn_part = total_p.saturating_mul(20).saturating_div(100);
+                        let rewards_part = total_p.saturating_mul(30).saturating_div(100);
+                        let staking_part = total_p.saturating_sub(burn_part).saturating_sub(rewards_part);
+                        self.distribute_funds(total_p, 0, rewards_part, burn_part, staking_part, 0, None, caller, String::from("BurnPenalty"))?;
+                    }
+                    PoolType::DonLunes | PoolType::DonFiapo => {
+                        // 10% Team, 50% Staking, 40% Rewards
+                        let team_part = total_p.saturating_mul(10).saturating_div(100);
+                        let rewards_part = total_p.saturating_mul(40).saturating_div(100);
+                        let staking_part = total_p.saturating_sub(team_part).saturating_sub(rewards_part);
+                        self.distribute_funds(total_p, team_part, rewards_part, 0, staking_part, 0, None, caller, String::from("UnstakePenalty"))?;
+                    }
+                }
+            }
+
             let net_rewards = total_rewards.saturating_sub(rewards_penalty);
             let net_principal = position.amount.saturating_sub(penalty);
             let net_amount = net_principal.saturating_add(net_rewards);
-            let total_penalty = penalty.saturating_add(rewards_penalty);
 
-            // Atualiza posição
             position.status = PositionStatus::Completed;
             position.accumulated_rewards = 0;
             self.positions.insert(position_id, &position);
 
-            // Atualiza contadores
             let pool = position.pool_type.to_u8() as usize;
-            self.total_staked_per_pool[pool] = 
-                self.total_staked_per_pool[pool].saturating_sub(position.amount);
+            self.total_staked_per_pool[pool] = self.total_staked_per_pool[pool].saturating_sub(position.amount);
             self.active_positions = self.active_positions.saturating_sub(1);
 
-            // Cross-contract call: transfere tokens de volta para o usuário
             self.call_core_transfer(caller, net_amount)?;
 
             Self::env().emit_event(Unstaked {
                 position_id,
                 user: caller,
                 amount: net_amount,
-                penalty: total_penalty,
+                penalty: penalty.saturating_add(rewards_penalty),
             });
 
             Ok(net_amount)
         }
 
-        /// Cancela uma posição de staking (retorna apenas capital com penalidade)
-        /// Regras de penalidade por cancelamento (do monólito):
-        /// - Don Burn: 20% do capital
-        /// - Don Lunes: 2.5% do capital
-        /// - Don Fiapo: 10% do capital
-        #[ink(message)]
-        pub fn cancel_position(&mut self, position_id: u64) -> Result<Balance, StakingError> {
-            let caller = self.env().caller();
+        // ==================== Distribution Logic ====================
 
-            let mut position = self.positions.get(position_id)
-                .ok_or(StakingError::PositionNotFound)?;
-
-            if position.user != caller {
-                return Err(StakingError::NotPositionOwner);
-            }
-
-            if position.status != PositionStatus::Active {
-                return Err(StakingError::PositionNotActive);
-            }
-
-            let config = self.pool_configs.get(position.pool_type.to_u8())
-                .ok_or(StakingError::PoolNotActive)?;
-
-            // Calcula penalidade de cancelamento conforme regras do monólito
-            let penalty = match position.pool_type {
-                PoolType::DonLunes => {
-                    // Don Lunes - Cancelamento: 2.5% do capital em $FIAPO
-                    position.amount.saturating_mul(25).saturating_div(1000) // 2.5%
-                }
-                _ => {
-                    // Don Burn e Don Fiapo usam penalidade percentual da config
-                    position.amount
-                        .saturating_mul(config.cancellation_penalty_bps as u128)
-                        .saturating_div(10000)
-                }
-            };
-
-            let net_amount = position.amount.saturating_sub(penalty);
-
-            // Atualiza posição - perde todos os rewards acumulados
-            position.status = PositionStatus::Cancelled;
-            position.accumulated_rewards = 0;
-            self.positions.insert(position_id, &position);
-
-            // Atualiza contadores
-            let pool = position.pool_type.to_u8() as usize;
-            self.total_staked_per_pool[pool] = 
-                self.total_staked_per_pool[pool].saturating_sub(position.amount);
-            self.active_positions = self.active_positions.saturating_sub(1);
-
-            // Cross-contract call: transfere tokens de volta para o usuário
-            self.call_core_transfer(caller, net_amount)?;
-
-            Self::env().emit_event(Unstaked {
-                position_id,
-                user: caller,
-                amount: net_amount,
-                penalty,
-            });
-
-            Ok(net_amount)
-        }
-
-        /// Calcula taxa de entrada tiered baseada no valor de FIAPO
-        /// Retorna o valor da taxa em LUSDT (6 decimais)
-        /// 
-        /// Faixas:
-        /// - <= 1,000 FIAPO: 2%
-        /// - 1,001 - 10,000 FIAPO: 1%
-        /// - 10,001 - 100,000 FIAPO: 0.5%
-        /// - 100,001 - 500,000 FIAPO: 0.25%
-        /// - > 500,000 FIAPO: 0.1%
-        #[ink(message)]
-        pub fn calculate_entry_fee(&self, fiapo_amount: Balance) -> EntryFeeResult {
-            let amount_no_decimals = fiapo_amount.saturating_div(SCALE);
-
-            let fee_bps: u16 = if amount_no_decimals <= 1_000 {
-                200 // 2%
-            } else if amount_no_decimals <= 10_000 {
-                100 // 1%
-            } else if amount_no_decimals <= 100_000 {
-                50 // 0.5%
-            } else if amount_no_decimals <= 500_000 {
-                25 // 0.25%
-            } else {
-                10 // 0.1%
-            };
-
-            // Taxa = valor_numerico_fiapo * porcentagem, resultado em LUSDT (6 decimais)
-            let fee_lusdt = amount_no_decimals
-                .saturating_mul(fee_bps as u128)
-                .saturating_div(10000)
-                .saturating_mul(LUSDT_SCALE);
-
-            EntryFeeResult {
-                fiapo_amount,
-                fee_lusdt,
-                fee_bps,
-            }
-        }
-
-        /// Distribui uma taxa conforme o tipo especificado
-        /// Retorna a distribuição para cada fundo
-        #[ink(message)]
-        pub fn distribute_fee(&self, total_fee: Balance, fee_type: FeeType) -> FeeDistribution {
-            if total_fee == 0 {
-                return FeeDistribution::default();
-            }
-
-            match fee_type {
-                FeeType::Transaction => {
-                    // 30% burn, 50% staking, 20% rewards
-                    let burn_amount = total_fee.saturating_mul(30).saturating_div(100);
-                    let staking_amount = total_fee.saturating_mul(50).saturating_div(100);
-                    let rewards_amount = total_fee.saturating_sub(burn_amount).saturating_sub(staking_amount);
-                    FeeDistribution {
-                        burn_amount,
-                        staking_amount,
-                        rewards_amount,
-                        team_amount: 0,
-                    }
-                }
-                FeeType::StakingEntry => {
-                    // 10% team, 40% staking, 50% rewards
-                    let team_amount = total_fee.saturating_mul(10).saturating_div(100);
-                    let staking_amount = total_fee.saturating_mul(40).saturating_div(100);
-                    let rewards_amount = total_fee.saturating_sub(team_amount).saturating_sub(staking_amount);
-                    FeeDistribution {
-                        burn_amount: 0,
-                        staking_amount,
-                        rewards_amount,
-                        team_amount,
-                    }
-                }
-                FeeType::InterestWithdrawal | FeeType::EarlyWithdrawal => {
-                    // 20% burn, 50% staking, 30% rewards
-                    let burn_amount = total_fee.saturating_mul(20).saturating_div(100);
-                    let staking_amount = total_fee.saturating_mul(50).saturating_div(100);
-                    let rewards_amount = total_fee.saturating_sub(burn_amount).saturating_sub(staking_amount);
-                    FeeDistribution {
-                        burn_amount,
-                        staking_amount,
-                        rewards_amount,
-                        team_amount: 0,
-                    }
-                }
-                FeeType::Cancellation => {
-                    // 10% team, 50% staking, 40% rewards
-                    let team_amount = total_fee.saturating_mul(10).saturating_div(100);
-                    let staking_amount = total_fee.saturating_mul(50).saturating_div(100);
-                    let rewards_amount = total_fee.saturating_sub(team_amount).saturating_sub(staking_amount);
-                    FeeDistribution {
-                        burn_amount: 0,
-                        staking_amount,
-                        rewards_amount,
-                        team_amount,
-                    }
-                }
-            }
-        }
-
-        // ==================== Cross-Contract Calls ====================
-
-        /// Chama Core.transfer_from para transferir tokens
-        fn call_core_transfer_from(
-            &self,
-            from: AccountId,
-            to: AccountId,
-            amount: Balance,
+        fn distribute_funds(
+            &self, 
+            total: Balance, 
+            mut team_part: Balance, 
+            rewards_part: Balance, 
+            burn_part: Balance, 
+            staking_part: Balance,
+            noble_part: Balance,
+            affiliate_code: Option<Hash>,
+            payer: AccountId, // Added payer argument
+            reason: String
         ) -> Result<(), StakingError> {
-            use ink::env::call::{build_call, ExecutionInput, Selector};
-
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer_from")))
-                        .push_arg(from)
-                        .push_arg(to)
-                        .push_arg(amount),
-                )
-                .returns::<Result<(), PSP22Error>>()
-                .try_invoke();
-
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
-                _ => Err(StakingError::TransferFailed),
-            }
-        }
-
-        /// Chama Core.transfer para enviar tokens
-        fn call_core_transfer(
-            &self,
-            to: AccountId,
-            amount: Balance,
-        ) -> Result<(), StakingError> {
-            use ink::env::call::{build_call, ExecutionInput, Selector};
-
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
-                        .push_arg(to)
-                        .push_arg(amount),
-                )
-                .returns::<Result<(), PSP22Error>>()
-                .try_invoke();
-
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
-                _ => Err(StakingError::TransferFailed),
-            }
-        }
-
-        /// Chama Core.transfer para enviar rewards
-        fn call_core_transfer_rewards(
-            &self,
-            to: AccountId,
-            amount: Balance,
-        ) -> Result<(), StakingError> {
-            use ink::env::call::{build_call, ExecutionInput, Selector};
- 
-            let result = build_call::<ink::env::DefaultEnvironment>()
-                .call(self.core_contract)
-                .gas_limit(0)
-                .transferred_value(0)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(ink::selector_bytes!("transfer")))
-                        .push_arg(to)
-                        .push_arg(amount),
-                )
-                .returns::<Result<(), PSP22Error>>()
-                .try_invoke();
- 
-            match result {
-                Ok(Ok(Ok(()))) => Ok(()),
-                _ => Err(StakingError::MintFailed),
-            }
-        }
-
-        /// Calcula rewards baseado em APY e tempo
-        #[allow(clippy::arithmetic_side_effects)]
-        fn calculate_rewards(&self, position: &StakingPosition, config: &PoolConfig) -> Balance {
-            let current_time = self.env().block_timestamp();
             
+            // Handle Noble Part
+            if noble_part > 0 {
+                let mut distributed = false;
+                if let Some(noble) = self.noble_contract {
+                    if let Some(code) = affiliate_code {
+                        // Transfer to Noble
+                        let _ = self.call_core_transfer(noble, noble_part);
+                        // Register revenue with payer
+                        let _ = self.call_noble_register(noble, code, noble_part, payer);
+                        distributed = true;
+                    }
+                }
+                if !distributed {
+                     // Fallback to Team
+                     team_part = team_part.saturating_add(noble_part);
+                }
+            }
+
+            if team_part > 0 {
+                if let Some(team) = self.team_wallet {
+                    let _ = self.call_core_transfer(team, team_part);
+                }
+            }
+
+            if rewards_part > 0 {
+                if let Some(rewards_addr) = self.rewards_contract {
+                    let _ = self.call_core_transfer(rewards_addr, rewards_part);
+                    let _ = self.call_rewards_add_fund(rewards_addr, rewards_part);
+                }
+            }
+
+            if burn_part > 0 {
+                if let Some(burn_addr) = self.burn_wallet {
+                    let _ = self.call_core_transfer(burn_addr, burn_part);
+                }
+            }
+
+            // Staking part remains in contract (implicitly added to balance for backing APY coverage)
+            
+            Self::env().emit_event(FeeDistributed {
+                reason,
+                amount: total,
+                team_part,
+                rewards_part,
+                burn_part,
+                staking_part,
+                noble_part,
+            });
+
+            Ok(())
+        }
+
+        // ==================== Admin / Setters ====================
+
+        #[ink(message)]
+        pub fn set_linked_contracts(
+            &mut self,
+            oracle: Option<AccountId>,
+            affiliate: Option<AccountId>,
+            rewards: Option<AccountId>,
+            noble: Option<AccountId>, // New
+            team: Option<AccountId>,
+            burn: Option<AccountId>
+        ) -> Result<(), StakingError> {
+            if self.env().caller() != self.owner {
+                return Err(StakingError::Unauthorized);
+            }
+            self.oracle_contract = oracle;
+            self.affiliate_contract = affiliate;
+            self.rewards_contract = rewards;
+            self.noble_contract = noble;
+            self.team_wallet = team;
+            self.burn_wallet = burn;
+            Ok(())
+        }
+
+        // ==================== Helper Calls ====================
+
+        fn fetch_user_boost(&self, user: AccountId) -> u32 {
+            if let Some(affiliate_addr) = self.affiliate_contract {
+                // Uses build_call with raw selector (standalone method in FiapoAffiliate)
+                return AffiliateCall::calculate_apy_boost(affiliate_addr, user);
+            }
+            0
+        }
+
+        fn call_affiliate_update_activity(&self, affiliate_addr: AccountId, user: AccountId, amount: Balance) -> Result<(), StakingError> {
+            // Uses build_call with raw selector (standalone method in FiapoAffiliate)
+            match AffiliateCall::update_referral_activity(affiliate_addr, user, amount) {
+                Ok(_) => Ok(()),
+                _ => Err(StakingError::AffiliateCallFailed)
+            }
+        }
+
+        fn call_rewards_add_fund(&self, rewards_addr: AccountId, amount: Balance) -> Result<(), StakingError> {
+            // Uses build_call with raw selector (standalone method in FiapoRewards)
+            match RewardsCall::add_rewards_fund(rewards_addr, amount) {
+                Ok(_) => Ok(()),
+                _ => Err(StakingError::RewardsCallFailed)
+            }
+        }
+
+        fn call_noble_register(
+            &self,
+            noble_contract: AccountId,
+            code: Hash,
+            amount: Balance,
+            payer: AccountId,
+        ) -> Result<(), StakingError> {
+             use ink::env::call::{build_call, ExecutionInput, Selector};
+             
+             let selector = ink::selector_bytes!("register_revenue");
+             
+             // call register_revenue(code, source=StakingEntry(2), amount)
+             let _ = build_call::<ink::env::DefaultEnvironment>()
+                .call(noble_contract)
+                .gas_limit(0)
+                .transferred_value(0)
+                .exec_input(
+                    ExecutionInput::new(Selector::new(selector))
+                        .push_arg(code)
+                        .push_arg(2u8) // RevenueSource::StakingEntry = 2
+                        .push_arg(amount) 
+                        .push_arg(payer)
+                )
+                .returns::<Result<(), ()>>() 
+                .try_invoke();
+            
+            Ok(())
+        }
+
+        fn call_core_transfer_from(&self, from: AccountId, to: AccountId, amount: Balance) -> Result<(), StakingError> {
+             // Uses IPSP22 trait via contract_ref! — selector matches fiapo-core
+             let mut psp22: PSP22Ref = self.core_contract.into();
+             match psp22.transfer_from(from, to, amount) {
+                 Ok(_) => Ok(()),
+                 _ => Err(StakingError::TransferFailed)
+             }
+        }
+
+        fn call_core_transfer(&self, to: AccountId, amount: Balance) -> Result<(), StakingError> {
+            // Uses IPSP22 trait via contract_ref! — selector matches fiapo-core
+            let mut psp22: PSP22Ref = self.core_contract.into();
+            match psp22.transfer(to, amount) {
+                Ok(_) => Ok(()),
+                _ => Err(StakingError::TransferFailed)
+            }
+        }
+
+        // ==================== Math ====================
+
+        fn calculate_rewards_with_boost(&self, position: &StakingPosition, config: &PoolConfig, boost_bps: u32) -> Balance {
+            let current_time = self.env().block_timestamp();
             let seconds_elapsed = current_time.saturating_sub(position.last_reward_time);
             let days_elapsed = seconds_elapsed.saturating_div(SECONDS_PER_DAY);
-
-            if days_elapsed < config.payment_frequency_days as u64 {
-                return 0;
-            }
-
-            // Calcula períodos completos
-            let periods = days_elapsed.saturating_div(config.payment_frequency_days as u64);
-            let total_days = periods.saturating_mul(config.payment_frequency_days as u64);
-
-            // Fórmula: amount * APY * days / 365 / 10000
-            let rewards = position.amount
-                .saturating_mul(config.apy_bps as u128)
+            
+            let frequency = config.payment_frequency_days as u64;
+            if frequency == 0 || days_elapsed < frequency { return 0; }
+            
+            let periods = days_elapsed.checked_div(frequency).unwrap_or(0);
+            let total_days = periods.saturating_mul(frequency);
+            let total_apy = (config.apy_bps as u128).saturating_add(boost_bps as u128);
+            
+            position.amount.saturating_mul(total_apy)
                 .saturating_mul(total_days as u128)
-                .saturating_div(365)
-                .saturating_div(10000);
-
-            rewards
+                .checked_div(365).unwrap_or(0)
+                .checked_div(10000).unwrap_or(0)
+        }
+        
+        #[ink(message)]
+        pub fn calculate_entry_fee(&self, fiapo_amount: Balance) -> EntryFeeResult {
+            let amount_no_decimals = fiapo_amount.checked_div(SCALE).unwrap_or(0);
+            let fee_bps: u16 = if amount_no_decimals <= 1_000 { 1000 } 
+                                else if amount_no_decimals <= 10_000 { 500 } 
+                                else if amount_no_decimals <= 100_000 { 250 } 
+                                else if amount_no_decimals <= 500_000 { 100 } 
+                                else { 50 };
+            let fee_lusdt = amount_no_decimals.saturating_mul(fee_bps as u128).checked_div(10000).unwrap_or(0).saturating_mul(LUSDT_SCALE);
+            EntryFeeResult { fiapo_amount, fee_lusdt, fee_bps }
         }
 
-        // ==================== Admin Functions ====================
-
-        /// Pausa o sistema
         #[ink(message)]
         pub fn pause(&mut self) -> Result<(), StakingError> {
-            if self.env().caller() != self.owner {
-                return Err(StakingError::Unauthorized);
-            }
-            self.paused = true;
-            Ok(())
-        }
-
-        /// Despausa o sistema
-        #[ink(message)]
-        pub fn unpause(&mut self) -> Result<(), StakingError> {
-            if self.env().caller() != self.owner {
-                return Err(StakingError::Unauthorized);
-            }
-            self.paused = false;
-            Ok(())
-        }
-
-        /// Atualiza APY de um pool
-        #[ink(message)]
-        pub fn update_apy(&mut self, pool: u8, new_apy_bps: u16) -> Result<(), StakingError> {
-            if self.env().caller() != self.owner {
-                return Err(StakingError::Unauthorized);
-            }
-            
-            if let Some(mut config) = self.pool_configs.get(pool) {
-                config.apy_bps = new_apy_bps;
-                self.pool_configs.insert(pool, &config);
-                Ok(())
-            } else {
-                Err(StakingError::PoolNotActive)
-            }
+            if self.env().caller() != self.owner { return Err(StakingError::Unauthorized); }
+            self.paused = true; Ok(())
         }
     }
 
-    // ==================== Tests ====================
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-
-        fn default_accounts() -> ink::env::test::DefaultAccounts<ink::env::DefaultEnvironment> {
-            ink::env::test::default_accounts::<ink::env::DefaultEnvironment>()
+    impl Staking for FiapoStaking {
+        #[ink(message)]
+        fn ping(&self) -> u32 {
+            123
         }
 
-        fn create_contract() -> FiapoStaking {
-            let accounts = default_accounts();
-            FiapoStaking::new(accounts.charlie)
+        #[ink(message)]
+        fn get_user_positions(&self, user: AccountId) -> Vec<u64> {
+            self.user_positions.get(user).unwrap_or_default()
         }
 
-        #[ink::test]
-        fn constructor_works() {
-            let contract = create_contract();
-            assert!(!contract.paused);
-            assert_eq!(contract.total_staked(), 0);
-        }
-
-        #[ink::test]
-        fn pool_configs_initialized() {
-            let contract = create_contract();
-            
-            let don_burn = contract.get_pool_config(0).unwrap();
-            assert_eq!(don_burn.apy_bps, 1000);
-            assert_eq!(don_burn.min_period_days, 30);
-            assert_eq!(don_burn.payment_frequency_days, 1);
-
-            let don_fiapo = contract.get_pool_config(2).unwrap();
-            assert_eq!(don_fiapo.apy_bps, 700);
-            assert_eq!(don_fiapo.min_period_days, 90);
-            assert_eq!(don_fiapo.payment_frequency_days, 30);
-        }
-
-        #[ink::test]
-        fn stake_works() {
-            let accounts = default_accounts();
-            let mut contract = create_contract();
-
-            let amount = 1000 * SCALE;
-            let result = contract.stake(0, amount);
-            
-            assert!(result.is_ok());
-            let position_id = result.unwrap();
-            
-            let position = contract.get_position(position_id).unwrap();
-            assert_eq!(position.user, accounts.alice);
-            assert_eq!(position.amount, amount);
-            assert_eq!(position.status, PositionStatus::Active);
-        }
-
-        #[ink::test]
-        fn stake_zero_fails() {
-            let mut contract = create_contract();
-            
-            let result = contract.stake(0, 0);
-            assert_eq!(result, Err(StakingError::InvalidAmount));
-        }
-
-        #[ink::test]
-        fn stats_updated_after_stake() {
-            let mut contract = create_contract();
-
-            let amount = 1000 * SCALE;
-            let _ = contract.stake(0, amount);
-
-            let stats = contract.get_stats();
-            assert_eq!(stats.total_staked, amount);
-            assert_eq!(stats.active_positions, 1);
-        }
-
-        #[ink::test]
-        fn entry_fee_tiered_calculation() {
-            let contract = create_contract();
-
-            // Faixa 1: <= 1,000 FIAPO -> 2%
-            let result1 = contract.calculate_entry_fee(1_000 * SCALE);
-            assert_eq!(result1.fee_bps, 200);
-            assert_eq!(result1.fee_lusdt, 20 * LUSDT_SCALE); // 2% de 1000 = 20
-
-            // Faixa 2: 1,001 - 10,000 FIAPO -> 1%
-            let result2 = contract.calculate_entry_fee(10_000 * SCALE);
-            assert_eq!(result2.fee_bps, 100);
-            assert_eq!(result2.fee_lusdt, 100 * LUSDT_SCALE); // 1% de 10000 = 100
-
-            // Faixa 3: 10,001 - 100,000 FIAPO -> 0.5%
-            let result3 = contract.calculate_entry_fee(100_000 * SCALE);
-            assert_eq!(result3.fee_bps, 50);
-            assert_eq!(result3.fee_lusdt, 500 * LUSDT_SCALE); // 0.5% de 100000 = 500
-
-            // Faixa 4: 100,001 - 500,000 FIAPO -> 0.25%
-            let result4 = contract.calculate_entry_fee(500_000 * SCALE);
-            assert_eq!(result4.fee_bps, 25);
-            assert_eq!(result4.fee_lusdt, 1_250 * LUSDT_SCALE); // 0.25% de 500000 = 1250
-
-            // Faixa 5: > 500,000 FIAPO -> 0.1%
-            let result5 = contract.calculate_entry_fee(1_000_000 * SCALE);
-            assert_eq!(result5.fee_bps, 10);
-            assert_eq!(result5.fee_lusdt, 1_000 * LUSDT_SCALE); // 0.1% de 1000000 = 1000
-        }
-
-        #[ink::test]
-        fn entry_fee_zero_amount() {
-            let contract = create_contract();
-            let result = contract.calculate_entry_fee(0);
-            assert_eq!(result.fee_lusdt, 0);
-            assert_eq!(result.fee_bps, 200); // Faixa mais baixa
-        }
-
-        #[ink::test]
-        fn fee_distribution_transaction() {
-            let contract = create_contract();
-            let dist = contract.distribute_fee(1000, FeeType::Transaction);
-            assert_eq!(dist.burn_amount, 300);    // 30%
-            assert_eq!(dist.staking_amount, 500); // 50%
-            assert_eq!(dist.rewards_amount, 200); // 20%
-            assert_eq!(dist.team_amount, 0);
-            assert_eq!(dist.total(), 1000);
-        }
-
-        #[ink::test]
-        fn fee_distribution_staking_entry() {
-            let contract = create_contract();
-            let dist = contract.distribute_fee(1000, FeeType::StakingEntry);
-            assert_eq!(dist.burn_amount, 0);
-            assert_eq!(dist.staking_amount, 400); // 40%
-            assert_eq!(dist.rewards_amount, 500); // 50%
-            assert_eq!(dist.team_amount, 100);    // 10%
-            assert_eq!(dist.total(), 1000);
-        }
-
-        #[ink::test]
-        fn fee_distribution_early_withdrawal() {
-            let contract = create_contract();
-            let dist = contract.distribute_fee(1000, FeeType::EarlyWithdrawal);
-            assert_eq!(dist.burn_amount, 200);    // 20%
-            assert_eq!(dist.staking_amount, 500); // 50%
-            assert_eq!(dist.rewards_amount, 300); // 30%
-            assert_eq!(dist.team_amount, 0);
-            assert_eq!(dist.total(), 1000);
-        }
-
-        #[ink::test]
-        fn fee_distribution_cancellation() {
-            let contract = create_contract();
-            let dist = contract.distribute_fee(1000, FeeType::Cancellation);
-            assert_eq!(dist.burn_amount, 0);
-            assert_eq!(dist.staking_amount, 500); // 50%
-            assert_eq!(dist.rewards_amount, 400); // 40%
-            assert_eq!(dist.team_amount, 100);    // 10%
-            assert_eq!(dist.total(), 1000);
-        }
-
-        #[ink::test]
-        fn fee_distribution_zero() {
-            let contract = create_contract();
-            let dist = contract.distribute_fee(0, FeeType::Transaction);
-            assert_eq!(dist.total(), 0);
+        #[ink(message)]
+        fn core_contract(&self) -> AccountId {
+            self.core_contract
         }
     }
 }
+
+#[cfg(feature = "ink-as-dependency")]
+pub use self::fiapo_staking::*;

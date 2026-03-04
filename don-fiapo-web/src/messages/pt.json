@@ -1,7 +1,8 @@
 {
   "metadata": {
-    "title": "Don Fiapo Dela Manga - O Alfa dos Memecoins",
-    "description": "Ele não late — ele decreta. A blockchain agora tem uma monarquia. Junte-se ao reinado."
+    "title": "Don Fiapo De la Manga - O Alfa dos Memecoins",
+    "description": "Ele não late — ele decreta. A blockchain agora tem uma monarquia. Junte-se ao reinado.",
+    "keywords": "memecoin, criptomoeda, NFT, staking, airdrop, DeFi, Lunes, Don Fiapo, blockchain, token, ICO, jogar para ganhar, web3"
   },
   "nav": {
     "home": "Início",
@@ -23,7 +24,7 @@
   },
   "hero": {
     "badge": "O Rei da Zoeira Descentralizada",
-    "title": "Don Fiapo Dela Manga",
+    "title": "Don Fiapo De la Manga",
     "subtitle": "O Alfa dos Memecoins",
     "description": "Ele não late — ele decreta. A blockchain agora tem uma monarquia. Junte-se ao reinado.",
     "cta": {
@@ -117,18 +118,18 @@
     "subtitle": "Ou você é um plebeu do FUD, ou é um Fiapeiro Real.",
     "buy": "Comprar $FIAPO",
     "whitepaper": "Baixar Whitepaper",
-    "telegram": "Entrar no Telegram/Discord",
+    "telegram": "Entrar no Telegram",
     "social": "Seguir o Don"
   },
   "footer": {
-    "tagline": "Don Fiapo Dela Manga é um meme, mas é sério.",
+    "tagline": "Don Fiapo De la Manga é um meme, mas é sério.",
     "links": {
       "whitepaper": "Whitepaper",
       "faq": "FAQ",
       "contract": "Contrato Lunes",
       "contact": "Contato da Corte"
     },
-    "copyright": "© 2025 Don Fiapo Dela Manga. Todos os direitos reservados."
+    "copyright": "© 2025 Don Fiapo De la Manga. Todos os direitos reservados."
   },
   "staking": {
     "title": "Staking Real",
@@ -253,17 +254,16 @@
     "seeAll": "Ver Todos"
   },
   "modal": {
-    "title": "Decreto Real: Negócios da Família",
-    "description": "ENTRE PARA A FAMÍLIA REAL",
-    "desc": "O Don reclamou o trono. Garanta seu status de nobre na organização e comece a minerar GRÁTIS mintando seu NFT antes que os civis cheguem.",
-    "cta": "Entrar na Família & Minerar",
-    "successTitle": "Bem-vindo à Família Real!",
-    "successDesc": "Você agora é um nobre da organização.",
-    "telegramTitle": "O Círculo Interno Real",
-    "telegramBtn": "Entrar na Comunidade",
-    "termsPrefix": "Eu concordo com os",
-    "termsLink": "Termos Reais de Consentimento",
-    "privacyFooter": "Ao entrar, você jura lealdade à Família."
+    "badge": "Decreto Real",
+    "headline": "MILHÕES EM AIRDROPS ESPERAM POR VOCÊ!",
+    "body": "Por ordem de Sua Majestade Don Fiapo, os portões do Tesouro Real estão abertos! Estamos distribuindo MILHÕES DE DÓLARES em valor para nossa comunidade leal. Garanta seu status de nobre no Reino e reivindique sua parte do Airdrop de $FIAPO antes que os civis cheguem.",
+    "signature": "Sua Majestade Don Fiapo De la Manga, Soberano do Reino",
+    "stat1": "Pool de Airdrop $FIAPO",
+    "stat2": "Grátis para Resgatar",
+    "stat3": "Bônus de Indicação",
+    "cta": "REIVINDIQUE SEU AIRDROP REAL AGORA",
+    "telegramBtn": "Entrar no Círculo Interno Real",
+    "privacyFooter": "Por decreto da Coroa, todos os súditos leais receberão sua parte."
   },
   "Games": {
     "title": "Arena Real",

@@ -32,7 +32,7 @@ export function WalletButton() {
   if (!lunesConnected) {
     return (
       <>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => setIsModalOpen(true)} data-wallet-connect="true">
           <Wallet className="w-4 h-4 mr-2" />
           {t('connect')}
         </Button>

@@ -75,6 +75,36 @@ const nextConfig: NextConfig = {
     ],
     qualities: [75, 90],
   },
+  async headers() {
+    const allowedOrigins = [
+      process.env.ADMIN_URL || "http://localhost:3002",
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    ].filter(Boolean).join(", ");
+
+    return [
+      {
+        // Security headers for all routes
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+        ],
+      },
+      {
+        // CORS headers for API routes
+        source: "/api/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Credentials", value: "true" },
+          { key: "Access-Control-Allow-Origin", value: allowedOrigins },
+          { key: "Access-Control-Allow-Methods", value: "GET,DELETE,PATCH,POST,PUT,OPTIONS" },
+          { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-admin-key" },
+        ],
+      },
+    ]
+  }
 };
 
 export default withNextIntl(nextConfig);

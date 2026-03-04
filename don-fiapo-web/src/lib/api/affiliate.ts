@@ -4,7 +4,10 @@
  * Handles communication with the Don Fiapo affiliate system
  */
 
-import { initializeContract, getGasLimit, parseNum, parseBigInt } from './contract';
+import { getGasLimit, parseNum, parseBigInt } from './contract';
+import { API_CONFIG } from './config';
+import AFFILIATE_ABI from '../contracts/abis/affiliate.json';
+import type { ContractPromise } from '@polkadot/api-contract';
 
 // ============ Types ============
 
@@ -48,118 +51,173 @@ export interface AffiliateLeaderboard {
   tier: 'Bronze' | 'Silver' | 'Gold';
 }
 
-// ============ Mock Data ============
+// ============ Default empty states (contract not yet deployed) ============
 
-const MOCK_AFFILIATE_INFO: AffiliateInfo = {
-  referralCode: 'DON-FIAPO-ABC123',
-  referredBy: null,
-  totalReferrals: 15,
-  directReferrals: 12,
-  secondLevelReferrals: 3,
-  totalEarnings: BigInt(25000) * BigInt(10 ** 8),
-  pendingRewards: BigInt(1500) * BigInt(10 ** 8),
-  currentBoostBps: 150, // 1.5% bonus
-  tier: 'Silver',
-  isActive: true,
-  registrationDate: Date.now() - 30 * 24 * 60 * 60 * 1000,
+function emptyAffiliateInfo(address: string): AffiliateInfo {
+  return {
+    referralCode: `REF-${address.slice(0, 8).toUpperCase()}`,
+    referredBy: null,
+    totalReferrals: 0,
+    directReferrals: 0,
+    secondLevelReferrals: 0,
+    totalEarnings: BigInt(0),
+    pendingRewards: BigInt(0),
+    currentBoostBps: 0,
+    tier: 'Bronze',
+    isActive: false,
+    registrationDate: 0,
+  };
+}
+
+const EMPTY_STATS: AffiliateStats = {
+  totalAffiliates: 0,
+  totalReferrals: 0,
+  totalRewardsDistributed: BigInt(0),
+  rewardPercentage: 7,
+  boostPerAffiliateBps: 50,
+  maxBoostBps: 500,
 };
-
-const MOCK_STATS: AffiliateStats = {
-  totalAffiliates: 1250,
-  totalReferrals: 3800,
-  totalRewardsDistributed: BigInt(500000000) * BigInt(10 ** 8),
-  rewardPercentage: 5,
-  boostPerAffiliateBps: 50, // 0.5% per referral
-  maxBoostBps: 500, // 5% max boost
-};
-
-const MOCK_REFERRALS: ReferralRecord[] = [
-  {
-    address: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
-    level: 1,
-    joinedAt: Date.now() - 20 * 24 * 60 * 60 * 1000,
-    totalStaked: BigInt(50000) * BigInt(10 ** 8),
-    rewardsGenerated: BigInt(2500) * BigInt(10 ** 8),
-    isActive: true,
-  },
-  {
-    address: '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty',
-    level: 1,
-    joinedAt: Date.now() - 15 * 24 * 60 * 60 * 1000,
-    totalStaked: BigInt(100000) * BigInt(10 ** 8),
-    rewardsGenerated: BigInt(5000) * BigInt(10 ** 8),
-    isActive: true,
-  },
-  {
-    address: '5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy',
-    level: 2,
-    joinedAt: Date.now() - 10 * 24 * 60 * 60 * 1000,
-    totalStaked: BigInt(25000) * BigInt(10 ** 8),
-    rewardsGenerated: BigInt(625) * BigInt(10 ** 8),
-    isActive: true,
-  },
-];
-
-const MOCK_LEADERBOARD: AffiliateLeaderboard[] = [
-  { rank: 1, address: '5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL', referralCount: 87, totalEarnings: BigInt(450000) * BigInt(10 ** 8), tier: 'Gold' },
-  { rank: 2, address: '5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw', referralCount: 65, totalEarnings: BigInt(320000) * BigInt(10 ** 8), tier: 'Gold' },
-  { rank: 3, address: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY', referralCount: 52, totalEarnings: BigInt(280000) * BigInt(10 ** 8), tier: 'Gold' },
-  { rank: 4, address: '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty', referralCount: 43, totalEarnings: BigInt(210000) * BigInt(10 ** 8), tier: 'Silver' },
-  { rank: 5, address: '5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy', referralCount: 38, totalEarnings: BigInt(185000) * BigInt(10 ** 8), tier: 'Silver' },
-];
 
 // ============ API Functions ============
+
+// Affiliate contract instance cache
+let affiliateContract: ContractPromise | null = null;
+let affiliateConnectionPromise: Promise<ContractPromise | null> | null = null;
+
+/**
+ * Initialize the Affiliate contract specifically
+ */
+async function initializeAffiliateContract(): Promise<ContractPromise | null> {
+  // Return cached contract
+  if (affiliateContract) return affiliateContract;
+
+  // Return existing connection promise
+  if (affiliateConnectionPromise) return affiliateConnectionPromise;
+
+  affiliateConnectionPromise = (async () => {
+    try {
+      const affiliateAddress = API_CONFIG.contracts.affiliate;
+
+      if (!affiliateAddress) {
+        console.warn('[Affiliate] No affiliate contract address configured');
+        return null;
+      }
+
+      // Dynamic imports
+      const { ApiPromise, WsProvider } = await import('@polkadot/api');
+      const { ContractPromise: ContractPromiseClass } = await import('@polkadot/api-contract');
+
+      // Connect to node
+      const provider = new WsProvider(API_CONFIG.lunesRpc);
+      const api = await ApiPromise.create({ provider });
+
+      // Create contract instance with affiliate ABI and address
+      affiliateContract = new ContractPromiseClass(api, AFFILIATE_ABI as any, affiliateAddress);
+
+      console.log('[Affiliate] Connected to affiliate contract:', affiliateAddress);
+      affiliateConnectionPromise = null;
+      return affiliateContract;
+    } catch (error) {
+      console.warn('[Affiliate] Failed to connect to affiliate contract:', error);
+      affiliateConnectionPromise = null;
+      return null;
+    }
+  })();
+
+  return affiliateConnectionPromise;
+}
 
 /**
  * Get affiliate info for a specific address
  */
 export async function getAffiliateInfo(address: string): Promise<AffiliateInfo> {
   try {
-    const contract = await initializeContract();
+    const contract = await initializeAffiliateContract();
 
     if (!contract) {
-      console.log('[Affiliate] Using mock data');
-      return {
-        ...MOCK_AFFILIATE_INFO,
-        referralCode: `REF-${address.slice(0, 8).toUpperCase()}`,
-      };
+      console.info('[Affiliate] Contract not available — returning empty state');
+      return emptyAffiliateInfo(address);
     }
 
-    const { result, output } = await contract.query.getAffiliateInfo(
-      contract.address,
-      getGasLimit(contract.api),
-      address
-    );
+    // Use the actual methods from the affiliate contract ABI
+    // Methods available: get_referrals, get_referrer, calculate_apy_boost, get_stats
 
-    if (result.isOk && output) {
-      const data = output.toHuman() as any;
-      if (data) {
-        return {
-          referralCode: data.referralCode || data.referral_code || `REF-${address.slice(0, 8).toUpperCase()}`,
-          referredBy: data.referredBy || data.referred_by || null,
-          totalReferrals: parseNum(data.totalReferrals || data.total_referrals),
-          directReferrals: parseNum(data.totalReferrals), // Simplified mapping
-          secondLevelReferrals: 0,
-          totalEarnings: parseBigInt(data.totalEarnings || data.total_earnings),
-          pendingRewards: BigInt(0), // Would need separate query
-          currentBoostBps: 0,
-          tier: getTierFromReferrals(parseNum(data.totalReferrals)),
-          isActive: true,
-          registrationDate: Date.now(),
-        };
+    // Debug: log available query methods
+    const queryMethods = Object.keys(contract.query);
+    console.log('[Affiliate] Available query methods:', queryMethods);
+
+    try {
+      // Contract uses camelCase method names
+      // Available: getReferrals, getReferrer, getStats, calculateApyBoost, totalAffiliates
+
+      // Get referrals for this user
+      const referralsResult = await contract.query.getReferrals(
+        contract.address,
+        getGasLimit(contract.api),
+        address
+      );
+
+      // Get who referred this user
+      const referrerResult = await contract.query.getReferrer(
+        contract.address,
+        getGasLimit(contract.api),
+        address
+      );
+
+      // Calculate APY boost - only takes 1 argument (user address)
+      const boostResult = await contract.query.calculateApyBoost(
+        contract.address,
+        getGasLimit(contract.api),
+        address
+      );
+
+      let totalReferrals = 0;
+      let referredBy: string | null = null;
+      let boostBps = 0;
+
+      if (referralsResult.result.isOk && referralsResult.output) {
+        const referrals = referralsResult.output.toHuman() as any;
+        if (Array.isArray(referrals)) {
+          totalReferrals = referrals.length;
+        } else if (referrals?.Ok && Array.isArray(referrals.Ok)) {
+          totalReferrals = referrals.Ok.length;
+        }
       }
-    }
 
-    return {
-      ...MOCK_AFFILIATE_INFO,
-      referralCode: `REF-${address.slice(0, 8).toUpperCase()}`,
-    };
+      if (referrerResult.result.isOk && referrerResult.output) {
+        const referrer = referrerResult.output.toHuman() as any;
+        if (referrer && referrer !== 'None' && referrer.Ok) {
+          referredBy = referrer.Ok;
+        }
+      }
+
+      if (boostResult.result.isOk && boostResult.output) {
+        const boost = boostResult.output.toHuman() as any;
+        boostBps = parseNum(boost?.Ok || boost || 0);
+      }
+
+      console.log('[Affiliate] Contract data - Referrals:', totalReferrals, 'Referred by:', referredBy, 'Boost:', boostBps);
+
+      return {
+        referralCode: `REF-${address.slice(0, 8).toUpperCase()}`,
+        referredBy,
+        totalReferrals,
+        directReferrals: totalReferrals,
+        secondLevelReferrals: 0,
+        totalEarnings: BigInt(0), // Would need events or state tracking
+        pendingRewards: BigInt(0),
+        currentBoostBps: boostBps,
+        tier: getTierFromReferrals(totalReferrals),
+        isActive: true,
+        registrationDate: Date.now(),
+      };
+    } catch (queryError) {
+      console.warn('[Affiliate] Query error:', queryError);
+      return emptyAffiliateInfo(address);
+    }
   } catch (error) {
-    console.error('[Affiliate] Error fetching info:', error);
-    return {
-      ...MOCK_AFFILIATE_INFO,
-      referralCode: `REF-${address.slice(0, 8).toUpperCase()}`,
-    };
+    console.warn('[Affiliate] Error fetching info:', error);
+    return emptyAffiliateInfo(address);
   }
 }
 
@@ -167,57 +225,157 @@ export async function getAffiliateInfo(address: string): Promise<AffiliateInfo> 
  * Get affiliate system stats
  */
 export async function getAffiliateStats(): Promise<AffiliateStats> {
-  // NOTE: getAffiliateStats method doesn't exist in contract yet
-  // Using static configuration values
-  return MOCK_STATS;
+  try {
+    const contract = await initializeAffiliateContract();
+    if (!contract) return EMPTY_STATS;
+
+    // Try to read stats from contract if available
+    const queryMethods = Object.keys(contract.query);
+    if (queryMethods.includes('getStats') || queryMethods.includes('get_stats')) {
+      const method = contract.query.getStats || contract.query.get_stats;
+      const { result, output } = await method(contract.address, getGasLimit(contract.api));
+      if (result.isOk && output) {
+        return parseAffiliateStats(output.toHuman());
+      }
+    }
+    return EMPTY_STATS;
+  } catch (error) {
+    console.warn('[Affiliate] Error fetching stats:', error);
+    return EMPTY_STATS;
+  }
 }
 
 /**
  * Get list of referrals for an address
  */
-export async function getReferrals(_address: string): Promise<ReferralRecord[]> {
-  // NOTE: getDirectReferrals method doesn't exist in contract yet
-  // Using static mock data
-  return MOCK_REFERRALS;
+export async function getReferrals(address: string): Promise<ReferralRecord[]> {
+  try {
+    const contract = await initializeAffiliateContract();
+
+    if (!contract) {
+      console.info('[Affiliate] Contract not available — no referrals');
+      return [];
+    }
+
+    // Get referrals from the contract
+    const referralsResult = await contract.query.getReferrals(
+      contract.address,
+      getGasLimit(contract.api),
+      address
+    );
+
+    if (referralsResult.result.isOk && referralsResult.output) {
+      const data = referralsResult.output.toHuman() as any;
+      const referralAddresses = data?.Ok || data || [];
+
+      if (Array.isArray(referralAddresses) && referralAddresses.length > 0) {
+        console.log('[Affiliate] Found', referralAddresses.length, 'referrals from contract');
+
+        // Map the addresses to ReferralRecord format
+        // Note: Contract only returns addresses, not full activity data
+        return referralAddresses.map((addr: string, index: number) => ({
+          address: addr,
+          level: 1 as const, // All direct referrals are level 1
+          joinedAt: Date.now() - (index * 24 * 60 * 60 * 1000), // Placeholder dates
+          totalStaked: BigInt(0), // Would need getReferralActivity for this
+          rewardsGenerated: BigInt(0),
+          isActive: true,
+        }));
+      }
+
+      console.log('[Affiliate] No referrals found for this address');
+      return [];
+    }
+
+    return [];
+  } catch (error) {
+    console.warn('[Affiliate] Error fetching referrals:', error);
+    return [];
+  }
 }
 
 /**
  * Get affiliate leaderboard
  */
 export async function getAffiliateLeaderboard(limit: number = 10): Promise<AffiliateLeaderboard[]> {
-  const { getRankingByType } = await import('./ranking');
-  const ranking = await getRankingByType('Affiliates');
+  try {
+    const contract = await initializeAffiliateContract();
 
-  if (ranking && ranking.winners.length > 0) {
-    return ranking.winners.slice(0, limit).map((w, i) => ({
-      rank: i + 1,
-      address: w.address,
-      referralCount: w.affiliateCount || 0,
-      totalEarnings: w.rewardAmount || BigInt(0),
-      tier: getTierFromReferrals(w.affiliateCount || 0)
-    }));
+    if (!contract) {
+      console.info('[Affiliate] Contract not available — no leaderboard');
+      return [];
+    }
+
+    // New method: getTopAffiliates(limit)
+    // Returns Vec<(AccountId, AffiliateStats)>
+    // Method name likely converted to camelCase: getTopAffiliates
+    const getTopAffiliatesMethod = contract.query.get_top_affiliates || contract.query.getTopAffiliates;
+
+    if (!getTopAffiliatesMethod) {
+      console.warn('[Affiliate] Contract missing getTopAffiliates method. Is ABI updated?');
+      return [];
+    }
+
+    const result = await getTopAffiliatesMethod(
+      contract.address,
+      getGasLimit(contract.api),
+      limit
+    );
+
+    if (result.result.isOk && result.output) {
+      const data = result.output.toHuman() as any;
+      const entries = data?.Ok || data || [];
+
+      if (!Array.isArray(entries)) {
+        console.warn('[Affiliate] Leaderboard data is not array:', entries);
+        return [];
+      }
+
+      console.log('[Affiliate] Found', entries.length, 'leaderboard entries');
+
+      // Map contract data to UI format
+      // Entry layout: [Address, Stats]
+      return entries.map((entry: any, index: number) => {
+        // Handle tuple format from PolkadotJS
+        const address = Array.isArray(entry) ? entry[0] : entry.address || entry.AccountId;
+        const stats = Array.isArray(entry) ? entry[1] : entry.stats || entry.AffiliateStats;
+
+        return {
+          rank: index + 1,
+          address: address.toString(), // Ensure string
+          referralCount: parseNum(stats?.direct_referrals || stats?.directReferrals || 0),
+          totalEarnings: parseBigInt(stats?.total_earnings || stats?.totalEarnings || 0),
+          tier: getTierFromReferrals(parseNum(stats?.direct_referrals || stats?.directReferrals || 0)),
+        };
+      });
+    }
+
+    return [];
+  } catch (error) {
+    console.warn('[Affiliate] Error fetching leaderboard:', error);
+    return [];
   }
-
-  return MOCK_LEADERBOARD.slice(0, limit);
 }
 
+// Helpers
+// parseNum and parseBigInt are imported from ./contract
 /**
  * Check if an address is already registered as affiliate
  */
 export async function isAffiliateRegistered(address: string): Promise<boolean> {
   try {
-    const contract = await initializeContract();
+    const contract = await initializeAffiliateContract();
 
     if (!contract) {
-      return true; // Assume registered in mock mode
+      return false;
     }
 
     // Check if method exists in ABI
-    if (typeof contract.query.getAffiliateData !== 'function') {
+    if (typeof contract.query.get_affiliate_data !== 'function') {
       return true; // Assume registered if method not available
     }
 
-    const { result, output } = await contract.query.getAffiliateData(
+    const { result, output } = await contract.query.get_affiliate_data(
       contract.address,
       { gasLimit: -1 },
       address
@@ -252,15 +410,14 @@ export async function validateReferralCode(code: string): Promise<{
       return { valid: false, error: 'Invalid referral code format' };
     }
 
-    const contract = await initializeContract();
+    const contract = await initializeAffiliateContract();
 
     if (!contract) {
-      // Mock validation
-      return { valid: true, referrerAddress: cleanCode };
+      return { valid: false, error: 'Affiliate contract not available yet' };
     }
 
     // Try to find referrer by code
-    const { result, output } = await contract.query.getReferrerByCode(
+    const { result, output } = await contract.query.get_referrer_by_code(
       contract.address,
       { gasLimit: -1 },
       code
@@ -313,7 +470,7 @@ function parseAffiliateStats(data: any): AffiliateStats {
     totalAffiliates: data.totalAffiliates || data.total_affiliates || 0,
     totalReferrals: data.totalReferrals || data.total_referrals || 0,
     totalRewardsDistributed: BigInt(data.totalRewardsDistributed || data.total_rewards_distributed || 0),
-    rewardPercentage: data.rewardPercentage || data.reward_percentage || 5,
+    rewardPercentage: data.rewardPercentage || data.reward_percentage || 2.5,
     boostPerAffiliateBps: data.boostPerAffiliateBps || data.boost_per_affiliate_bps || 50,
     maxBoostBps: data.maxBoostBps || data.max_boost_bps || 500,
   };

@@ -1,5 +1,5 @@
 # 👑 Don Fiapo Whitepaper
-**Version 1.0 | January 2025**
+**Version 1.0 | January 2026**
 
 ---
 
@@ -14,7 +14,7 @@ This whitepaper outlines the technical architecture, economic model, and strateg
 ## 1. Introduction: The Problem with Existing Memecoins
 
 ### 1.1 Market Analysis
-The memecoin sector ($150B+ market cap as of 2024) is dominated by:
+The memecoin sector ($150B+ market cap as of 2025) is dominated by:
 - **Inflationary Supply Models**: Dogecoin prints indefinitely (5B/year).
 - **Zero Utility**: 90% of memecoins have no staking, governance, or revenue model.
 - **Centralized Governance**: Dev teams control multisigs with no community input.
@@ -34,23 +34,24 @@ The memecoin sector ($150B+ market cap as of 2024) is dominated by:
 ### 2.1 Supply Distribution
 | Allocation | % | Tokens | Vesting |
 |:-----------|--:|-------:|:--------|
-| **Public Sale (ICO)** | 40% | 400M | Unlocked |
-| **Staking Rewards** | 25% | 250M | 5 years linear |
-| **Team & Advisors** | 15% | 150M | 2-year cliff, 3-year vest |
-| **Treasury (DAO)** | 10% | 100M | Governance-controlled |
-| **Liquidity Provision** | 5% | 50M | Locked 1 year |
-| **Airdrop & Affiliate** | 5% | 50M | Performance-based |
+| **Pre-sale** | 25% | 150Bi | Unlocked |
+| **Staking Fund** | 51.67% | 310Bi | 5 years linear |
+| **Airdrop** | 5.08% | 30.5Bi | Performance-based |
+| **Marketing** | 3.42% | 20.5Bi | Campaign-based |
+| **Charity Donations** | 3.42% | 20.5Bi | Governance-controlled |
+| **IEO/ICO** | 10.67% | 64Bi | Unlocked |
+| **Team** | 0.75% | 4.5Bi | 2-year cliff, 3-year vest |
 
-**Total Supply**: 1,000,000,000 $FIAPO (1 Billion)  
+**Total Supply**: 600,000,000,000 $FIAPO (600 Billion)  
 **Decimals**: 8 (Lower fraction: **Paw**. 1 FIAPO = 10^8 Paws)  
-**Target Min Supply**: 100,000,000 $FIAPO (burn 90%)
+**Target Min Supply**: 100,000,000 $FIAPO (burn 99.98%)
 
 ### 2.2 Deflationary Mechanisms
 1. **NFT Evolution Burns**: Combining 2 NFTs burns both → mints 1 higher tier.
-2. **Transaction Fees**: 3% fee split:
-   - 1% → Burn
-   - 1% → Staking rewards pool
-   - 1% → Treasury
+2. **Transaction Fees**: 0.6% fee split:
+   - 30% → Burn
+   - 50% → Staking rewards pool
+   - 20% → Rewards
 3. **Governance Proposal Fees**: $100 USDT (or FIAPO equivalent) per proposal → 50% burned.
 
 ---
@@ -110,7 +111,7 @@ Users purchase NFTs (7 tiers) that passively mine $FIAPO daily:
 | 5 | Diamond Baron | 2,500 FIAPO | $2,500 |
 | 6 | Royal Crown | 7,000 FIAPO | $7,000 |
 
-**Total Mining Pool**: 250M $FIAPO over 5 years.
+**Total Mining Pool**: 360Bi $FIAPO over 5 years (from Staking Fund).
 
 ### 4.2 Evolution Mechanics
 - Burn 2x Tier N → Mint 1x Tier N+1 (probability-based).
@@ -138,7 +139,7 @@ Users purchase NFTs (7 tiers) that passively mine $FIAPO daily:
 
 ### 5.1 Revenue Streams
 1. **ICO Sales**: Initial NFT purchases (100% to treasury).
-2. **Transaction Fees**: 3% on all $FIAPO transfers.
+2. **Transaction Fees**: 0.6% on all $FIAPO transfers.
 3. **Governance Fees**: Proposal/voting payments.
 4. **Affiliate Commissions**: 10% of referrals' mining output.
 
@@ -150,27 +151,28 @@ Users purchase NFTs (7 tiers) that passively mine $FIAPO daily:
 
 ---
 
-## 6. Roadmap (2025-2026)
+## 6. Roadmap
 
-### Q1 2025: Foundation
-- ✅ Mainnet contract deployment
-- ✅ Oracle integration (Solana bridge)
-- 🔄 Security audit (CertiK/Trail of Bits)
+### Phase 1: The Coronation ✅
+- Token Launch
+- Website
+- Whitepaper
+- Memes
 
-### Q2 2025: Expansion
-- CEX listings (Gate.io, MEXC)
-- Cross-chain bridge (ETH, BSC)
-- Mobile app launch
+### Phase 2: Kingdom Conquest (Current Focus)
+- **ICO - Mining via NFTs**: Implementing the primary distribution mechanism via NFT mining power.
+- **Marketplace**: Launching the official marketplace for trading Royal NFTs.
 
-### Q3 2025: Governance
-- DAO activation (full decentralization)
-- First community-voted burn event
-- Partnership with DeFi protocols
+### Phase 3: The Meme Empire
+- **Staking**: Activation of Royal Staking pools.
+- **Community Rewards**: Distribution of incentives to active community members.
+- **New NFT Collection**: Launching the second generation of collectibles.
+- **Lunex Listing**: Official listing on Lunex Network DEX.
+- **Start of CEX Listings**: Initial centralized exchange offerings.
 
-### Q4 2025: Dominance
-- Top 50 CMC ranking
-- Real-world payment integrations
-- Don Fiapo Metaverse alpha
+### Phase 4: Global Domination
+- **Game Release**: Launching the Royal Arena games.
+- **Airdrop Distribution**: Executing the grand distribution to eligible holders.
 
 ---
 
@@ -182,7 +184,7 @@ Users purchase NFTs (7 tiers) that passively mine $FIAPO daily:
 | **Staking** | ✅ (15% APY) | ❌ | ⚠️ (centralized) | ❌ |
 | **Governance** | ✅ (On-chain DAO) | ❌ | ⚠️ (multisig) | ❌ |
 | **Utility** | ✅ (NFT mining) | ❌ | ⚠️ (ShibaSwap) | ❌ |
-| **Supply Cap** | 1B (→100M) | ∞ | 1Q (no burn) | 420T |
+| **Supply Cap** | 600B (→100M) | ∞ | 1Q (no burn) | 420T |
 | **Tech Stack** | Rust/Ink! | Scrypt | Solidity | Solidity |
 
 ---
@@ -210,7 +212,7 @@ The throne awaits. All other memecoins can bow or be burned.
 
 ---
 
-**© 2025 Don Fiapo DAO | Built on Lunes Network**
+**© 2026 Don Fiapo DAO | Built on Lunes Network**
 
 > *"They said memecoins couldn't be serious. We said watch us."*
 
@@ -223,13 +225,10 @@ The throne awaits. All other memecoins can bow or be burned.
 - Oracle Service: `TBA`
 - Governance Module: `TBA`
 
-**Testnet (Active)**
-- Lunes Testnet: `5GVT...` (see docs)
-- Solana Devnet: `8xQ2...` (Oracle wallet)
 
 ## Appendix B: Audit Reports
 - **Repository**: [github.com/donfiapodelamanga-cpu/DonFiapo](https://github.com/donfiapodelamanga-cpu/DonFiapo)
-- **Security Audit**: Pending Q1 2025
+- **Security Audit**: Pending Q1 2026
 - **Fuzz Test Results**: See `/don_fiapo/fuzz/`
 
 ## Appendix C: Team (Anonymous)
@@ -241,7 +240,3 @@ The Don Fiapo team operates under pseudonyms to maintain focus on **code over pe
 
 ---
 
-**For technical details, see:**
-- Smart Contract: `/don_fiapo/src/lib.rs`
-- Frontend: `/don-fiapo-web/`
-- Oracle: `/oracle-service/`

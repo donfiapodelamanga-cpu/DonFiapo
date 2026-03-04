@@ -27,7 +27,7 @@ Don Fiapo introduz um ecossistema onde **participação ativa é recompensada** 
 
 ### Especificações
 - **Token**: $FIAPO
-- **Supply Máximo**: 300.000.000.000 (300 bilhões)
+- **Supply Máximo**: 600.000.000.000 (600 bilhões)
 - **Supply Mínimo**: 100.000.000 (100 milhões)
 - **Decimais**: 8
 - **Blockchain**: Lunes Network
@@ -35,12 +35,13 @@ Don Fiapo introduz um ecossistema onde **participação ativa é recompensada** 
 ### Distribuição
 | Alocação | Percentual | Quantidade |
 |----------|------------|------------|
-| Fundo de Staking | 80% | 240 bilhões |
-| Airdrop | 7% | 21 bilhões |
-| Marketing | 5% | 15 bilhões |
-| Caridade | 5% | 15 bilhões |
-| IEO/ICO | 2% | 6 bilhões |
-| Equipe | 1% | 3 bilhões |
+| Pré-venda | 25% | 150 bilhões |
+| Fundo de Staking | 51,67% | 310 bilhões |
+| Airdrop | 5,08% | 30,5 bilhões |
+| Marketing | 3,42% | 20,5 bilhões |
+| Caridade | 3,42% | 20,5 bilhões |
+| IEO/ICO | 10,67% | 64 bilhões |
+| Equipe | 0,75% | 4,5 bilhões |
 
 ---
 
@@ -57,7 +58,7 @@ Taxa (0.6%)
 ```
 
 ### Objetivo
-Reduzir o supply de 300 bilhões para 100 milhões, aumentando a escassez do token.
+Reduzir o supply de 600 bilhões para 100 milhões, aumentando a escassez do token.
 
 ---
 

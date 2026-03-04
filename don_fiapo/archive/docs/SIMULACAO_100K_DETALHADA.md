@@ -13,7 +13,7 @@ Analisar o comportamento do contrato Don Fiapo com **100.000 usuários ativos** 
 ## 📈 Cenário Base da Simulação
 
 ### 💰 **Parâmetros Iniciais**
-- **Total Supply**: 300 bilhões FIAPO (30,000,000,000,000,000,000 wei)
+- **Total Supply**: 600 bilhões FIAPO (60,000,000,000,000,000,000 wei)
 - **Usuários Ativos**: 100.000
 - **Taxa de Transação**: 0.6% (60 bps)
 - **Período de Análise**: 365 dias

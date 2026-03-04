@@ -1,7 +1,8 @@
 {
   "metadata": {
-    "title": "Don Fiapo Dela Manga - 迷因币之王",
-    "description": "他不吠叫——他颁布法令。区块链现在有了君主制。加入王朝。"
+    "title": "Don Fiapo De la Manga - 迷因币之王",
+    "description": "他不吠叫——他颁布法令。区块链现在有了君主制。加入王朝。",
+    "keywords": "迷因币, 加密货币, NFT, 质押, 空投, DeFi, Lunes, Don Fiapo, 区块链, 代币, ICO, 边玩边赚, web3"
   },
   "nav": {
     "home": "首页",
@@ -15,6 +16,7 @@
     "affiliate": "推广",
     "governance": "治理",
     "ranking": "排名",
+    "dashboard": "仪表板",
     "wallet": "钱包",
     "docs": "文档",
     "connectWallet": "连接钱包",
@@ -22,7 +24,7 @@
   },
   "hero": {
     "badge": "去中心化幽默之王",
-    "title": "Don Fiapo Dela Manga",
+    "title": "Don Fiapo De la Manga",
     "subtitle": "迷因币之王",
     "description": "他不吠叫——他颁布法令。区块链现在有了君主制。加入王朝。",
     "cta": {
@@ -120,14 +122,14 @@
     "social": "关注Don"
   },
   "footer": {
-    "tagline": "Don Fiapo Dela Manga是一个迷因，但它是认真的。",
+    "tagline": "Don Fiapo De la Manga是一个迷因，但它是认真的。",
     "links": {
       "whitepaper": "白皮书",
       "faq": "常见问题",
       "contract": "合约",
       "contact": "联系"
     },
-    "copyright": "© 2025 Don Fiapo Dela Manga. 保留所有权利。"
+    "copyright": "© 2025 Don Fiapo De la Manga. 保留所有权利。"
   },
   "staking": {
     "title": "皇家质押",
@@ -229,6 +231,18 @@
     "connect": "连接",
     "viewMore": "查看更多",
     "seeAll": "查看全部"
+  },
+  "modal": {
+    "badge": "皇家御旨",
+    "headline": "数百万空投等你来领！",
+    "body": "奉Don Fiapo陛下之命，皇家宝库大门已开启！我们正在向忠诚的社区分发价值数百万美元的奖励。在平民到来之前，确保您在王国中的贵族地位，领取属于您的 $FIAPO 空投份额。",
+    "signature": "Don Fiapo De la Manga 陛下，王国至高统治者",
+    "stat1": "$FIAPO 空投池",
+    "stat2": "免费领取",
+    "stat3": "推荐奖励",
+    "cta": "立即领取您的皇家空投",
+    "telegramBtn": "加入皇室核心圈",
+    "privacyFooter": "奉皇冠之令，所有忠诚臣民皆可获得份额。"
   },
   "Games": {
     "title": "皇家竞技场",

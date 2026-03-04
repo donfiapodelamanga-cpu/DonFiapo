@@ -14,13 +14,12 @@ const navItems = [
   { href: "/ico", key: "ico" },
   { href: "/marketplace", key: "marketplace" },
   { href: "/staking", key: "staking" },
-  { href: "/simulations", key: "simulations" },
   { href: "/games", key: "games" },
   { href: "/tokenomics", key: "tokenomics" },
   { href: "/airdrop", key: "airdrop" },
   { href: "/affiliate", key: "affiliate" },
   { href: "/ranking", key: "ranking" },
-  { href: "/docs", key: "docs" },
+  { href: "/wallet", key: "dashboard" },
 ];
 
 export function Header() {
