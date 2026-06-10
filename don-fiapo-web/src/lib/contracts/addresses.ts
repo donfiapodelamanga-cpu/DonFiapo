@@ -5,6 +5,8 @@
  * Atualize os endereços após o deploy de cada contrato.
  */
 
+import { resolveSpinGameContractAddress } from './resolve-contract-address';
+
 export interface ContractAddresses {
   core: string;
   ico: string;
@@ -52,7 +54,7 @@ export const CONTRACT_ADDRESSES: ContractAddresses = {
   affiliate: process.env.NEXT_PUBLIC_AFFILIATE_CONTRACT || '',
   
   // Spin Game (Royal Wheel)
-  spinGame: process.env.NEXT_PUBLIC_SPIN_GAME_CONTRACT || '',
+  spinGame: resolveSpinGameContractAddress(),
   
   // Security module
   security: process.env.NEXT_PUBLIC_SECURITY_CONTRACT || '',

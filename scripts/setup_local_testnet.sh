@@ -67,14 +67,51 @@ echo "  ✅ Node.js $(node -v)"
 echo "  ✅ Cargo $(cargo --version | cut -d' ' -f2)"
 
 if command -v cargo-contract &> /dev/null; then
-    echo "  ✅ cargo-contract $(cargo contract --version 2>/dev/null | head -1)"
+    CC_VERSION=$(cargo contract --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    CC_MAJOR=$(echo "$CC_VERSION" | cut -d. -f1)
+    echo "  ✅ cargo-contract $CC_VERSION"
+    if [ "$CC_MAJOR" -lt 5 ]; then
+        echo ""
+        echo "  ⚠️  AVISO: cargo-contract $CC_VERSION é incompatível com ink! 5.x"
+        echo "     O projeto usa ink! 5.x que requer cargo-contract 5.x."
+        echo ""
+        echo "  🔧 Instale a versão correta:"
+        echo "     cargo install --force cargo-contract"
+        echo ""
+        if [ "$SKIP_BUILD" = false ]; then
+            echo "❌ Abortando. Use cargo-contract 5.x para ink! 5.x"
+            exit 1
+        fi
+    fi
 else
-    echo "  ⚠️  cargo-contract not found (needed for building .contract artifacts)"
-    echo "     Install: cargo install cargo-contract"
+    echo "  ⚠️  cargo-contract não encontrado (necessário para gerar .contract)"
+    echo "     Instale: cargo install cargo-contract"
     if [ "$SKIP_BUILD" = false ]; then
-        echo "❌ Cannot continue without cargo-contract"
+        echo "❌ Não é possível continuar sem cargo-contract"
         exit 1
     fi
+fi
+
+# Verificar se o nó tem pallet-contracts (obrigatório para deploy de ink!)
+echo ""
+echo "🔍 Verificando pallet-contracts no nó..."
+PALLET_CHECK=$(curl -s -m 5 -X POST -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"state_getMetadata","params":[]}' \
+    "${LUNES_RPC_URL/ws:/http:}" 2>/dev/null | python3 -c \
+    "import sys,json; d=json.load(sys.stdin); \
+     meta=str(d.get('result','')[:10000]); \
+     print('ok' if 'contracts' in meta.lower() or 'pallet_contracts' in meta.lower() else 'missing')" 2>/dev/null || echo "unreachable")
+
+if [ "$PALLET_CHECK" = "ok" ]; then
+    echo "  ✅ pallet-contracts encontrado no nó"
+elif [ "$PALLET_CHECK" = "missing" ]; then
+    echo "  ⚠️  pallet-contracts NÃO encontrado no nó em $LUNES_RPC_URL"
+    echo "     O nó atual pode não suportar ink! contracts."
+    echo "     Para testes locais use substrate-contracts-node:"
+    echo "     cargo install contracts-node --git https://github.com/paritytech/substrate-contracts-node.git --locked"
+    echo "     substrate-contracts-node --dev --ws-port 9944"
+else
+    echo "  ⚠️  Nó em $LUNES_RPC_URL não acessível via HTTP RPC"
 fi
 
 # Check if @polkadot/api is installed

@@ -1,5 +1,6 @@
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { ContractPromise } from "@polkadot/api-contract";
+import { resolveSpinGameContractAddress } from "../../contracts/resolve-contract-address";
 
 // ─── ABIs (imported from existing lib) ───────────────────────────────────────
 async function loadAbi(name: string) {
@@ -197,7 +198,7 @@ export async function verifySpinPlayed(
     const api = await getApi();
     if (!api) return { verified: false, reason: "Blockchain node unreachable" };
 
-    const spinAddress = process.env.NEXT_PUBLIC_SPIN_GAME_CONTRACT;
+    const spinAddress = resolveSpinGameContractAddress();
     if (!spinAddress) return { verified: false, reason: "Spin Game contract address not configured" };
 
     const spinAbi = await loadAbi("spin-game-abi").catch(() => null) ??

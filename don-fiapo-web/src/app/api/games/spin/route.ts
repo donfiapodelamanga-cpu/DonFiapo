@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { findUserByWallet } from "@/lib/missions/service";
+import { FREE_SPINS, getSpinBalanceForUser } from "@/lib/games/spin-balance";
 
 const SPIN_MISSION_ID = "m-spin-game";
 
@@ -19,8 +20,6 @@ export async function POST() {
   );
 }
 
-const FREE_SPINS = 3;
-
 /**
  * GET /api/games/spin?wallet=<address>
  * Returns spin stats AND real spin balance for the user.
@@ -36,25 +35,16 @@ export async function GET(req: NextRequest) {
     const userId = await findUserByWallet(wallet).catch(() => null);
     if (!userId) return NextResponse.json({ totalSpins: 0, spinBalance: FREE_SPINS, missionCompleted: false });
 
-    const [totalSpins, purchasedSpins, missionCompletion] = await Promise.all([
-      // Total spins used
-      db.spinResult.count({ where: { userId } }).catch(() => 0),
-      // Total purchased spins (confirmed only)
-      db.spinPurchase.aggregate({
-        where: { userId, status: "CONFIRMED" },
-        _sum: { spins: true },
-      }).then(r => r._sum.spins ?? 0).catch(() => 0),
-      // Mission status
+    const [balance, missionCompletion] = await Promise.all([
+      getSpinBalanceForUser(db, userId),
       db.missionCompletion.findFirst({
         where: { userId, missionId: SPIN_MISSION_ID, status: "VERIFIED" },
       }),
     ]);
 
-    const spinBalance = Math.max(0, FREE_SPINS + purchasedSpins - totalSpins);
-
     return NextResponse.json({
-      totalSpins,
-      spinBalance,
+      totalSpins: balance.totalSpins,
+      spinBalance: balance.spinBalance,
       missionCompleted: !!missionCompletion,
       earnedPoints: missionCompletion?.earnedPoints ?? 0,
     });

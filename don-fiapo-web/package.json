@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
+    "test:unit": "node --import tsx --test src/lib/**/*.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
@@ -19,6 +20,7 @@
     "@polkadot/api": "^16.5.2",
     "@polkadot/api-contract": "^16.5.2",
     "@polkadot/extension-dapp": "^0.62.5",
+    "@polkadot/util-crypto": "^14.0.1",
     "@prisma/adapter-libsql": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -64,6 +66,7 @@
     "prisma": "^7.4.2",
     "string-replace-loader": "^3.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   },
   "overrides": {

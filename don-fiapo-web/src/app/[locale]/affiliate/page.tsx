@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { useWalletStore } from "@/lib/stores";
 import { formatAddress } from "@/lib/utils/format";
 import { useToast } from "@/components/ui/toast";
+import { buildReferralLink } from "@/lib/affiliate/referral-link";
 import {
   useAffiliateInfo,
   useAffiliateStats,
@@ -37,11 +38,11 @@ export default function AffiliatePage() {
   const { validate, validating, result: validationResult, reset: resetValidation } = useValidateReferralCode();
 
   // Generate referral link
-  const referralLink = info?.referralCode
-    ? `https://donfiapo.com/ref/${info.referralCode}`
-    : lunesAddress
-      ? `https://donfiapo.com/ref/REF-${lunesAddress.slice(0, 8).toUpperCase()}`
-      : '';
+  const referralLink = buildReferralLink({
+    referralCode: info?.referralCode,
+    lunesAddress,
+    appOrigin: process.env.NEXT_PUBLIC_APP_URL,
+  });
 
   const handleCopy = async () => {
     if (referralLink) {

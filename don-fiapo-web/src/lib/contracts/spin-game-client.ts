@@ -3,9 +3,10 @@ import { ContractPromise } from '@polkadot/api-contract';
 import { InjectedAccountWithMeta } from '@polkadot/extension-inject/types';
 import { web3FromSource } from '@polkadot/extension-dapp';
 import spinGameMetadata from './spin_game.json';
+import { resolveSpinGameContractAddress } from './resolve-contract-address';
 
 // Endereço do contrato do jogo Spin (será configurado após deploy)
-const SPIN_GAME_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SPIN_GAME_CONTRACT_ADDRESS || '';
+const SPIN_GAME_CONTRACT_ADDRESS = resolveSpinGameContractAddress();
 
 export interface SpinResult {
   prizeIndex: number;

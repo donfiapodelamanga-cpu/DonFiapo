@@ -26,14 +26,14 @@ mod test_pure {
         #[ink(message)]
         pub fn ping_ref(&self) -> u32 {
             // Method 1: Using contract_ref! macro with local trait
-            let mut staking: ink::contract_ref!(StakingTrait) = self.target.into();
+            let staking: ink::contract_ref!(StakingTrait) = self.target.into();
             staking.ping()
         }
 
         #[ink(message)]
         pub fn ping_builder(&self) -> u32 {
             // Method 2: Raw CallBuilder
-            build_call::<DefaultEnvironment>()
+            build_call::<ink::env::DefaultEnvironment>()
                 .call(self.target)
                 .exec_input(ExecutionInput::new(Selector::new([0x90, 0x72, 0xb1, 0x14])))
                 .returns::<u32>()

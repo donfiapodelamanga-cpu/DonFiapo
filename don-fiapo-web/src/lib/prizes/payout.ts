@@ -4,7 +4,7 @@
  * Delivers USDT (Solana SPL) and LUNES (Lunes Network) prizes immediately on-chain.
  *
  * Architecture:
- *   - Payer ADDRESS   → read from SystemWallet table (roles: spin_usdt, spin_lunes)
+ *   - Payer ADDRESS   → read from admin SystemWallets (roles: spin_usdt, spin_lunes)
  *   - Payer SIGNER    → env var (private key / mnemonic) — never stored in DB
  *
  * Required env vars:
@@ -15,7 +15,8 @@
  *   USDT_MINT_ADDRESS         – Solana USDT SPL token mint (defaults to mainnet)
  */
 
-import { db } from "@/lib/db";
+import type { ApiPromise as ApiPromiseType } from "@polkadot/api";
+import { getSystemWalletAddress } from "@/lib/api/system-wallets";
 
 const USDT_MINT_MAINNET = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
 
@@ -23,21 +24,6 @@ export interface PayoutResult {
     success: boolean;
     txHash?: string;
     error?: string;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Looks up a system wallet address by role key. Returns null if not configured. */
-async function getSystemWalletAddress(role: string): Promise<string | null> {
-    try {
-        const wallet = await (db as any).systemWallet.findFirst({
-            where: { key: role, isActive: true },
-            select: { address: true },
-        });
-        return wallet?.address ?? null;
-    } catch {
-        return null;
-    }
 }
 
 // ── Solana USDT Transfer ──────────────────────────────────────────────────────
@@ -145,7 +131,7 @@ export async function sendLunesToUser(
         const apiTimeout = new Promise<null>((_, reject) =>
             setTimeout(() => reject(new Error("Lunes RPC connection timeout")), 6000)
         );
-        const api = await Promise.race([ApiPromise.create({ provider }), apiTimeout]) as ApiPromise;
+        const api = await Promise.race([ApiPromise.create({ provider }), apiTimeout]) as ApiPromiseType;
 
         const keyring = new Keyring({ type: "sr25519" });
         const adminAccount = keyring.addFromMnemonic(mnemonic);

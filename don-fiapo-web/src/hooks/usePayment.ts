@@ -19,24 +19,29 @@ export function usePayment(options?: UsePaymentOptions) {
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [payment, setPayment] = useState<PaymentResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { lunesAddress, lunesConnected } = useWalletStore();
+  const { lunesAddress, lunesConnected, solanaAddress } = useWalletStore();
 
   /**
    * Create a new payment request
    */
-  const createPayment = useCallback(async (usdAmount: number, fiapoAmount: number) => {
+  const createPayment = useCallback(async (tierId: number, quantity: number) => {
     if (!lunesConnected || !lunesAddress) {
       throw new Error('Wallet not connected');
+    }
+
+    if (!solanaAddress) {
+      throw new Error('Solana wallet not connected');
     }
 
     setStatus('creating');
     setError(null);
 
     try {
-      const response = await oracleClient.createPayment({
+      const response = await oracleClient.createNftMintPayment({
         lunesAccount: lunesAddress,
-        fiapoAmount,
-        expectedAmount: oracleClient.usdToUsdtAtomic(usdAmount),
+        tierId,
+        quantity,
+        expectedSender: solanaAddress,
       });
 
       setPayment(response);
@@ -49,7 +54,7 @@ export function usePayment(options?: UsePaymentOptions) {
       options?.onError?.(message);
       throw new Error(message);
     }
-  }, [lunesAddress, lunesConnected, options]);
+  }, [lunesAddress, lunesConnected, solanaAddress, options]);
 
   /**
    * Verify a payment after user has sent USDT
@@ -139,11 +144,8 @@ export function useMintNFT() {
   const [mintedTokenId, setMintedTokenId] = useState<number | null>(null);
 
   const mintNFT = useCallback(async (tierId: number, quantity: number) => {
-    const price = payment.calculateNFTPrice(tierId, quantity);
-    const fiapoAmount = API_CONFIG.nftTiers[tierId].totalMining * quantity;
-
     // Create payment request
-    const paymentResponse = await payment.createPayment(price, fiapoAmount);
+    const paymentResponse = await payment.createPayment(tierId, quantity);
     
     return {
       paymentId: paymentResponse.paymentId,

@@ -11,6 +11,7 @@ import { ErrorLogger } from "@/components/debug/error-logger";
 import JsonLd from "@/components/seo/JsonLd";
 import { WebMcpScript } from "@/components/webmcp/WebMcpScript";
 import { WebMCPInitializer } from "@/components/webmcp/WebMCPInitializer";
+import { resolvePublicOrigin } from "@/lib/http/public-origin";
 import "../globals.css";
 import { GlobalAlert } from "@/components/layout/global-alert";
 import React from "react";
@@ -31,9 +32,14 @@ const anton = Anton({
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
+  const publicOrigin = resolvePublicOrigin({ configuredOrigin: process.env.NEXT_PUBLIC_APP_URL });
+  const localizedPath = `${publicOrigin}/${locale}`;
+  const alternateLanguages = Object.fromEntries(
+    locales.map((alternateLocale) => [alternateLocale, `${publicOrigin}/${alternateLocale}`])
+  );
 
   return {
-    metadataBase: new URL("https://donfiapo.fun"),
+    metadataBase: new URL(publicOrigin),
     title: t("title"),
     description: t("description"),
     keywords: t("keywords").split(", "),
@@ -41,7 +47,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     openGraph: {
       title: t("title"),
       description: t("description"),
-      url: `https://donfiapo.fun/${locale}`,
+      url: localizedPath,
       siteName: "Don Fiapo",
       type: "website",
       images: [
@@ -61,15 +67,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       images: ["/hero-bg.png"],
     },
     alternates: {
-      canonical: `https://donfiapo.fun/${locale}`,
+      canonical: localizedPath,
       languages: {
-        en: "https://donfiapo.fun/en",
-        es: "https://donfiapo.fun/es",
-        fr: "https://donfiapo.fun/fr",
-        pt: "https://donfiapo.fun/pt",
-        ru: "https://donfiapo.fun/ru",
-        zh: "https://donfiapo.fun/zh",
-        "x-default": "https://donfiapo.fun/en"
+        ...alternateLanguages,
+        "x-default": `${publicOrigin}/en`
       },
     },
     robots: {

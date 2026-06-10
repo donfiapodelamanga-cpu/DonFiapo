@@ -5,6 +5,7 @@ import { applyTrustScoreDelta } from "@/lib/missions/fraud-engine";
 import { recordReferral } from "@/lib/missions/referral-service";
 import { resolveReferrerCode } from "@/lib/missions/referral-resolver";
 import { db } from "@/lib/db";
+import { buildPublicUrl, publicOriginInputFromHeaders } from "@/lib/http/public-origin";
 
 /**
  * GET /api/auth/twitter/callback?code=...&state=...
@@ -12,7 +13,8 @@ import { db } from "@/lib/db";
  * Exchanges the code for tokens, fetches user info, saves to DB.
  */
 export async function GET(req: NextRequest) {
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const publicOriginInput = publicOriginInputFromHeaders(req.nextUrl, req.headers);
+  const airdropUrl = (query: string) => buildPublicUrl(`/en/airdrop?tab=missions&${query}`, publicOriginInput);
 
   try {
     const { searchParams } = req.nextUrl;
@@ -22,31 +24,35 @@ export async function GET(req: NextRequest) {
 
     // Handle user denial
     if (error) {
-      return NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_error=denied`);
+      return NextResponse.redirect(airdropUrl("x_error=denied"));
     }
 
     if (!code || !returnedState) {
-      return NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_error=missing_params`);
+      return NextResponse.redirect(airdropUrl("x_error=missing_params"));
     }
 
     // Retrieve stored PKCE values from cookies
     const codeVerifier = req.cookies.get("x_oauth_code_verifier")?.value;
     const storedState = req.cookies.get("x_oauth_state")?.value;
     const wallet = req.cookies.get("x_oauth_wallet")?.value;
+    const callbackUrl = req.cookies.get("x_oauth_callback_url")?.value
+      ?? process.env.TWITTER_CALLBACK_URL
+      ?? buildPublicUrl("/api/auth/twitter/callback", publicOriginInput);
 
     if (!codeVerifier || !storedState || !wallet) {
-      return NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_error=session_expired`);
+      return NextResponse.redirect(airdropUrl("x_error=session_expired"));
     }
 
     // Validate state to prevent CSRF
     if (returnedState !== storedState) {
-      return NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_error=state_mismatch`);
+      return NextResponse.redirect(airdropUrl("x_error=state_mismatch"));
     }
 
     // Exchange code for tokens
     const { accessToken, refreshToken, expiresIn, user: xUser } = await exchangeCodeForTokens(
       code,
-      codeVerifier
+      codeVerifier,
+      callbackUrl
     );
 
     // Find or create user by wallet
@@ -57,7 +63,7 @@ export async function GET(req: NextRequest) {
       where: { xId: xUser.id, id: { not: userId } },
     });
     if (existingXLink) {
-      return NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_error=account_already_linked`);
+      return NextResponse.redirect(airdropUrl("x_error=account_already_linked"));
     }
 
     // Calculate token expiry
@@ -104,16 +110,16 @@ export async function GET(req: NextRequest) {
     }
 
     // Clear OAuth cookies
-    const response = NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_connected=1`);
+    const response = NextResponse.redirect(airdropUrl("x_connected=1"));
     response.cookies.delete("x_oauth_code_verifier");
     response.cookies.delete("x_oauth_state");
     response.cookies.delete("x_oauth_wallet");
     response.cookies.delete("x_oauth_ref");
+    response.cookies.delete("x_oauth_callback_url");
 
     return response;
   } catch (error) {
     console.error("[AUTH_TWITTER_CALLBACK]", error);
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    return NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_error=internal`);
+    return NextResponse.redirect(airdropUrl("x_error=internal"));
   }
 }

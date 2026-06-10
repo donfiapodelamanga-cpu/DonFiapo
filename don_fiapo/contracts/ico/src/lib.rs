@@ -10,12 +10,11 @@
 //! - Raridade visual
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
-use fiapo_traits::PSP22Error;
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 #[ink::contract]
 mod fiapo_ico {
-    use super::*;
     use ink::prelude::{string::String, vec::Vec, vec};
     use ink::storage::Mapping;
     

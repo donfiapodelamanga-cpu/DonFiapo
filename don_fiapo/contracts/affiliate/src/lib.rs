@@ -3,12 +3,11 @@
 //! Sistema de afiliados com 2 níveis e Leaderboard On-Chain (Top 100).
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
-use fiapo_traits::{AccountId, Balance};
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 #[ink::contract]
 mod fiapo_affiliate {
-    use super::*;
     use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
@@ -24,6 +23,7 @@ mod fiapo_affiliate {
     /// Constantes de configuração
     pub const BOOST_PER_AFFILIATE_BPS: u32 = 50;  // 0.5% por afiliado
     pub const MAX_BOOST_BPS: u32 = 500;            // Máximo 5%
+    #[allow(dead_code)]
     pub const MAX_DIRECT_REFERRALS: u32 = 100;
     pub const SCALE: u128 = 100_000_000;
     pub const MAX_TOP_AFFILIATES: usize = 100;    // Limite do Leaderboard para evitar DoS por Gas

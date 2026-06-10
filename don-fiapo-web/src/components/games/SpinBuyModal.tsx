@@ -6,10 +6,10 @@ import { X, Loader2, CheckCircle2, AlertCircle, ExternalLink, Wallet, ShieldChec
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWalletStore } from "@/lib/stores";
 import { useSolana } from "@/hooks/useSolana";
-import { API_CONFIG } from "@/lib/api/config";
 import { cn } from "@/lib/utils";
 
 export interface SpinPackage {
+  id: string;
   spins: number;
   price: number;
 }
@@ -23,9 +23,6 @@ interface SpinBuyModalProps {
 
 type Step = "connect" | "confirm" | "signing" | "confirming" | "success" | "error";
 
-// Fallback treasury wallet
-const TREASURY_FALLBACK = process.env.NEXT_PUBLIC_TREASURY_SOLANA || API_CONFIG.solana.receiverWallet;
-
 export const SpinBuyModal: FC<SpinBuyModalProps> = ({
   isOpen, onClose, selectedPackage, onSpinsGranted,
 }) => {
@@ -36,16 +33,6 @@ export const SpinBuyModal: FC<SpinBuyModalProps> = ({
   const [txHash, setTxHash] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [usdtBalance, setUsdtBalance] = useState<number | null>(null);
-  const [treasuryWallet, setTreasuryWallet] = useState(TREASURY_FALLBACK);
-
-  // Fetch treasury wallet from admin system wallets
-  useEffect(() => {
-    import("@/lib/api/system-wallets").then(({ getSystemWalletAddress }) => {
-      getSystemWalletAddress("spin_revenue").then((addr) => {
-        if (addr) setTreasuryWallet(addr);
-      });
-    });
-  }, []);
 
   // Reset when opening
   useEffect(() => {
@@ -74,22 +61,23 @@ export const SpinBuyModal: FC<SpinBuyModalProps> = ({
     setErrorMsg("");
 
     try {
-      // 1. Register pending purchase in DB
-      const paymentId = `spin_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      await fetch("/api/games/spin/purchase", {
+      // 1. Register pending purchase in DB. The server owns package pricing and receiver.
+      const purchaseRes = await fetch("/api/games/spin/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           wallet: lunesAddress,
-          spins: selectedPackage.spins,
-          priceUsdt: selectedPackage.price,
-          paymentId,
-          payToAddress: treasuryWallet,
+          packageId: selectedPackage.id,
         }),
       });
+      const purchaseData = await purchaseRes.json().catch(() => null);
+
+      if (!purchaseRes.ok || !purchaseData?.success) {
+        throw new Error(purchaseData?.error || "Failed to create purchase");
+      }
 
       // 2. Send USDT via Solana wallet (opens Phantom/Solflare to sign)
-      const result = await solana.sendUSDT(selectedPackage.price, treasuryWallet);
+      const result = await solana.sendUSDT(purchaseData.priceUsdt, purchaseData.payToAddress);
 
       if (!result.success) {
         throw new Error("Transaction failed");
@@ -102,7 +90,7 @@ export const SpinBuyModal: FC<SpinBuyModalProps> = ({
       const confirmRes = await fetch("/api/games/spin/purchase", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, solanaTxHash: result.signature }),
+        body: JSON.stringify({ paymentId: purchaseData.paymentId, solanaTxHash: result.signature }),
       });
       const confirmData = await confirmRes.json();
 

@@ -18,6 +18,7 @@ import { LunesContractClient, ConfirmPaymentResult } from './lunes-contract';
 import { PaymentRepository, PendingPayment } from './db';
 import { OracleWatcher } from './watcher';
 import { NobleWatcher } from './noble-watcher'; // NEW IMPORT
+import { InvalidPaymentRequestError, normalizePaymentCreateRequest } from './payment-policy';
 
 // Load environment - priority: process.env > .env local > .env root
 // Only load from files if not already set in environment
@@ -159,7 +160,7 @@ async function initialize(): Promise<void> {
 /**
  * Cria servidor Express para API
  */
-function createServer(): express.Application {
+export function createServer(): express.Application {
   const app = express();
   app.use(express.json());
 
@@ -173,23 +174,21 @@ function createServer(): express.Application {
 
   /**
    * POST /api/payment/create
-   * 
-   * Cria um pagamento pendente
-   * Body: { lunesAccount, fiapoAmount, expectedAmount, expectedSender? }
-   */
-
-
-  // ... inside createServer ...
-
-  /**
-   * POST /api/payment/create
-   */
-  /**
-   * POST /api/payment/create
    * Protected by API Key
    */
   app.post('/api/payment/create', authenticate, (req: Request, res: Response) => {
-    const { lunesAccount, paymentType, itemAmount, expectedAmount, expectedSender } = req.body;
+    let normalized;
+    try {
+      normalized = normalizePaymentCreateRequest(req.body);
+    } catch (error) {
+      if (error instanceof InvalidPaymentRequestError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      throw error;
+    }
+
+    const { lunesAccount, paymentType, itemAmount, expectedAmount, expectedSender } = normalized;
 
     if (!lunesAccount || !paymentType || !itemAmount || !expectedAmount) {
       res.status(400).json({ error: 'Missing required fields' });
@@ -239,6 +238,12 @@ function createServer(): express.Application {
 
     if (!paymentId || !transactionHash) {
       res.status(400).json({ error: 'Missing paymentId or transactionHash' });
+      return;
+    }
+
+    const existingPaymentForTx = PaymentRepository.findByTransactionHash(transactionHash);
+    if (existingPaymentForTx && existingPaymentForTx.id !== paymentId) {
+      res.status(409).json({ error: 'Transaction already used for another payment' });
       return;
     }
 
@@ -314,8 +319,8 @@ function createServer(): express.Application {
 
       console.log('✅ Pagamento confirmado no contrato!');
 
-      // 3. Atualiza status
-      PaymentRepository.updateStatus(paymentId, 'completed');
+      // 3. Atualiza status and records tx hash to prevent replay
+      PaymentRepository.completeWithTransactionHash(paymentId, transactionHash);
 
       res.json({
         success: true,
@@ -378,7 +383,8 @@ async function main(): Promise<void> {
       console.log('  GET  /api/payment/:id     - Consultar status do pagamento');
       console.log('\n📋 Exemplo de uso:');
       console.log('  1. POST /api/payment/create');
-      console.log('     Body: { "lunesAccount": "5...", "paymentType": "ico", "itemAmount": 1000, "expectedAmount": 1000000 }');
+      console.log('     Body NFT: { "lunesAccount": "5...", "paymentType": "nft_mint", "tierId": 2, "quantity": 1, "expectedSender": "solana..." }');
+      console.log('     Body staking: { "lunesAccount": "5...", "paymentType": "staking", "stakingType": "don-fiapo", "paymentMethod": "usdt", "fiapoAmount": 10000, "expectedSender": "solana..." }');
       console.log('  2. Usuário envia USDT para o endereço retornado');
       console.log('  3. POST /api/payment/verify');
       console.log('     Body: { "paymentId": "PAY_...", "transactionHash": "5Vfy..." }');
@@ -390,4 +396,6 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}

@@ -8,12 +8,11 @@
 //!   - Após ICO (todas NFTs vendidas): pagamentos em FIAPO (token PSP22)
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
-use fiapo_traits::{AccountId, Balance};
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 #[ink::contract]
 mod fiapo_marketplace {
-    use super::*;
     use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
     

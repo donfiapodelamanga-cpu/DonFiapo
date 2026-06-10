@@ -5,6 +5,7 @@
  */
 
 import { API_CONFIG } from './config';
+import { resolveAdminOrigin } from '@/lib/http/public-origin';
 
 interface WalletInfo {
   address: string;
@@ -18,7 +19,7 @@ let cachedWallets: WalletMap | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 60_000; // 60 seconds
 
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3001';
+const ADMIN_URL = resolveAdminOrigin({ configuredOrigin: process.env.NEXT_PUBLIC_ADMIN_URL });
 
 async function fetchSystemWallets(): Promise<WalletMap> {
   const now = Date.now();

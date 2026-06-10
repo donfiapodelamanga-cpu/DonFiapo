@@ -1,5 +1,6 @@
 import { locales } from '@/config/i18n';
 import { MetadataRoute } from 'next';
+import { resolvePublicOrigin } from '@/lib/http/public-origin';
 
 const routes: { path: string; changeFrequency: 'daily' | 'weekly' | 'monthly'; priority: number }[] = [
     { path: '', changeFrequency: 'daily', priority: 1.0 },
@@ -30,7 +31,7 @@ const routes: { path: string; changeFrequency: 'daily' | 'weekly' | 'monthly'; p
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = 'https://donfiapo.fun';
+    const baseUrl = resolvePublicOrigin({ configuredOrigin: process.env.NEXT_PUBLIC_APP_URL });
     const now = new Date();
 
     const entries: MetadataRoute.Sitemap = [];

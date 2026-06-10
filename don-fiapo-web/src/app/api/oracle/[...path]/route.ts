@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const ORACLE_URL = process.env.ORACLE_SERVICE_URL || 'http://localhost:3001';
-const ORACLE_KEY = process.env.ORACLE_API_KEY || '';
-
-// Allowed path prefixes to prevent SSRF through the proxy
-const ALLOWED_PATH_PREFIXES = [
-    'health',
-    'api/payment',
-    'api/prices',
-    'api/status',
-    'api/spin',
-];
-
-function isPathAllowed(path: string): boolean {
-    return ALLOWED_PATH_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + '/'));
-}
+import {
+    buildOracleProxyUrl,
+    isOracleProxyPathAllowed,
+    resolveOracleProxyConfig,
+} from '@/lib/api/oracle-proxy-config';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     const resolvedParams = await params;
@@ -30,11 +19,19 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
     const path = params.path.join('/');
 
     // Prevent path traversal and SSRF
-    if (path.includes('..') || !isPathAllowed(path)) {
+    if (!isOracleProxyPathAllowed(path)) {
         return NextResponse.json({ error: 'Forbidden path' }, { status: 403 });
     }
 
-    const url = `${ORACLE_URL}/${path}`;
+    const config = resolveOracleProxyConfig();
+    if (!config.valid) {
+        return NextResponse.json(
+            { error: 'Oracle proxy is not configured', details: config.errors },
+            { status: 503 },
+        );
+    }
+
+    const url = buildOracleProxyUrl(config.url, path);
 
     try {
         const body = req.method === 'POST' ? await req.json() : undefined;
@@ -43,12 +40,16 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
             method: req.method,
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': ORACLE_KEY,
+                'x-api-key': config.apiKey,
             },
             body: body ? JSON.stringify(body) : undefined,
         });
 
-        const data = await res.json();
+        const contentType = res.headers.get('content-type') ?? '';
+        const data = contentType.includes('application/json')
+            ? await res.json()
+            : { body: await res.text() };
+
         return NextResponse.json(data, { status: res.status });
     } catch (error) {
         console.error('Oracle Proxy Error:', error);

@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useWalletStore } from '@/lib/stores/wallet-store';
+import { oracleClient } from '@/lib/api/oracle';
+import { toStakingPaymentStatus } from '@/lib/api/oracle-payment';
 
 // Entry fee tiers - matches contract fees/calculation.rs
 const ENTRY_FEE_TIERS = [
@@ -89,37 +91,42 @@ export function useStakingFee() {
 
         try {
             const feeResult = calculateEntryFee(fiapoAmount);
+            const feeAmount = paymentMethod === 'lusdt' ? feeResult.feeAmountLusdt : feeResult.feeAmountUsdt;
 
-            // Call Oracle to create payment
-            const response = await fetch(`${process.env.NEXT_PUBLIC_ORACLE_URL}/api/staking/create-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fiapoAmount,
-                    feeAmount: paymentMethod === 'lusdt' ? feeResult.feeAmountLusdt : feeResult.feeAmountUsdt,
-                    stakingType,
-                    paymentMethod,
-                    lunesAddress,
-                    solanaAddress,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create payment request');
+            if (!lunesAddress) {
+                throw new Error('Lunes wallet not connected');
             }
 
-            const data = await response.json();
+            if (paymentMethod === 'usdt' && !solanaAddress) {
+                throw new Error('Solana wallet not connected');
+            }
+
+            if (paymentMethod !== 'usdt') {
+                throw new Error('LUSDT payment verification is not connected yet');
+            }
+
+            if (!solanaAddress) {
+                throw new Error('Solana wallet not connected');
+            }
+
+            const data = await oracleClient.createStakingPayment({
+                lunesAccount: lunesAddress,
+                stakingType,
+                paymentMethod,
+                fiapoAmount,
+                expectedSender: solanaAddress,
+            });
 
             const request: PaymentRequest = {
                 id: data.paymentId,
                 fiapoAmount,
-                feeAmount: feeResult.feeAmountLusdt,
+                feeAmount,
                 stakingType,
                 paymentMethod,
-                recipientAddress: data.recipientAddress,
+                recipientAddress: data.payToAddress,
                 status: 'pending',
                 createdAt: Date.now(),
-                expiresAt: Date.now() + 30 * 60 * 1000, // 30 minutes
+                expiresAt: data.expiresAt,
             };
 
             setPaymentRequest(request);
@@ -134,23 +141,49 @@ export function useStakingFee() {
     }, [lunesAddress, solanaAddress, calculateEntryFee]);
 
     /**
+     * Verify a payment after the user submits the Solana transaction hash
+     */
+    const verifyPayment = useCallback(async (paymentId: string, transactionHash: string): Promise<boolean> => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            if (!transactionHash.trim()) {
+                throw new Error('Transaction hash is required');
+            }
+
+            setPaymentRequest(prev => prev && prev.id === paymentId ? { ...prev, status: 'confirming' } : prev);
+
+            const result = await oracleClient.verifyPayment({ paymentId, transactionHash: transactionHash.trim() });
+            if (!result.success) {
+                throw new Error(result.message || 'Payment verification failed');
+            }
+
+            setPaymentRequest(prev => prev && prev.id === paymentId ? { ...prev, status: 'confirmed' } : prev);
+            return true;
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to verify payment';
+            setError(message);
+            setPaymentRequest(prev => prev && prev.id === paymentId ? { ...prev, status: 'failed' } : prev);
+            throw new Error(message);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    /**
      * Check payment status
      */
     const checkPaymentStatus = useCallback(async (paymentId: string): Promise<PaymentRequest['status']> => {
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_ORACLE_URL}/api/staking/payment-status/${paymentId}`);
-
-            if (!response.ok) {
-                throw new Error('Failed to check payment status');
-            }
-
-            const data = await response.json();
+            const data = await oracleClient.getPaymentStatus(paymentId);
+            const status = toStakingPaymentStatus(data);
 
             if (paymentRequest && paymentRequest.id === paymentId) {
-                setPaymentRequest(prev => prev ? { ...prev, status: data.status } : null);
+                setPaymentRequest(prev => prev ? { ...prev, status } : null);
             }
 
-            return data.status;
+            return status;
         } catch (err) {
             console.error('Failed to check payment status:', err);
             return 'pending';
@@ -180,6 +213,7 @@ export function useStakingFee() {
     return {
         calculateEntryFee,
         createPaymentRequest,
+        verifyPayment,
         checkPaymentStatus,
         cancelPayment,
         paymentRequest,

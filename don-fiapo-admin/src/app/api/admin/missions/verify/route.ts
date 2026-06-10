@@ -1,0 +1,22 @@
+import { NextRequest, NextResponse } from "next/server";
+import { fetchWebApi, webApiProxyErrorMessage, webApiProxyErrorStatus } from "@/lib/server/web-api";
+
+/**
+ * POST /api/admin/missions/verify
+ * Approve/reject a mission completion (proxy)
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const res = await fetchWebApi("/api/missions/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error("[ADMIN_VERIFY_PROXY]", error);
+    return NextResponse.json({ error: webApiProxyErrorMessage(error) }, { status: webApiProxyErrorStatus(error) });
+  }
+}

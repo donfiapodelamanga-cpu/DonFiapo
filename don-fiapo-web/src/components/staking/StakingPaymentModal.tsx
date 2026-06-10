@@ -32,11 +32,13 @@ export function StakingPaymentModal({
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
     const [feeResult, setFeeResult] = useState<StakingFeeResult | null>(null);
     const [copied, setCopied] = useState(false);
+    const [transactionHash, setTransactionHash] = useState("");
 
     const { addToast } = useToast();
     const {
         calculateEntryFee,
         createPaymentRequest,
+        verifyPayment,
         checkPaymentStatus,
         cancelPayment,
         paymentRequest,
@@ -85,6 +87,19 @@ export function StakingPaymentModal({
         }
     };
 
+    const handleVerifyPayment = async () => {
+        if (!paymentRequest) return;
+
+        setStep('confirming');
+        try {
+            await verifyPayment(paymentRequest.id, transactionHash);
+            setStep('confirmed');
+        } catch (err) {
+            setStep('failed');
+            addToast('error', 'Verification Failed', err instanceof Error ? err.message : 'Failed to verify payment');
+        }
+    };
+
     // Handle copy address
     const handleCopyAddress = () => {
         if (paymentRequest?.recipientAddress) {
@@ -106,9 +121,14 @@ export function StakingPaymentModal({
     const handleClose = () => {
         setStep('select-method');
         setSelectedMethod(null);
+        setTransactionHash("");
         cancelPayment();
         onClose();
     };
+
+    const displayFeeAmount = selectedMethod === 'usdt'
+        ? feeResult?.feeAmountUsdt
+        : feeResult?.feeAmountLusdt;
 
     if (!isOpen) return null;
 
@@ -172,16 +192,15 @@ export function StakingPaymentModal({
                                         Select your preferred payment method:
                                     </p>
                                     <button
-                                        onClick={() => handleSelectMethod('lusdt')}
-                                        disabled={loading}
-                                        className="w-full p-4 rounded-xl border border-border hover:border-golden bg-card transition-colors flex items-center gap-4"
+                                        disabled
+                                        className="w-full p-4 rounded-xl border border-border bg-card opacity-60 cursor-not-allowed flex items-center gap-4"
                                     >
                                         <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
                                             <Wallet className="w-6 h-6 text-blue-400" />
                                         </div>
                                         <div className="text-left flex-1">
                                             <p className="font-medium">LUSDT (Lunes Network)</p>
-                                            <p className="text-sm text-muted-foreground">Pay directly from your Lunes wallet</p>
+                                            <p className="text-sm text-muted-foreground">Coming after Lunes payment verification is connected</p>
                                         </div>
                                     </button>
                                     <button
@@ -207,7 +226,7 @@ export function StakingPaymentModal({
                                         <Loader2 className="w-12 h-12 text-golden animate-spin mx-auto mb-4" />
                                         <p className="font-medium">Waiting for payment...</p>
                                         <p className="text-sm text-muted-foreground">
-                                            Send exactly {feeResult?.feeAmountLusdt.toLocaleString()} {selectedMethod?.toUpperCase()} to:
+                                            Send exactly {displayFeeAmount?.toLocaleString()} {selectedMethod?.toUpperCase()} to:
                                         </p>
                                     </div>
 
@@ -228,6 +247,24 @@ export function StakingPaymentModal({
                                     <p className="text-xs text-muted-foreground text-center">
                                         Payment expires in {Math.ceil((paymentRequest.expiresAt - Date.now()) / 60000)} minutes
                                     </p>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Solana transaction hash</label>
+                                        <input
+                                            value={transactionHash}
+                                            onChange={(event) => setTransactionHash(event.target.value)}
+                                            placeholder="Paste the signature after sending USDT"
+                                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-golden"
+                                        />
+                                        <Button
+                                            className="w-full"
+                                            disabled={loading || !transactionHash.trim()}
+                                            onClick={handleVerifyPayment}
+                                        >
+                                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                            Confirm Payment
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
 

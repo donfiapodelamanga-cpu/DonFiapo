@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAuthUrl } from "@/lib/missions/verifiers/twitter";
+import { buildPublicUrl, publicOriginInputFromHeaders } from "@/lib/http/public-origin";
 
 /**
  * GET /api/auth/twitter?wallet=<address>
@@ -9,9 +10,10 @@ import { generateAuthUrl } from "@/lib/missions/verifiers/twitter";
  */
 export async function GET(req: NextRequest) {
   try {
+    const publicOriginInput = publicOriginInputFromHeaders(req.nextUrl, req.headers);
+
     if (!process.env.TWITTER_CLIENT_ID || !process.env.TWITTER_CLIENT_SECRET) {
-      const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      return NextResponse.redirect(`${APP_URL}/airdrop?tab=missions&x_error=not_configured`);
+      return NextResponse.redirect(buildPublicUrl("/en/airdrop?tab=missions&x_error=not_configured", publicOriginInput));
     }
 
     const wallet = req.nextUrl.searchParams.get("wallet");
@@ -22,7 +24,8 @@ export async function GET(req: NextRequest) {
     // Optional referral code (from /ref/<code> or ?ref=<code>)
     const refCode = req.nextUrl.searchParams.get("ref") ?? undefined;
 
-    const { url, codeVerifier, state } = await generateAuthUrl();
+    const callbackUrl = process.env.TWITTER_CALLBACK_URL || buildPublicUrl("/api/auth/twitter/callback", publicOriginInput);
+    const { url, codeVerifier, state } = await generateAuthUrl(callbackUrl);
 
     // Build the response with a redirect
     const response = NextResponse.redirect(url);
@@ -39,6 +42,7 @@ export async function GET(req: NextRequest) {
     response.cookies.set("x_oauth_code_verifier", codeVerifier, cookieOptions);
     response.cookies.set("x_oauth_state", state, cookieOptions);
     response.cookies.set("x_oauth_wallet", wallet, cookieOptions);
+    response.cookies.set("x_oauth_callback_url", callbackUrl, cookieOptions);
     if (refCode) {
       response.cookies.set("x_oauth_ref", refCode, cookieOptions);
     }

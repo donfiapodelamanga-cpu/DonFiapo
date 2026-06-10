@@ -1,11 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
-use ink::primitives::{AccountId, Hash};
-// use fiapo_traits::Balance; // Removed unused
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 #[ink::contract]
 mod noble_affiliate {
-    use super::*;
     use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
@@ -32,7 +30,9 @@ mod noble_affiliate {
     
     // Limit: 10 LUNES
     pub const MIN_WITHDRAW_LUNES: Balance = 10 * SCALE; 
+    #[allow(dead_code)]
     pub const MIN_WITHDRAW_FIAPO: Balance = 1000 * SCALE;
+    #[allow(dead_code)]
     pub const MIN_WITHDRAW_USDT: Balance = 10 * 1_000_000; // 6 decimals? or 100_000_000? Assumed 6 for USDT usually.
     // If strict compliance: 10 USDT = 1000 cents in config, or we decide scale. 
     // Let's use 10_000_000 if 6 decimals.

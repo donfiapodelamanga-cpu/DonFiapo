@@ -2,7 +2,8 @@
 set -e
 
 echo "🚀 Starting sequential build process for Don Fiapo contracts..."
-echo "   Requires: cargo-contract (install via: cargo install cargo-contract)"
+echo "   Requires: cargo-contract 5.x + Rust stable (for ink! 5.x)"
+echo "   Install: cargo install cargo-contract"
 echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -14,9 +14,11 @@
 //! - Pause mechanism for emergency stops
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 use fiapo_traits::{
-    AccountId, Balance, PSP22Error, PSP22Result,
+    PSP22Error, PSP22Result,
     IPSP22, IPSP22Mintable, IPSP22Burnable,
 };
 
@@ -32,6 +34,7 @@ mod fiapo_core {
 
     /// Tokenomics conforme requisitos
     pub const MAX_SUPPLY: u128 = 600_000_000_000 * SCALE; // 600 bilhões
+    #[allow(dead_code)]
     pub const MIN_SUPPLY: u128 = 100_000_000 * SCALE;     // 100 milhões (target de queima)
 
     /// Taxa de transação padrão (0.6%)
@@ -301,6 +304,7 @@ mod fiapo_core {
         }
 
         /// Transferência interna sem taxas (para uso de contratos autorizados)
+        #[allow(dead_code)]
         fn transfer_internal(
             &mut self,
             from: AccountId,

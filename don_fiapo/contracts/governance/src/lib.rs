@@ -9,6 +9,8 @@
 //! - Distribuição FIAPO: 40% Equipe, 25% Staking, 20% Rewards, 5% Noble, 10% Burn.
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 #[ink::contract]
 mod fiapo_governance {

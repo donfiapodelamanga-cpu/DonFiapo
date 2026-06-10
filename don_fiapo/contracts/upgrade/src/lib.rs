@@ -4,6 +4,8 @@
 //! Implementa proxy pattern com timelock e validação de upgrades.
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 // AccountId é re-exportado pelo ink::contract
 

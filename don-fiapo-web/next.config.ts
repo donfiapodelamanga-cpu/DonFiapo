@@ -5,12 +5,12 @@ const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  serverExternalPackages: ['@polkadot/util-crypto'],
   // Note: Build with --no-turbopack flag to use webpack for proper transpilePackages support
   // reactCompiler: true, // Disabled temporarily to isolate issues
   transpilePackages: [
     '@polkadot/api',
     '@polkadot/util',
-    '@polkadot/util-crypto',
     '@polkadot/keyring',
     '@polkadot/rpc-core',
     '@polkadot/types',
@@ -91,16 +91,6 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-        ],
-      },
-      {
-        // CORS headers for API routes
-        source: "/api/:path*",
-        headers: [
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: allowedOrigins },
-          { key: "Access-Control-Allow-Methods", value: "GET,DELETE,PATCH,POST,PUT,OPTIONS" },
-          { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-admin-key" },
         ],
       },
     ]

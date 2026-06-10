@@ -5,12 +5,11 @@
 //! que a comunidade reaja a alterações potencialmente maliciosas.
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
-use fiapo_traits::{AccountId, Balance};
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 #[ink::contract]
 mod fiapo_timelock {
-    use super::*;
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
 

@@ -2,11 +2,22 @@
  * API Configuration
  */
 
+import { resolveSpinGameContractAddress } from '../contracts/resolve-contract-address';
+
 // Lunes Network RPC endpoints - uses env variable for testnet/mainnet switching
 export const LUNES_RPC_ENDPOINTS = [
   process.env.NEXT_PUBLIC_LUNES_RPC || 'ws://127.0.0.1:9944',
 ];
 
+const SOLANA_USDT_MINT =
+  process.env.NEXT_PUBLIC_SOLANA_USDT_MINT ||
+  process.env.NEXT_PUBLIC_USDT_MINT_ADDRESS ||
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+
+const SOLANA_USDC_MINT =
+  process.env.NEXT_PUBLIC_SOLANA_USDC_MINT ||
+  process.env.NEXT_PUBLIC_USDC_MINT_ADDRESS ||
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 export const API_CONFIG = {
   // Oracle service URL
@@ -34,7 +45,7 @@ export const API_CONFIG = {
     rewards: process.env.NEXT_PUBLIC_REWARDS_CONTRACT || '',
     marketplace: process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT || '',
     lottery: process.env.NEXT_PUBLIC_LOTTERY_CONTRACT || '',
-    spinGame: process.env.NEXT_PUBLIC_SPIN_GAME_CONTRACT || '',
+    spinGame: resolveSpinGameContractAddress(),
     airdrop: process.env.NEXT_PUBLIC_AIRDROP_CONTRACT || '',
     oracleMultisig: process.env.NEXT_PUBLIC_ORACLE_MULTISIG_CONTRACT || '',
     security: process.env.NEXT_PUBLIC_SECURITY_CONTRACT || '',
@@ -45,8 +56,8 @@ export const API_CONFIG = {
   // Solana configuration
   solana: {
     rpc: process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://api.devnet.solana.com',
-    usdtMint: 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr', // Devnet USDT
-    usdcMint: 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr', // Devnet USDC (using a common Devnet SPL token)
+    usdtMint: SOLANA_USDT_MINT,
+    usdcMint: SOLANA_USDC_MINT,
     receiverWallet: process.env.NEXT_PUBLIC_SOLANA_RECEIVER || '',
   },
 

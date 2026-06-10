@@ -3,9 +3,7 @@ import { db } from "@/lib/db";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { findOrCreateUserByWallet } from "@/lib/missions/service";
 import { rateLimit, getClientIP } from "@/lib/security";
-
-// The official Treasury wallet on Solana where users must send the tokens
-const SOLANA_TREASURY_WALLET = process.env.NEXT_PUBLIC_TREASURY_SOLANA || "";
+import { getSystemWalletAddress } from "@/lib/api/system-wallets";
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,32 +52,28 @@ export async function POST(req: NextRequest) {
       // Verify FIAPO token transfer using pre/post balances
       const mintAddress = process.env.NEXT_PUBLIC_FIAPO_SOLANA_MINT || "WS3qT5Yp5knnKF6Ad6gnaDrTXFHb8ZVLMQcR8LPZgem";
 
-      const sysWallet = await (db as any).systemWallet.findFirst({
-        where: { key: "migration_treasury", isActive: true },
-        select: { address: true }
-      });
-      const treasurySolana = sysWallet?.address || process.env.NEXT_PUBLIC_TREASURY_SOLANA;
+      const treasurySolana = await getSystemWalletAddress("migration_treasury");
 
       if (!treasurySolana) {
-        console.warn("[MIGRATION_VERIFY] Treasury not configured, bypassing strict destination check");
-      } else {
-        const preBalances = txInfo.meta?.preTokenBalances || [];
-        const postBalances = txInfo.meta?.postTokenBalances || [];
+        return NextResponse.json({ error: "Migration treasury is not configured" }, { status: 503 });
+      }
 
-        let preAmount = 0;
-        let postAmount = 0;
+      const preBalances = txInfo.meta?.preTokenBalances || [];
+      const postBalances = txInfo.meta?.postTokenBalances || [];
 
-        const preTarget = preBalances.find(b => b.mint === mintAddress && b.owner === treasurySolana);
-        if (preTarget) preAmount = preTarget.uiTokenAmount.uiAmount || 0;
+      let preAmount = 0;
+      let postAmount = 0;
 
-        const postTarget = postBalances.find(b => b.mint === mintAddress && b.owner === treasurySolana);
-        if (postTarget) postAmount = postTarget.uiTokenAmount.uiAmount || 0;
+      const preTarget = preBalances.find(b => b.mint === mintAddress && b.owner === treasurySolana);
+      if (preTarget) preAmount = preTarget.uiTokenAmount.uiAmount || 0;
 
-        const amountReceived = postAmount - preAmount;
+      const postTarget = postBalances.find(b => b.mint === mintAddress && b.owner === treasurySolana);
+      if (postTarget) postAmount = postTarget.uiTokenAmount.uiAmount || 0;
 
-        if (amountReceived < amountSolana * 0.99) {
-          return NextResponse.json({ error: `Amount received in treasury (${amountReceived}) does not match claimed amount (${amountSolana})` }, { status: 400 });
-        }
+      const amountReceived = postAmount - preAmount;
+
+      if (amountReceived < amountSolana * 0.99) {
+        return NextResponse.json({ error: `Amount received in treasury (${amountReceived}) does not match claimed amount (${amountSolana})` }, { status: 400 });
       }
 
       txVerified = true;

@@ -16,8 +16,10 @@ import {
     formatAffiliateBalance,
 } from "@/hooks/use-affiliate";
 import { useSolana } from "@/hooks/useSolana";
+import { signRawMessage } from "@/lib/web3/lunes";
 import type { NobleInfo } from "@/hooks/use-noble-status";
 import LunesLogo from "@/components/icons/LunesLogo";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 // Revenue source definitions — shows only the Parceiro's commission %
 const REVENUE_SOURCES = [
@@ -58,18 +60,55 @@ export default function NobleDashboard({ embedded = false, nobleInfo }: NobleDas
     const { referrals, loading: referralsLoading } = useReferrals(lunesAddress);
 
     const handleSave = async () => {
-        if (!solanaWallet) {
+        const targetSolanaWallet = solana.address || solanaWallet;
+
+        if (!lunesAddress) {
+            addToast("error", "Error", "Lunes wallet is required.");
+            return;
+        }
+
+        if (!targetSolanaWallet) {
             addToast("error", "Error", "Solana Wallet Address is required.");
             return;
         }
+
+        if (!solana.connected || !solana.address) {
+            addToast("error", "Error", "Connect your Solana wallet to verify ownership.");
+            return;
+        }
+
         setLoading(true);
         try {
+            const challengeRes = await fetch("/api/user/wallet/challenge", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lunesAddress, solanaWallet: targetSolanaWallet }),
+            });
+            const challenge = await challengeRes.json().catch(() => ({}));
+
+            if (!challengeRes.ok) {
+                addToast("error", "Error", challenge.error || "Failed to create wallet challenge.");
+                return;
+            }
+
+            const [lunesSignature, solanaSignature] = await Promise.all([
+                signRawMessage(lunesAddress, challenge.message),
+                solana.signMessage(challenge.message),
+            ]);
+
             const res = await fetch("/api/user/wallet", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lunesAddress, solanaWallet }),
+                body: JSON.stringify({
+                    challengeId: challenge.challengeId,
+                    lunesAddress,
+                    solanaWallet: targetSolanaWallet,
+                    lunesSignature,
+                    solanaSignature,
+                }),
             });
             if (res.ok) {
+                setSolanaWallet(targetSolanaWallet);
                 addToast("success", "Saved", "Solana wallet configured successfully.");
             } else {
                 const err = await res.json().catch(() => ({}));
@@ -352,23 +391,29 @@ export default function NobleDashboard({ embedded = false, nobleInfo }: NobleDas
                                     Solana Wallet Address (USDT)
                                     <span className="text-xs text-golden">(Required)</span>
                                 </Label>
-                                <Input
-                                    id="solana-wallet"
-                                    placeholder="Enter your Solana wallet address"
-                                    value={solana.connected ? (solana.address || "") : solanaWallet}
-                                    onChange={(e) => setSolanaWallet(e.target.value)}
-                                    disabled={solana.connected}
-                                    className="border-golden/50"
-                                />
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <Input
+                                        id="solana-wallet"
+                                        placeholder="Connect your Solana wallet"
+                                        value={solana.connected ? (solana.address || "") : solanaWallet}
+                                        onChange={(e) => setSolanaWallet(e.target.value)}
+                                        disabled={solana.connected}
+                                        className="border-golden/50"
+                                    />
+                                    <WalletMultiButton className="!bg-golden !text-black hover:!bg-golden/90 !rounded-md !h-10" />
+                                </div>
                                 {solana.connected && (
-                                    <p className="text-xs text-muted-foreground">Auto-filled from your connected Solana wallet.</p>
+                                    <p className="text-xs text-muted-foreground">Auto-filled from your connected Solana wallet. Saving will request signatures from both wallets.</p>
+                                )}
+                                {!solana.connected && (
+                                    <p className="text-xs text-muted-foreground">Connect the Solana wallet you want to receive USDT payouts before saving.</p>
                                 )}
                             </div>
                         </CardContent>
                         <CardFooter className="border-t border-border pt-6 flex justify-end">
                             <Button
                                 onClick={handleSave}
-                                disabled={loading || (!solanaWallet && !solana.connected)}
+                                disabled={loading || !solana.connected || !solana.address}
                                 className="bg-golden text-black hover:bg-golden/90 min-w-[140px]"
                             >
                                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}

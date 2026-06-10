@@ -5,12 +5,28 @@
  */
 
 import { API_CONFIG } from './config';
+import {
+  buildOracleNftMintPaymentCreatePayload,
+  buildOracleStakingPaymentCreatePayload,
+  oraclePaymentCreatePath,
+  oraclePaymentStatusPath,
+  oraclePaymentVerifyPath,
+  oracleUsdToAtomic,
+} from './oracle-payment';
 
-export interface PaymentRequest {
+export interface StakingPaymentRequest {
   lunesAccount: string;
+  stakingType: string;
+  paymentMethod: 'usdt';
   fiapoAmount: number;
-  expectedAmount: number; // in USDT atomic units (6 decimals)
-  expectedSender?: string;
+  expectedSender: string;
+}
+
+export interface NftMintPaymentRequest {
+  lunesAccount: string;
+  tierId: number;
+  quantity: number;
+  expectedSender: string;
 }
 
 export interface PaymentResponse {
@@ -57,7 +73,7 @@ class OracleClient {
 
   constructor() {
     // Use local proxy instead of direct URL
-    this.baseUrl = '/api/oracle';
+    this.baseUrl = '';
   }
 
   /**
@@ -73,21 +89,35 @@ class OracleClient {
     }
   }
 
-  /**
-   * Create a pending payment request
-   */
-  async createPayment(request: PaymentRequest): Promise<PaymentResponse> {
-    const response = await fetch(`${this.baseUrl}/api/payment/create`, {
+  async createStakingPayment(request: StakingPaymentRequest): Promise<PaymentResponse> {
+    const response = await fetch(`${this.baseUrl}${oraclePaymentCreatePath()}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(buildOracleStakingPaymentCreatePayload(request)),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to create payment');
+      throw new Error(error.error || 'Failed to create staking payment');
+    }
+
+    return response.json();
+  }
+
+  async createNftMintPayment(request: NftMintPaymentRequest): Promise<PaymentResponse> {
+    const response = await fetch(`${this.baseUrl}${oraclePaymentCreatePath()}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(buildOracleNftMintPaymentCreatePayload(request)),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create NFT payment');
     }
 
     return response.json();
@@ -97,7 +127,7 @@ class OracleClient {
    * Verify a payment and confirm on Lunes contract
    */
   async verifyPayment(request: VerifyRequest): Promise<VerifyResponse> {
-    const response = await fetch(`${this.baseUrl}/api/payment/verify`, {
+    const response = await fetch(`${this.baseUrl}${oraclePaymentVerifyPath()}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -117,7 +147,7 @@ class OracleClient {
    * Get payment status
    */
   async getPaymentStatus(paymentId: string): Promise<PaymentStatus> {
-    const response = await fetch(`${this.baseUrl}/api/payment/${paymentId}`);
+    const response = await fetch(`${this.baseUrl}${oraclePaymentStatusPath(paymentId)}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -132,7 +162,7 @@ class OracleClient {
    * USDT has 6 decimals on Solana
    */
   usdToUsdtAtomic(usdAmount: number): number {
-    return Math.floor(usdAmount * 1_000_000);
+    return oracleUsdToAtomic(usdAmount);
   }
 
   /**

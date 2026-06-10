@@ -1,38 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { Connection } from "@solana/web3.js";
 import { db } from "@/lib/db";
 import { findOrCreateUserByWallet } from "@/lib/missions/service";
+import { decimalToAtomicUnits, verifySplTokenPayment } from "@/lib/solana/verify-token-transfer";
+import { InvalidSpinPackageError, getSpinPackage, rejectClientPricedSpinPurchase } from "@/lib/games/spin-packages";
 
 const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || "https://api.mainnet-beta.solana.com";
+const USDT_MINT_MAINNET = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
+const SPIN_USDT_MINT =
+  process.env.SOLANA_USDT_MINT_ADDRESS ||
+  process.env.USDT_MINT_ADDRESS ||
+  process.env.NEXT_PUBLIC_SOLANA_USDT_MINT ||
+  process.env.NEXT_PUBLIC_USDT_MINT_ADDRESS ||
+  USDT_MINT_MAINNET;
+const SPIN_PAYMENT_RECEIVER =
+  process.env.SPIN_REVENUE_SOLANA_WALLET ||
+  process.env.NEXT_PUBLIC_TREASURY_SOLANA ||
+  process.env.NEXT_PUBLIC_SOLANA_RECEIVER ||
+  "";
 
 /**
  * POST /api/games/spin/purchase
- * Creates a pending spin purchase and returns oracle payment details.
- * Body: { wallet: string; spins: number; priceUsdt: number; paymentId: string; payToAddress: string }
+ * Creates a pending spin purchase from a server-owned package table.
+ * Body: { wallet: string; packageId: string }
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { wallet, spins, priceUsdt, paymentId, payToAddress } = body;
+    rejectClientPricedSpinPurchase(body);
 
-    if (!wallet || !spins || !priceUsdt || !paymentId) {
+    const { wallet, packageId } = body;
+    if (!wallet || !packageId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const spinPackage = getSpinPackage(packageId);
+    if (!SPIN_PAYMENT_RECEIVER) {
+      return NextResponse.json({ error: "Spin payment receiver is not configured" }, { status: 500 });
+    }
+
     const userId = await findOrCreateUserByWallet(wallet);
+    const paymentId = `spin_${randomUUID()}`;
 
     const purchase = await db.spinPurchase.create({
       data: {
         userId,
-        spins,
-        priceUsdt,
+        spins: spinPackage.spins,
+        priceUsdt: spinPackage.priceUsdt,
         paymentId,
         status: "PENDING",
       },
     });
 
-    return NextResponse.json({ success: true, purchaseId: purchase.id });
+    return NextResponse.json({
+      success: true,
+      purchaseId: purchase.id,
+      paymentId,
+      packageId: spinPackage.id,
+      spins: spinPackage.spins,
+      priceUsdt: spinPackage.priceUsdt,
+      payToAddress: SPIN_PAYMENT_RECEIVER,
+      mintAddress: SPIN_USDT_MINT,
+    });
   } catch (error) {
+    if (error instanceof InvalidSpinPackageError || (error instanceof Error && error.message.includes("Client-priced"))) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     console.error("[SPIN_PURCHASE]", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
@@ -69,10 +104,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Transaction already used for another purchase" }, { status: 409 });
     }
 
+    if (!SPIN_PAYMENT_RECEIVER) {
+      return NextResponse.json({ error: "Spin payment receiver is not configured" }, { status: 500 });
+    }
+
     // Verify transaction on-chain
     try {
       const connection = new Connection(SOLANA_RPC, "confirmed");
-      const txInfo = await connection.getTransaction(solanaTxHash, {
+      const txInfo = await connection.getParsedTransaction(solanaTxHash, {
         commitment: "confirmed",
         maxSupportedTransactionVersion: 0,
       });
@@ -83,6 +122,19 @@ export async function PATCH(req: NextRequest) {
 
       if (txInfo.meta?.err) {
         return NextResponse.json({ error: "Transaction failed on-chain" }, { status: 400 });
+      }
+
+      const verification = verifySplTokenPayment(txInfo, {
+        receiverAddress: SPIN_PAYMENT_RECEIVER,
+        mintAddress: SPIN_USDT_MINT,
+        minAmountAtomic: decimalToAtomicUnits(purchase.priceUsdt, 6),
+      });
+
+      if (!verification.valid) {
+        return NextResponse.json(
+          { error: "Payment verification failed", reason: verification.error },
+          { status: 400 },
+        );
       }
     } catch (verifyError) {
       console.error("[SPIN_PURCHASE_VERIFY]", verifyError);

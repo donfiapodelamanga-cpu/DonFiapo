@@ -10,16 +10,28 @@ db.exec(`
     id TEXT PRIMARY KEY,
     lunes_account TEXT NOT NULL,
     payment_type TEXT NOT NULL DEFAULT 'ico',
-    item_amount TEXT NOT NULL,
-    expected_amount REAL NOT NULL,
-    expected_sender TEXT,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    status TEXT DEFAULT 'pending'
+      item_amount TEXT NOT NULL,
+      expected_amount REAL NOT NULL,
+      expected_sender TEXT,
+      transaction_hash TEXT,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      status TEXT DEFAULT 'pending'
   )
 `);
 
-export type PaymentType = 'ico' | 'spin_purchase';
+const existingColumns = db.prepare("PRAGMA table_info(pending_payments)").all() as { name: string }[];
+if (!existingColumns.some((column) => column.name === 'transaction_hash')) {
+    db.exec('ALTER TABLE pending_payments ADD COLUMN transaction_hash TEXT');
+}
+
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS pending_payments_transaction_hash_key
+  ON pending_payments(transaction_hash)
+  WHERE transaction_hash IS NOT NULL
+`);
+
+export type PaymentType = 'ico' | 'spin_purchase' | 'nft_mint' | `staking:${string}`;
 
 export interface PendingPayment {
     id: string;
@@ -28,6 +40,7 @@ export interface PendingPayment {
     itemAmount: number; // Amount of $FIAPO or spins
     expectedAmount: number; // Amount of USDT
     expectedSender?: string;
+    transactionHash?: string;
     createdAt: number;
     expiresAt: number;
     status: string;
@@ -63,6 +76,25 @@ export const PaymentRepository = {
             itemAmount: Number(row.item_amount),
             expectedAmount: row.expected_amount,
             expectedSender: row.expected_sender,
+            transactionHash: row.transaction_hash,
+            createdAt: row.created_at,
+            expiresAt: row.expires_at,
+            status: row.status,
+        };
+    },
+
+    findByTransactionHash: (transactionHash: string): PendingPayment | undefined => {
+        const stmt = db.prepare('SELECT * FROM pending_payments WHERE transaction_hash = ?');
+        const row = stmt.get(transactionHash) as any;
+        if (!row) return undefined;
+        return {
+            id: row.id,
+            lunesAccount: row.lunes_account,
+            paymentType: row.payment_type,
+            itemAmount: Number(row.item_amount),
+            expectedAmount: row.expected_amount,
+            expectedSender: row.expected_sender,
+            transactionHash: row.transaction_hash,
             createdAt: row.created_at,
             expiresAt: row.expires_at,
             status: row.status,
@@ -78,6 +110,11 @@ export const PaymentRepository = {
     updateStatus: (id: string, status: string) => {
         const stmt = db.prepare('UPDATE pending_payments SET status = ? WHERE id = ?');
         stmt.run(status, id);
+    },
+
+    completeWithTransactionHash: (id: string, transactionHash: string) => {
+        const stmt = db.prepare("UPDATE pending_payments SET status = 'completed', transaction_hash = ? WHERE id = ?");
+        stmt.run(transactionHash, id);
     },
 
     cleanupExpired: () => {

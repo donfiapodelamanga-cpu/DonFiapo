@@ -9,12 +9,13 @@
 //! - 15% para NFT holders
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
 // Traits são re-exportados pelo ink::contract
 
 #[ink::contract]
 mod fiapo_airdrop {
-    use fiapo_traits::PSP22Error;
     use fiapo_logics::traits::psp22::{PSP22, PSP22Ref};
     use ink::storage::Mapping;
 

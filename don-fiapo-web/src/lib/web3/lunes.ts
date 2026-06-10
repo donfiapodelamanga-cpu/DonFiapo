@@ -222,6 +222,31 @@ export function getProviderFromSource(source: string): PolkadotWalletProvider {
   return null;
 }
 
+function utf8ToHex(value: string): string {
+  return `0x${Array.from(new TextEncoder().encode(value))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+/**
+ * Sign a plain UTF-8 message with the connected Substrate-compatible Lunes wallet.
+ */
+export async function signRawMessage(address: string, message: string): Promise<string> {
+  const injector = await web3FromAddress(address);
+
+  if (!injector.signer.signRaw) {
+    throw new Error('Connected wallet does not support raw message signing.');
+  }
+
+  const result = await injector.signer.signRaw({
+    address,
+    data: utf8ToHex(message),
+    type: 'bytes',
+  });
+
+  return result.signature;
+}
+
 /**
  * Get account balance
  * Returns "0" if network is offline

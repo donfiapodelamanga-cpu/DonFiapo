@@ -8,8 +8,8 @@ CONTRACT_DIR="don_fiapo/contracts/ico"
 # Output paths
 CONTRACT_PATH="don_fiapo/target/ink/fiapo_ico/fiapo_ico.contract"
 
-# Secrets - Using the one from .env logic or hardcoded for local dev as found in .env
-DEPLOYER_SEED="cupboard pink element depend foil program toe salt wagon fuel spider settle"
+# Secrets
+DEPLOYER_SEED="${DEPLOYER_SEED:?Set DEPLOYER_SEED in your shell before running this script}"
 
 # Core Contract Address (Must match the deployed Token contract)
 # Extracted from .env: NEXT_PUBLIC_CORE_CONTRACT

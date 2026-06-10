@@ -21,6 +21,7 @@ members = [
     "contracts/test_pure",
     "contracts/noble_affiliate",
     "contracts/nft_collections",
+    "contracts/spin_game",
 ]
 
 [workspace.package]
@@ -30,8 +31,8 @@ edition = "2021"
 license = "MIT"
 
 [workspace.dependencies]
-# ink! 4.2.1 - Compatible with Lunes node (matching Lunex)
-ink = { version = "~4.2.1", default-features = false }
+# ink! 4.x - Compatible with cargo-contract 3.x + pallet-contracts (Lunes network)
+ink = { version = "~4.3.0", default-features = false }
 
 # SCALE Codec for serialization/deserialization
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
@@ -42,7 +43,6 @@ overflow-checks = true
 lto = true
 codegen-units = 1
 opt-level = "z"
-panic = "abort"
 strip = true
 
 [profile.dev]

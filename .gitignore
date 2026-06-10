@@ -58,7 +58,11 @@ don_fiapo/test_results.txt
 ssl/
 
 # Admin Panel (Private - NOT for public repo)
-don-fiapo-admin/
+!don-fiapo-admin/
+!don-fiapo-admin/**
+don-fiapo-admin/**/*.db
+don-fiapo-admin/lint_output*.txt
+don-fiapo-admin/**/*.patch
 
 # Agent/AI Config (Internal)
 .agent/
@@ -66,6 +70,18 @@ don-fiapo-admin/
 # Deploy Artifacts (Private)
 deploy-package.zip
 deploy/
+!deploy/
+!deploy/README.md
+!deploy/setup.sh
+!deploy/deploy.sh
+!deploy/docker-compose.yml
+!deploy/deploy-config.test.mjs
+!deploy/production-smoke.mjs
+!deploy/nginx/
+!deploy/nginx/**
+deploy/.env*
+deploy/certbot/
+deploy/cleanup.sh
 
 # Misc junk
 null

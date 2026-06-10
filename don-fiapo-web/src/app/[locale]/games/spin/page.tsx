@@ -4,6 +4,7 @@ import { FC, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Ticket, Trophy, Zap, Crown, RefreshCw, ChevronRight, Star, X, CheckCircle2, Wallet, Lock } from 'lucide-react';
 import { SpinBuyModal, SpinPackage } from '@/components/games/SpinBuyModal';
+import { SPIN_PACKAGES } from '@/lib/games/spin-packages';
 import { useWalletStore } from '@/lib/stores';
 import { cn } from '@/lib/utils';
 
@@ -194,11 +195,7 @@ const PrizeToast: FC<{ prize: Prize | null; onDismiss: () => void }> = ({ prize,
 // ── Spin packages ────────────────────────────────────────────────────────────
 
 const spinPackages: SpinPackage[] = [
-  { spins: 1, price: 1.00 },
-  { spins: 10, price: 9.00 },
-  { spins: 50, price: 40.00 },
-  { spins: 100, price: 75.00 },
-  { spins: 500, price: 300.00 },
+  ...SPIN_PACKAGES.map((pkg) => ({ id: pkg.id, spins: pkg.spins, price: pkg.priceUsdt })),
 ];
 
 const TIER_ICON: Record<string, typeof Star> = {

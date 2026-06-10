@@ -7,7 +7,11 @@ async function main() {
     // Lunes prefix is usually 42 or specific. Let's assume generic first or check config.
     // Actually, checking previous config.ts might reveal ss58 or prefix.
 
-    const mnemonic = "soon warrior disorder inner sight lemon rival one pulse bronze melody wagon";
+    const mnemonic = process.env.LUNES_MNEMONIC;
+    if (!mnemonic) {
+        throw new Error('LUNES_MNEMONIC is required');
+    }
+
     const pair = keyring.addFromUri(mnemonic);
 
     console.log('Address (SS58: 42):', pair.address);

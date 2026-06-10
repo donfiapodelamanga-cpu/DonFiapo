@@ -25,7 +25,7 @@
 
 **Arquivo:** `.env.local:22`  
 ```
-LUNES_MNEMONIC=cupboard pink element depend foil program toe salt wagon fuel spider settle
+LUNES_MNEMONIC=<redacted-compromised-mnemonic>
 ```
 
 **Risco:** Qualquer dev ou CI/CD que acesse este arquivo tem acesso total à carteira Lunes. Se commitado acidentalmente, compromete fundos.  
@@ -33,7 +33,7 @@ LUNES_MNEMONIC=cupboard pink element depend foil program toe salt wagon fuel spi
 1. Remover do `.env.local` — nunca armazenar mnemonic em env do frontend.  
 2. Se necessário para server-side signing, usar um vault (AWS Secrets Manager, HashiCorp Vault).  
 3. Verificar que `.env.local` está no `.gitignore`.  
-4. **Rotacionar a mnemonic imediatamente** se houver qualquer chance de exposição.
+4. **Rotacionar a mnemonic imediatamente** se houver qualquer chance de exposição. A mnemonic original foi removida deste relatório; trate-a como comprometida.
 
 ---
 

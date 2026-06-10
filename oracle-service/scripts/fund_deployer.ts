@@ -3,10 +3,14 @@ import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 
 const RPC_URL = 'ws://127.0.0.1:9944';
-const DEPLOYER_SEED = 'service slush crane heavy view hello also carpet bid spot whip puppy';
+const DEPLOYER_SEED = process.env.DEPLOYER_SEED;
 const AMOUNT = 1000 * (10 ** 8); // 1000 LUNES for many deploys
 
 async function main() {
+    if (!DEPLOYER_SEED) {
+        throw new Error('DEPLOYER_SEED is required');
+    }
+
     await cryptoWaitReady();
     const keyring = new Keyring({ type: 'sr25519', ss58Format: 42 });
 

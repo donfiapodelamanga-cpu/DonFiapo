@@ -64,6 +64,20 @@ model Wallet {
   createdAt       DateTime @default(now())
 }
 
+model WalletLinkChallenge {
+  id              String    @id @default(uuid())
+  lunesAddress    String
+  solanaWallet    String
+  nonce           String    @unique
+  message         String
+  expiresAt       DateTime
+  consumedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([lunesAddress])
+  @@index([expiresAt])
+}
+
 // ==========================================
 // ⚔️ MISSIONS ENGINE
 // ==========================================

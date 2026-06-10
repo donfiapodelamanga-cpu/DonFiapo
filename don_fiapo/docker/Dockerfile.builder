@@ -1,5 +1,6 @@
-# Ambiente de build para contratos ink! compatível com Lunes Network
-# Baseado no mesmo stack do PIDChat: nightly Linux + cargo-contract 5.0.3
+# Ambiente de build para contratos ink! 5.x compatível com Lunes Network
+# cargo-contract 5.x + Rust stable — par correto para ink! 5.x
+# Rust 1.82+ resolve o problema do panic_immediate_abort do cargo-contract 4.x/3.x
 FROM rust:latest
 
 # Instalar dependências do sistema
@@ -13,19 +14,18 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar toolchain nightly e componentes necessários
-RUN rustup install nightly && \
-    rustup default nightly && \
-    rustup component add rust-src --toolchain nightly && \
-    rustup target add wasm32-unknown-unknown --toolchain nightly
+# Instalar componentes necessários para WASM
+RUN rustup component add rust-src && \
+    rustup target add wasm32-unknown-unknown
 
-# Instalar cargo-contract (mesmo usado pelo PIDChat)
-RUN cargo install --force --locked cargo-contract
+# Instalar cargo-contract 5.x — compatível com ink! 5.x e Rust stable moderno
+RUN cargo install --force cargo-contract
 
-# Verificar instalação
+# Verificar instalação e compatibilidade
 RUN cargo --version && \
     rustc --version && \
-    cargo-contract --version
+    cargo contract --version && \
+    echo "✅ Build environment ready (ink! 5.x + cargo-contract 5.x)"
 
 # Diretório de trabalho
 WORKDIR /workspace

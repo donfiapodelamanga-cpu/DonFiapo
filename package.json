@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "smoke:prod": "node deploy/production-smoke.mjs",
+    "test:deploy": "node --test deploy/*.test.mjs"
+  },
   "dependencies": {
     "dotenv": "^17.2.3"
   }

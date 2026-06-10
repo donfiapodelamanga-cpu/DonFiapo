@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { buildPublicUrl } from '@/lib/http/public-origin';
 
 export default function robots(): MetadataRoute.Robots {
     return {
@@ -30,6 +31,6 @@ export default function robots(): MetadataRoute.Robots {
                 disallow: ['/private/'],
             }
         ],
-        sitemap: 'https://donfiapo.fun/sitemap.xml',
+        sitemap: buildPublicUrl('/sitemap.xml', { configuredOrigin: process.env.NEXT_PUBLIC_APP_URL }),
     };
 }

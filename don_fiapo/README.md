@@ -139,8 +139,10 @@ ls -la target/ink/
 ### Pré-requisitos
 
 - [Rust](https://www.rust-lang.org/) (versão estável)
-- [cargo-contract](https://github.com/paritytech/cargo-contract) 4.0+
+- [cargo-contract](https://github.com/paritytech/cargo-contract) 3.2.0
 - [Ink!](https://use.ink/) 4.3.0
+- `wasm32-unknown-unknown`
+- `substrate-contracts-node`
 
 ### Instalação
 
@@ -149,50 +151,98 @@ ls -la target/ink/
 git clone <repository-url>
 cd don_fiapo
 
-# 2. Instale as dependências
-cargo install --force --locked cargo-contract
+# 2. Instale a versão correta do cargo-contract para ink! v4
+cargo install cargo-contract --version "=3.2.0" --force
 
 # 3. Adicione o target wasm
 rustup target add wasm32-unknown-unknown
 ```
 
+## 🌐 Build e Deploy Local Corretos
+
+### Stack validada
+
+- `ink!` `4.3.0`
+- `cargo-contract` `3.2.0`
+- `substrate-contracts-node` local em `ws://localhost:9944`
+
+`cargo-contract` 4.x é incompatível com os metadados gerados pelo projeto em `ink! v4`, então o deploy local correto deve usar `3.2.0`.
+
+### Compilação
+
+```bash
+# core
+cargo contract build --manifest-path contracts/core/Cargo.toml
+
+# contratos dependentes
+for contract in affiliate rewards noble_affiliate oracle_multisig staking ico governance lottery airdrop marketplace nft_collections; do
+  cargo contract build --manifest-path contracts/$contract/Cargo.toml
+done
+```
+
+### Subir a chain local
+
+```bash
+substrate-contracts-node --dev
+```
+
+### Ordem correta de deploy
+
+1. `fiapo-core`
+2. `fiapo-affiliate`
+3. `fiapo-rewards`
+4. `noble-affiliate`
+5. `fiapo-staking`
+6. `fiapo-ico`
+7. `fiapo-governance`
+8. `fiapo-lottery`
+9. `fiapo-oracle-multisig`
+
+### Deploy do `fiapo-core`
+
+```bash
+cargo contract instantiate \
+  --manifest-path contracts/core/Cargo.toml \
+  --suri "//Alice" \
+  --url ws://localhost:9944 \
+  --args '"Don Fiapo"' '"FIAPO"' '1000000000000000000' \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+  --execute \
+  --skip-confirm
+```
+
+### Deploy dos contratos dependentes
+
+Substitua `<CORE_ADDRESS>` pelo endereço retornado no deploy do `fiapo-core`.
+
+```bash
+cargo contract instantiate --manifest-path contracts/affiliate/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 616666696c696174652d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/rewards/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 726577617264732d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/noble_affiliate/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 6e6f626c652d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/staking/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 7374616b696e672d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/ico/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 69636f2d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/governance/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 676f7665726e616e63652d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/lottery/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 6c6f74746572792d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/oracle_multisig/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 6f7261636c652d303031 --args '["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"]' '2' --execute --skip-confirm
+```
+
+### Observações importantes
+
+- `spin_game` não entra mais no fluxo de deploy porque o spin passou a ser offchain.
+- Quando aparecer `Contracts::DuplicateContract`, gere outro `--salt` e repita a instanciação.
+- Salve os endereços finais em `deployed_addresses.env`.
+- Para validar o core após o deploy:
+
+```bash
+cargo contract call --manifest-path contracts/core/Cargo.toml --contract <CORE_ADDRESS> --message name --suri "//Alice" --url ws://localhost:9944
+cargo contract call --manifest-path contracts/core/Cargo.toml --contract <CORE_ADDRESS> --message symbol --suri "//Alice" --url ws://localhost:9944
+cargo contract call --manifest-path contracts/core/Cargo.toml --contract <CORE_ADDRESS> --message 'IPSP22::total_supply' --suri "//Alice" --url ws://localhost:9944
+```
+
 ## 🌐 Deploy na Rede Lunes
-
-### Testnet (Recomendado para testes)
-
-```bash
-# Deploy na testnet da Lunes
-cargo contract instantiate \
-  --constructor new \
-  --args "Don Fiapo" "FIAPO" 1000000000000000000000000000 \
-  --suri //Alice \
-  --url wss://ws-test.lunes.io
-```
-
-**Interface Web para Testnet:**
-
-- URL: <https://ui.use.ink/?rpc=wss://ws-test.lunes.io>
-
-### Mainnet (Produção)
-
-```bash
-# Deploy na mainnet da Lunes
-cargo contract instantiate \
-  --constructor new \
-  --args "Don Fiapo" "FIAPO" 1000000000000000000000000000 \
-  --suri "//YourPrivateKey" \
-  --url wss://ws.lunes.io
-```
-
-**Endpoints Mainnet (usar múltiplos para resiliência):**
-
-- Primary: `wss://ws.lunes.io`
-- Secondary: `wss://ws-lunes-main-01.lunes.io`
-- Tertiary: `wss://ws-lunes-main-02.lunes.io`
-
-**Interface Web para Mainnet:**
-
-- URL: <https://ui.use.ink/?rpc=wss://ws.lunes.io>
 
 ### Compilação
 

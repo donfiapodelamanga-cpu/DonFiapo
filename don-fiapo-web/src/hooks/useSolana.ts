@@ -40,6 +40,7 @@ export function useSolana() {
         connecting,
         disconnect,
         signTransaction,
+        signMessage,
         sendTransaction
     } = useWallet();
 
@@ -188,6 +189,20 @@ export function useSolana() {
         return transferStablecoin('usdc', amount, receiverAddress);
     }, [transferStablecoin]);
 
+    const signMessageWithWallet = useCallback(async (message: string): Promise<string> => {
+        if (!publicKey || !signMessage) {
+            throw new Error('Connected Solana wallet does not support message signing');
+        }
+
+        const signature = await signMessage(new TextEncoder().encode(message));
+        let binary = '';
+        signature.forEach((byte) => {
+            binary += String.fromCharCode(byte);
+        });
+
+        return btoa(binary);
+    }, [publicKey, signMessage]);
+
     return {
         // State
         publicKey,
@@ -201,6 +216,7 @@ export function useSolana() {
         transferStablecoin,
         sendUSDT,
         sendUSDC,
+        signMessage: signMessageWithWallet,
 
         // Convenience
         isReady: connected && !!publicKey,

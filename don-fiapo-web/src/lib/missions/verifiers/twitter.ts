@@ -2,7 +2,7 @@ import { TwitterApi, UserFollowingV2Paginator, TweetLikingUsersV2Paginator, Twee
 
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID!;
 const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET!;
-const CALLBACK_URL = process.env.TWITTER_CALLBACK_URL ?? "http://localhost:3000/api/auth/twitter/callback";
+const DEFAULT_CALLBACK_URL = "https://donfiapo.fun/api/auth/twitter/callback";
 
 export interface TwitterUserInfo {
   id: string;
@@ -30,13 +30,13 @@ export interface TwitterVerificationResult {
  * Scopes confirmed against official X API v2 docs:
  *   tweet.read, users.read, follows.read, like.read, offline.access (required for refresh tokens).
  */
-export async function generateAuthUrl(): Promise<{
+export async function generateAuthUrl(callbackUrl = process.env.TWITTER_CALLBACK_URL ?? DEFAULT_CALLBACK_URL): Promise<{
   url: string;
   codeVerifier: string;
   state: string;
 }> {
   const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-  const { url, codeVerifier, state } = client.generateOAuth2AuthLink(CALLBACK_URL, {
+  const { url, codeVerifier, state } = client.generateOAuth2AuthLink(callbackUrl, {
     scope: ["tweet.read", "users.read", "follows.read", "like.read", "offline.access"],
   });
   return { url, codeVerifier, state };
@@ -48,7 +48,8 @@ export async function generateAuthUrl(): Promise<{
  */
 export async function exchangeCodeForTokens(
   code: string,
-  codeVerifier: string
+  codeVerifier: string,
+  callbackUrl = process.env.TWITTER_CALLBACK_URL ?? DEFAULT_CALLBACK_URL
 ): Promise<{
   accessToken: string;
   refreshToken: string | undefined;
@@ -57,7 +58,7 @@ export async function exchangeCodeForTokens(
 }> {
   const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
   const { accessToken, refreshToken, expiresIn, client: loggedClient } =
-    await client.loginWithOAuth2({ code, codeVerifier, redirectUri: CALLBACK_URL });
+    await client.loginWithOAuth2({ code, codeVerifier, redirectUri: callbackUrl });
 
   const meData = await loggedClient.v2.me({
     "user.fields": ["created_at", "public_metrics"],

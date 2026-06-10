@@ -9,8 +9,10 @@
 //! - Histórico de rankings
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(unexpected_cfgs)]
 
-use fiapo_traits::{AccountId, Balance, RewardsError, PSP22Error};
+use fiapo_traits::RewardsError;
 
 #[ink::contract]
 mod fiapo_rewards {
@@ -20,7 +22,9 @@ mod fiapo_rewards {
     use ink::storage::Mapping;
 
     /// Constantes
+    #[allow(dead_code)]
     pub const MAX_RANKING_SIZE: u8 = 12;
+    #[allow(dead_code)]
     pub const EXCLUDE_TOP_WALLETS: u16 = 100;
     pub const SCALE: u128 = 100_000_000;
 

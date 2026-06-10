@@ -60,12 +60,62 @@ npm install
 npm run dev
 ```
 
-### 3. Deploy the Contract (For Lords only)
+### 3. Run the Smart Contracts Locally
 ```bash
 cd don_fiapo
-sh scripts/build_all.sh  # Compiles all contracts safely
-node scripts/deploy_full_system.cjs # Deploys Core & Staking
+
+# ink! v4 requires cargo-contract 3.2.0 in this project
+cargo install cargo-contract --version "=3.2.0" --force
+rustup target add wasm32-unknown-unknown
+
+# compile the contracts
+cargo contract build --manifest-path contracts/core/Cargo.toml
+for contract in affiliate rewards noble_affiliate oracle_multisig staking ico governance lottery airdrop marketplace nft_collections; do
+  cargo contract build --manifest-path contracts/$contract/Cargo.toml
+done
+
+# start the local contracts node
+substrate-contracts-node --dev
 ```
+
+Then deploy from another terminal:
+
+```bash
+cd don_fiapo
+
+# core first
+cargo contract instantiate \
+  --manifest-path contracts/core/Cargo.toml \
+  --suri "//Alice" \
+  --url ws://localhost:9944 \
+  --args '"Don Fiapo"' '"FIAPO"' '1000000000000000000' \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" \
+  --execute \
+  --skip-confirm
+```
+
+After deploying `fiapo-core`, deploy the dependent contracts with the core address:
+
+```bash
+# examples
+cargo contract instantiate --manifest-path contracts/affiliate/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 616666696c696174652d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/rewards/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 726577617264732d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/noble_affiliate/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 6e6f626c652d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/staking/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 7374616b696e672d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/ico/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 69636f2d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/governance/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 676f7665726e616e63652d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/lottery/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 6c6f74746572792d303031 --args <CORE_ADDRESS> --execute --skip-confirm
+cargo contract instantiate --manifest-path contracts/oracle_multisig/Cargo.toml --suri "//Alice" --url ws://localhost:9944 --salt 6f7261636c652d303031 --args '["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY","5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"]' '2' --execute --skip-confirm
+```
+
+Notes:
+
+- `spin_game` is not part of the deploy flow anymore because the spin feature is offchain.
+- The generated addresses can be saved in `don_fiapo/deployed_addresses.env`.
+- If `DuplicateContract` appears, redeploy with a different `--salt`.
 
 ---
 

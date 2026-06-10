@@ -1,25 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { db } from "@/lib/db";
+import { getClientIP, rateLimit, validateWalletOrError } from "@/lib/security";
+import {
+  saveVerifiedWalletLink,
+  WalletLinkChallengeConsumedError,
+  WalletLinkConflictError,
+} from "@/lib/wallets/wallet-link-save";
+import { verifyWalletLinkProof } from "@/lib/wallets/wallet-link-proof";
+
+function statusForProofError(error: string): number {
+  if (error === "challenge_expired") return 410;
+  if (error === "challenge_consumed") return 409;
+  if (error === "invalid_lunes_signature" || error === "invalid_solana_signature") return 401;
+  return 400;
+}
 
 /**
  * POST /api/user/wallet
- * Save or update the Solana wallet address for a user identified by their Lunes address.
+ * Save or update the Solana wallet address after both wallets sign a server challenge.
  *
- * Body: { lunesAddress: string, solanaWallet: string }
+ * Body: { challengeId, lunesAddress, solanaWallet, lunesSignature, solanaSignature }
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { lunesAddress, solanaWallet } = body;
+    const limited = rateLimit(`wallet-link-save:${getClientIP(req)}`, 20, 60_000);
+    if (limited) return limited;
 
-    if (!lunesAddress || !solanaWallet) {
+    const body = await req.json();
+    const { challengeId, lunesAddress, solanaWallet, lunesSignature, solanaSignature } = body;
+
+    if (!challengeId || !lunesAddress || !solanaWallet || !lunesSignature || !solanaSignature) {
       return NextResponse.json(
-        { error: "lunesAddress and solanaWallet are required" },
+        { error: "challengeId, lunesAddress, solanaWallet, lunesSignature and solanaSignature are required" },
         { status: 400 }
       );
     }
 
-    // Find the user by their Lunes wallet
+    const lunesError = validateWalletOrError(lunesAddress, "lunes");
+    if (lunesError) return lunesError;
+
+    const solanaError = validateWalletOrError(solanaWallet, "solana");
+    if (solanaError) return solanaError;
+
+    const challenge = await db.walletLinkChallenge.findUnique({
+      where: { id: challengeId },
+      select: {
+        id: true,
+        lunesAddress: true,
+        solanaWallet: true,
+        message: true,
+        expiresAt: true,
+        consumedAt: true,
+      },
+    });
+
+    if (!challenge) {
+      return NextResponse.json({ error: "Wallet link challenge not found" }, { status: 404 });
+    }
+
+    const proof = await verifyWalletLinkProof({
+      challenge,
+      lunesAddress,
+      solanaWallet,
+      lunesSignature,
+      solanaSignature,
+    });
+
+    if (!proof.ok) {
+      return NextResponse.json({ error: proof.error }, { status: statusForProofError(proof.error) });
+    }
+
     const lunesWallet = await db.wallet.findUnique({
       where: { address: lunesAddress },
       select: { userId: true },
@@ -34,29 +85,25 @@ export async function POST(req: NextRequest) {
 
     const userId = lunesWallet.userId;
 
-    // Upsert the Solana wallet for this user
-    const existing = await db.wallet.findFirst({
-      where: { userId, network: "SOLANA" },
+    await saveVerifiedWalletLink(db, {
+      challengeId,
+      userId,
+      solanaWallet,
     });
-
-    if (existing) {
-      await db.wallet.update({
-        where: { id: existing.id },
-        data: { address: solanaWallet },
-      });
-    } else {
-      await db.wallet.create({
-        data: {
-          address: solanaWallet,
-          network: "SOLANA",
-          userId,
-          isPrimary: false,
-        },
-      });
-    }
 
     return NextResponse.json({ success: true, message: "Solana wallet saved" });
   } catch (error) {
+    if (error instanceof WalletLinkChallengeConsumedError) {
+      return NextResponse.json({ error: "challenge_consumed" }, { status: 409 });
+    }
+
+    if (error instanceof WalletLinkConflictError) {
+      return NextResponse.json(
+        { error: "Solana wallet already linked to another user" },
+        { status: 409 }
+      );
+    }
+
     console.error("[USER_WALLET_POST]", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

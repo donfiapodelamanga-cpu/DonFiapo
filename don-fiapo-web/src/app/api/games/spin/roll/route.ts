@@ -6,6 +6,9 @@ import { calculateMissionPoints, calculateTotalScore, calculateRank } from "@/li
 import { tryClaimEarlyBirdSlot } from "@/lib/missions/early-bird";
 import { rateLimit, validateWalletOrError } from "@/lib/security";
 import { sendUsdtToUser, sendLunesToUser } from "@/lib/prizes/payout";
+import { selectPayoutWallet } from "@/lib/wallets/select-payout-wallet";
+import { NoSpinBalanceError } from "@/lib/games/spin-balance";
+import { consumeSpinForPrize } from "@/lib/games/spin-consumption";
 
 const SPIN_MISSION_ID = "m-spin-game";
 
@@ -132,19 +135,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const payoutWallets = await db.wallet.findMany({
+      where: { userId, network: { in: ["LUNES", "SOLANA"] } },
+      select: { address: true, network: true, isPrimary: true },
+    });
+    const userSolanaWallet = selectPayoutWallet(payoutWallets, "SOLANA");
+    const userLunesWallet = selectPayoutWallet(payoutWallets, "LUNES") ?? wallet;
+
     // ── Server-side prize determination with DB-backed daily caps ──
     const prize = await pickPrizeServer();
 
-    // Record spin in DB (this also increments the daily cap counter for DB queries)
-    await db.spinResult.create({
-      data: {
-        userId,
-        prizeIndex: prize.index,
-        prizeLabel: prize.label,
-        prizeSublabel: prize.sublabel,
-        tier: prize.tier,
-      },
-    }).catch(() => null);
+    // Atomically consume one available spin and record the result before payout.
+    const spinConsumption = await consumeSpinForPrize(db, userId, prize);
 
     // ── FIX 1: Credit FIAPO prize to offchain balance ──
     let earnedFiapo = 0;
@@ -195,8 +197,8 @@ export async function POST(req: NextRequest) {
     let usdtTxHash: string | undefined;
     if (prize.sublabel === "USDT") {
       const usdtAmount = parseFloat(prize.label);
-      if (user.solanaWallet) {
-        const payoutResult = await sendUsdtToUser(user.solanaWallet, usdtAmount);
+      if (userSolanaWallet) {
+        const payoutResult = await sendUsdtToUser(userSolanaWallet, usdtAmount);
         if (payoutResult.success) {
           usdtTxHash = payoutResult.txHash;
         } else {
@@ -214,7 +216,7 @@ export async function POST(req: NextRequest) {
     let lunesTxHash: string | undefined;
     if (prize.sublabel === "LUNES") {
       const lunesAmount = parseFloat(prize.label);
-      const payoutResult = await sendLunesToUser(user.walletAddress, lunesAmount);
+      const payoutResult = await sendLunesToUser(userLunesWallet, lunesAmount);
       if (!payoutResult.success) {
         console.error("[SPIN_LUNES_PAYOUT]", payoutResult.error);
       } else {
@@ -311,8 +313,16 @@ export async function POST(req: NextRequest) {
       pendingUsdtReward,
       usdtTxHash,
       lunesTxHash,
+      spinBalance: spinConsumption.spinBalanceAfter,
     });
   } catch (error) {
+    if (error instanceof NoSpinBalanceError) {
+      return NextResponse.json(
+        { error: "No spins available", spinBalance: error.spinBalance },
+        { status: 402 }
+      );
+    }
+
     console.error("[SPIN_ROLL_API]", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
