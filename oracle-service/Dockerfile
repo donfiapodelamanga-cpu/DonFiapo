@@ -25,6 +25,7 @@ COPY --from=builder /app/package*.json ./
 
 # Copy ABI file to dist folder
 COPY --from=builder /app/src/don_fiapo.json ./dist/
+COPY --from=builder /app/src/noble_affiliate.json ./dist/
 
 # Environment variables should be passed at runtime, but setting defaults for safety
 ENV NODE_ENV=production
