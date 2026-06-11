@@ -16,7 +16,7 @@ Spec mestre atual: `docs/PROJECT_REQUIREMENTS_SPEC.md` (criada em 2026-06-10 apo
 - [x] Configurar CORS dinamico de producao sem origens localhost e sem header com lista separada por virgula.
 - [x] Semear templates e validar carteiras de sistema, especialmente `spin_revenue` e tesouraria Solana; ficam inativas ate endereco valido ser configurado.
 - [x] Corrigir manifests de deploy para publicar web/admin e manter Oracle atras do proxy seguro do web.
-- [ ] Aplicar deploy em producao e validar que headers, OAuth e Oracle deixaram de usar localhost/IP interno.
+- [x] Aplicar deploy em producao e validar que headers, CORS, Oracle e carteiras publicas do Admin deixaram de usar localhost/IP interno.
 - [x] Remover API keys hardcoded dos manifests/scripts de deploy versionaveis.
 - [ ] Rotacionar no provedor qualquer chave que ja tenha sido exposta em historico/scripts antes de novo deploy.
 - [ ] Conter segredo real versionado em `don-fiapo-web/SECURITY_AUDIT.md`, rotacionar carteira/chaves afetadas e limpar historico antes de push publico.
@@ -53,7 +53,7 @@ Spec mestre atual: `docs/PROJECT_REQUIREMENTS_SPEC.md` (criada em 2026-06-10 apo
 - [x] Adicionar runner unitario oficial ao `don-fiapo-web` ou formalizar script de testes isolados.
 - [x] Reduzir erros de tsc globais para que `npm run build` e `tsc --noEmit` virem gates confiaveis no web.
 - [x] Adicionar smoke tests de producao para Oracle, Twitter OAuth, CORS, canonical host, DNS `www` e carteiras de sistema.
-- [ ] Fazer `npm run smoke:prod` passar apos deploy e configuracao de DNS/segredos/carteiras.
+- [ ] Fazer `npm run smoke:prod` passar apos configuracao externa de DNS `www` e credenciais Twitter/X.
 - [x] Documentar variaveis obrigatorias de producao sem valores sensiveis.
 - [x] Consolidar requisitos e specs atuais do projeto em documento rastreavel.
 - [x] Substituir teste placeholder do Oracle por specs reais de health, auth, create/status/verify e replay.
@@ -105,6 +105,11 @@ Spec mestre atual: `docs/PROJECT_REQUIREMENTS_SPEC.md` (criada em 2026-06-10 apo
 - [x] Codigo: mnemonics/seeds rastreadas redigidas ou substituidas por env obrigatoria em `SECURITY_AUDIT.md`, `fund_deployer.ts`, `deploy_ico_contract.sh` e `get_address.cjs`.
 - [x] Operacao local: `deploy-package.zip` removido por conter `.env.local`, `.env`, `.env.web` e `.env.oracle`.
 - [x] Validacao: `npm run test:deploy` passou com 8/8 apos a correcao de higiene de segredos.
+- [x] Deploy prod: commit `5eb3d8d` sincronizado em `/root/don-fiapo-app`, containers Web/Admin/Oracle rebuildados e reiniciados.
+- [x] Deploy prod: Oracle corrigido para usar Lunes mainnet e `ORACLE_API_KEY` compartilhada com o Web; `/api/oracle/health` publico passou.
+- [x] Deploy prod: `WalletLinkChallenge` e `WalletTransaction` aplicadas no SQLite persistido; carteiras publicas Solana semeadas no Admin.
+- [x] Deploy prod: Nginx recarregado com `Host`/`X-Forwarded-Host` tambem no fluxo Cloudflare Flexible; header `Link` nao vaza mais `don-fiapo-web:3000`.
+- [x] Smoke prod 2026-06-11: 4/6 passaram (`Link` header, CORS, Oracle health, admin public wallets); pendentes apenas `TWITTER_CLIENT_ID`/`TWITTER_CLIENT_SECRET` e DNS `www.donfiapo.fun`.
 - [x] Spec: saldo de spin calcula `FREE_SPINS + compras CONFIRMED - usos`, nunca negativo, e rejeita usuario sem spin.
 - [x] Codigo: `src/lib/games/spin-balance.ts` centraliza regra usada por GET e roll.
 - [x] Codigo: `POST /api/games/spin/roll` chama `ensureSpinBalanceForUser` antes de selecionar premio, gravar resultado ou pagar premio.

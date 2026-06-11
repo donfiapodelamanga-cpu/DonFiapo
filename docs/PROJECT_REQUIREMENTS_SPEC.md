@@ -273,9 +273,18 @@ Falhas observadas em 2026-06-10:
 - `https://admin.donfiapo.fun/api/admin/wallets/public` retorna `{}`.
 - `https://www.donfiapo.fun/en` nao resolve.
 
+Status apos deploy em 2026-06-11:
+
+- Corrigido: header `Link` de `https://donfiapo.fun/en` nao vaza mais `don-fiapo-web:3000`.
+- Corrigido: CORS do Web API permite `https://admin.donfiapo.fun` sem lista separada por virgula.
+- Corrigido: `https://donfiapo.fun/api/oracle/health` retorna 200 via proxy Web -> Oracle.
+- Corrigido: `https://admin.donfiapo.fun/api/admin/wallets/public` retorna carteiras Solana ativas.
+- Pendente externo: `TWITTER_CLIENT_ID`/`TWITTER_CLIENT_SECRET` nao existem no servidor.
+- Pendente externo: `www.donfiapo.fun` nao resolve em DNS publico.
+
 Specs antes do deploy:
 
-- `SPEC-PROD-001`: `npm run smoke:prod` deve passar 6/6.
+- `SPEC-PROD-001`: `npm run smoke:prod` deve passar 6/6 apos DNS `www` e credenciais Twitter/X serem configurados.
 - `SPEC-PROD-002`: `docker compose config` deve passar no diretorio `deploy`.
 - `SPEC-PROD-003`: `www.donfiapo.fun` resolve e tem certificado valido.
 - `SPEC-PROD-004`: host/IP desconhecido redireciona para `https://donfiapo.fun`.
