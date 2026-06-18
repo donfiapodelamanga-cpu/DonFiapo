@@ -370,6 +370,12 @@ export function createServer(): express.Application {
  * Main
  */
 async function main(): Promise<void> {
+  // Rede de seguranca: um watcher e um daemon de longa duracao. Rejections soltas
+  // (ex.: WebSocket do RPC Solana fechando) NAO devem derrubar o servico inteiro.
+  process.on('unhandledRejection', (reason) => {
+    console.warn('⚠️  unhandledRejection (mantendo servico vivo):', reason instanceof Error ? reason.message : String(reason));
+  });
+
   try {
     await initialize();
 

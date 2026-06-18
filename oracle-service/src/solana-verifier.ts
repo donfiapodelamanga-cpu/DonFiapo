@@ -266,13 +266,22 @@ export class SolanaVerifier {
       );
       const subscription = await logsNotifications.subscribe({ abortSignal: new AbortController().signal });
 
-      // Process incoming notifications
+      // Process incoming notifications. O for-await lanca SolanaError quando o
+      // WebSocket do RPC fecha (drop de subscription); sem tratamento isso virava
+      // unhandled rejection e DERRUBAVA o servico. Tratamos e reconectamos com backoff.
       (async () => {
-        for await (const notification of subscription) {
-          if (notification.value && !notification.value.err) {
-            callback(notification.value.signature);
+        try {
+          for await (const notification of subscription) {
+            if (notification.value && !notification.value.err) {
+              callback(notification.value.signature);
+            }
           }
+          console.warn('⚠️  Solana subscription encerrada; reconectando em 5s...');
+        } catch (error) {
+          console.warn('⚠️  Solana subscription caiu; reconectando em 5s:', error instanceof Error ? error.message : String(error));
         }
+        this.rpcSubscriptions = null;
+        setTimeout(() => { this.subscribeToTransactions(callback).catch(() => {}); }, 5000);
       })();
 
       // Return a dummy subscription ID (the new API handles cleanup differently)
