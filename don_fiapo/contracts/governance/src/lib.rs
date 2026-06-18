@@ -150,6 +150,8 @@ mod fiapo_governance {
         proposals: Mapping<u64, Proposal>,
         hourly_vote_count: Mapping<(AccountId, u64), u32>,
         used_tx_hashes: Mapping<String, bool>,
+        /// 1-pessoa-1-voto por proposta (auditoria 2026-06-18, alta #3)
+        has_voted: Mapping<(u64, AccountId), bool>,
         next_proposal_id: u64,
         is_active: bool,
         owner: AccountId,
@@ -171,6 +173,7 @@ mod fiapo_governance {
                 proposals: Mapping::default(),
                 hourly_vote_count: Mapping::default(),
                 used_tx_hashes: Mapping::default(),
+                has_voted: Mapping::default(),
                 next_proposal_id: 1,
                 is_active: true,
                 owner: caller,
@@ -237,6 +240,12 @@ mod fiapo_governance {
                 return Err(GovernanceError::RateLimitExceeded);
             }
 
+            // 1-pessoa-1-voto (auditoria #3): rejeita voto duplo na mesma proposta.
+            // O rate limit horario continua como anti-spam; este garante unicidade.
+            if self.has_voted.get((proposal_id, caller)).unwrap_or(false) {
+                return Err(GovernanceError::AlreadyVoted);
+            }
+
             // 3. Verificação USDT via Oráculo
             self.verify_oracle_usdt(usdt_tx_hash, caller, self.config.vote_fee_usdt_cents)?;
 
@@ -257,6 +266,7 @@ mod fiapo_governance {
             }
 
             self.proposals.insert(proposal_id, &proposal);
+            self.has_voted.insert((proposal_id, caller), &true);
             Self::env().emit_event(VoteCast { proposal_id, voter: caller, vote });
             Ok(())
         }

@@ -121,6 +121,15 @@ mod fiapo_oracle_multisig {
             required_confirmations: u8,
         ) -> Self {
             let caller = Self::env().caller();
+            // SEGURANCA (auditoria 2026-06-18, alta #2): piso de quorum no construtor.
+            // Rejeita deploy com 0 oraculos, quorum 0 (sem consenso = qualquer um) ou
+            // quorum maior que o numero de oraculos (consenso impossivel / deadlock).
+            assert!(!initial_oracles.is_empty(), "Oracle multisig requer ao menos 1 oraculo");
+            let total = initial_oracles.len() as u8;
+            assert!(
+                required_confirmations >= 1 && required_confirmations <= total,
+                "required_confirmations invalido (deve ser 1..=numero de oraculos)"
+            );
             let mut oracles = Mapping::default();
             for oracle in initial_oracles.iter() {
                 oracles.insert(oracle, &true);
@@ -516,6 +525,27 @@ mod fiapo_oracle_multisig {
             assert!(contract.is_oracle(accounts.charlie));
             assert!(!contract.is_oracle(accounts.eve));
             assert_eq!(contract.required_confirmations, 2);
+        }
+
+        // Auditoria #2: construtor deve rejeitar quorum invalido.
+        #[ink::test]
+        #[should_panic(expected = "required_confirmations invalido")]
+        fn constructor_rejects_zero_quorum() {
+            let accounts = default_accounts();
+            let _ = FiapoOracleMultisig::new(vec![accounts.bob, accounts.charlie], 0);
+        }
+
+        #[ink::test]
+        #[should_panic(expected = "required_confirmations invalido")]
+        fn constructor_rejects_quorum_above_oracle_count() {
+            let accounts = default_accounts();
+            let _ = FiapoOracleMultisig::new(vec![accounts.bob], 2);
+        }
+
+        #[ink::test]
+        #[should_panic(expected = "ao menos 1 oraculo")]
+        fn constructor_rejects_empty_oracles() {
+            let _ = FiapoOracleMultisig::new(Vec::new(), 1);
         }
 
         #[ink::test]
