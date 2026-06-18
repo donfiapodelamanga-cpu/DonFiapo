@@ -632,6 +632,14 @@ mod fiapo_ico {
         pub fn mint_paid(&mut self, tier: u8, payment_hash: String) -> Result<u64, ICOError> {
             let caller = self.env().caller();
 
+            // SEGURANCA (auditoria 2026-06-18, critico #1): o `payment_hash` NAO e
+            // verificavel on-chain — aceita-lo direto permitia cunhar NFT pago de graca.
+            // Todo mint pago deve passar pelo Oracle (mint_paid_for), apos confirmacao
+            // off-chain do pagamento. Mantido apenas como caminho autorizado pelo Oracle.
+            if Some(caller) != self.oracle_contract {
+                return Err(ICOError::Unauthorized);
+            }
+
             if !self.ico_active {
                 return Err(ICOError::ICONotActive);
             }

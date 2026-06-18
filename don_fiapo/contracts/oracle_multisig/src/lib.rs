@@ -340,10 +340,13 @@ mod fiapo_oracle_multisig {
                         .push_arg(user)
                         .push_arg(tier),
                 )
-                .returns::<()>()
+                // callee `mint_paid_for` retorna Result<u64, ICOError>; decodificar o
+                // Result real (erro como `()` tolera bytes residuais) para que um Err
+                // do callee NAO seja lido como sucesso silencioso.
+                .returns::<Result<u64, ()>>()
                 .try_invoke();
             match result {
-                Ok(Ok(())) => Ok(()),
+                Ok(Ok(Ok(_))) => Ok(()),
                 _ => Err(OracleError::CrossContractCallFailed),
             }
         }
@@ -360,10 +363,11 @@ mod fiapo_oracle_multisig {
                         .push_arg(amount)
                         .push_arg(pool),
                 )
-                .returns::<()>()
+                // callee `stake_for` retorna Result<u64, StakingError>.
+                .returns::<Result<u64, ()>>()
                 .try_invoke();
             match result {
-                Ok(Ok(())) => Ok(()),
+                Ok(Ok(Ok(_))) => Ok(()),
                 _ => Err(OracleError::CrossContractCallFailed),
             }
         }
@@ -379,10 +383,11 @@ mod fiapo_oracle_multisig {
                         .push_arg(user)
                         .push_arg(quantity),
                 )
-                .returns::<()>()
+                // callee `buy_tickets_for` retorna Result<(), LotteryError>.
+                .returns::<Result<(), ()>>()
                 .try_invoke();
             match result {
-                Ok(Ok(())) => Ok(()),
+                Ok(Ok(Ok(_))) => Ok(()),
                 _ => Err(OracleError::CrossContractCallFailed),
             }
         }

@@ -40,3 +40,5 @@ Thumbs.db
 # Backup files
 *.bak
 *.backup
+# e2e symlink to web node_modules (do not commit)
+e2e/node_modules
