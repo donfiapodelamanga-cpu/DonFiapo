@@ -399,11 +399,12 @@ export function createServer(): express.Application {
       });
 
     } catch (error) {
+      // Auditoria 2026-06-18 — média: não vazar detalhes internos do erro ao cliente.
+      // O erro completo (RPC/contrato/stack) fica apenas no log do servidor.
       console.error('❌ Erro na verificação:', error);
       PaymentRepository.releaseReservation(paymentId);
       res.status(500).json({
         error: 'Verification error',
-        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });
