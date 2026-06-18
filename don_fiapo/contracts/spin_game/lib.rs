@@ -120,6 +120,11 @@ pub mod royal_wheel {
         
         // Nonce for randomness
         nonce: u64,
+        // Defense-in-depth do RNG (audit 2026-06-18): segredo rotativo do owner +
+        // acumulador de estado misturados ao hash. NAO e VRF — o RNG autoritativo
+        // do premio e server-side; isto apenas eleva a barra de previsao on-chain.
+        entropy_secret: [u8; 32],
+        entropy_accumulator: [u8; 32],
     }
 
     impl RoyalWheel {
@@ -135,6 +140,8 @@ pub mod royal_wheel {
                 daily_limits: DailyLimits::default(),
                 campaign_usdt_cents: 0,
                 nonce: 0,
+                entropy_secret: [0u8; 32],
+                entropy_accumulator: [0u8; 32],
             }
         }
 
@@ -151,6 +158,15 @@ pub mod royal_wheel {
         pub fn set_paused(&mut self, paused: bool) -> Result<(), Error> {
             self.ensure_owner()?;
             self.paused = paused;
+            Ok(())
+        }
+
+        /// Rotaciona o segredo de entropia do RNG (apenas owner). Misturado ao
+        /// hash de cada spin para dificultar previsao on-chain (audit 2026-06-18).
+        #[ink(message)]
+        pub fn set_entropy_secret(&mut self, secret: [u8; 32]) -> Result<(), Error> {
+            self.ensure_owner()?;
+            self.entropy_secret = secret;
             Ok(())
         }
 
@@ -273,15 +289,43 @@ pub mod royal_wheel {
             let caller = self.env().caller();
             self.nonce = self.nonce.wrapping_add(1);
 
-            let seed_data = (block_number, timestamp, caller, self.nonce);
+            // Mistura segredo rotativo + acumulador de estado (defense-in-depth).
+            let (val, new_acc) = Self::mix_entropy(
+                block_number,
+                timestamp,
+                caller,
+                self.nonce,
+                &self.entropy_secret,
+                &self.entropy_accumulator,
+                max,
+            );
+            // Evolui o acumulador: spins sucessivos dependem das saidas anteriores.
+            self.entropy_accumulator = new_acc;
+            val
+        }
+
+        /// Núcleo puro do RNG (associado, testável): combina entropia de bloco,
+        /// chamador, nonce, segredo do owner e acumulador via keccak256. Retorna
+        /// o valor limitado a `max` e o novo acumulador.
+        fn mix_entropy(
+            block_number: u32,
+            timestamp: u64,
+            caller: AccountId,
+            nonce: u64,
+            secret: &[u8; 32],
+            accumulator: &[u8; 32],
+            max: u32,
+        ) -> (u32, [u8; 32]) {
+            let seed_data = (block_number, timestamp, caller, nonce, secret, accumulator);
             let mut output = <[u8; 32]>::default();
             ink::env::hash_encoded::<ink::env::hash::Keccak256, _>(&seed_data, &mut output);
-            
             let random_val = u32::from_le_bytes([output[0], output[1], output[2], output[3]]);
-            if max == 0 {
-                return 0;
-            }
-            random_val.checked_rem(max).unwrap_or(0)
+            let bounded = if max == 0 {
+                0
+            } else {
+                random_val.checked_rem(max).unwrap_or(0)
+            };
+            (bounded, output)
         }
 
         fn draw_reward(&mut self, _player: AccountId, package: SpinPackage) -> SpinResult {
@@ -480,6 +524,52 @@ pub mod royal_wheel {
             
             assert!(result.is_err());
             assert_eq!(result.unwrap_err(), Error::Unauthorized);
+        }
+
+        // ---------- RNG entropy hardening (audit 2026-06-18) ----------
+
+        #[ink::test]
+        fn set_entropy_secret_requires_owner() {
+            let accounts = default_accounts();
+            set_caller(accounts.alice);
+            let mut contract = RoyalWheel::new(accounts.bob);
+            // Não-owner é rejeitado.
+            set_caller(accounts.charlie);
+            assert_eq!(
+                contract.set_entropy_secret([7u8; 32]),
+                Err(Error::Unauthorized)
+            );
+            // Owner consegue rotacionar.
+            set_caller(accounts.alice);
+            assert!(contract.set_entropy_secret([7u8; 32]).is_ok());
+        }
+
+        #[ink::test]
+        fn mix_entropy_deterministic_and_in_range() {
+            let accounts = default_accounts();
+            let secret = [3u8; 32];
+            let acc = [0u8; 32];
+            let (a, acc_a) = RoyalWheel::mix_entropy(5, 100, accounts.charlie, 1, &secret, &acc, 10000);
+            let (b, acc_b) = RoyalWheel::mix_entropy(5, 100, accounts.charlie, 1, &secret, &acc, 10000);
+            assert_eq!(a, b);
+            assert_eq!(acc_a, acc_b);
+            assert!(a < 10000);
+            // max == 0 não panica.
+            let (z, _) = RoyalWheel::mix_entropy(5, 100, accounts.charlie, 1, &secret, &acc, 0);
+            assert_eq!(z, 0);
+        }
+
+        #[ink::test]
+        fn mix_entropy_sensitive_to_secret_and_accumulator() {
+            let accounts = default_accounts();
+            let acc0 = [0u8; 32];
+            let (_, out_s1) = RoyalWheel::mix_entropy(1, 1, accounts.charlie, 1, &[1u8; 32], &acc0, 10000);
+            let (_, out_s2) = RoyalWheel::mix_entropy(1, 1, accounts.charlie, 1, &[2u8; 32], &acc0, 10000);
+            // Segredos diferentes -> hash diferente.
+            assert_ne!(out_s1, out_s2);
+            // Acumuladores diferentes -> hash diferente.
+            let (_, out_acc) = RoyalWheel::mix_entropy(1, 1, accounts.charlie, 1, &[1u8; 32], &[9u8; 32], 10000);
+            assert_ne!(out_s1, out_acc);
         }
 
         /// Testa spin básico
