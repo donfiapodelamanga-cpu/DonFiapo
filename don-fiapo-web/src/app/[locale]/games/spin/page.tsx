@@ -6,6 +6,7 @@ import { Sparkles, Ticket, Trophy, Zap, Crown, RefreshCw, ChevronRight, Star, X,
 import { SpinBuyModal, SpinPackage } from '@/components/games/SpinBuyModal';
 import { SPIN_PACKAGES } from '@/lib/games/spin-packages';
 import { useWalletStore } from '@/lib/stores';
+import { ensureUserSession } from '@/lib/api/user-session-client';
 import { cn } from '@/lib/utils';
 
 // ── Prize definitions ────────────────────────────────────────────────────────
@@ -292,6 +293,14 @@ const SpinPage: FC = () => {
     // Must be connected to spin
     if (!lunesConnected || !lunesAddress) return;
     if (spinBalance <= 0 || isSpinning) return;
+
+    // Auditoria #5: estabelece a sessão (prova de posse da carteira) ANTES de
+    // gastar um giro. Se o usuário recusar a assinatura, aborta sem consumir.
+    try {
+      await ensureUserSession(lunesAddress);
+    } catch {
+      return;
+    }
 
     setIsSpinning(true);
     setLastPrize(null);

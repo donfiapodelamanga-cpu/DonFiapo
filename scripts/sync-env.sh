@@ -58,6 +58,10 @@ while IFS='=' read -r key value; do
         CONTRACT_ADDRESS)
             echo "NEXT_PUBLIC_CONTRACT_ADDRESS=${value}" >> "$WEB_ENV"
             ;;
+        USER_SESSION_SECRET)
+            # Segredo server-side da sessao de usuario (auditoria #5) — sem NEXT_PUBLIC
+            echo "USER_SESSION_SECRET=${value}" >> "$WEB_ENV"
+            ;;
         NEXT_PUBLIC_*_CONTRACT)
             echo "${key}=${value}" >> "$WEB_ENV"
             ;;
