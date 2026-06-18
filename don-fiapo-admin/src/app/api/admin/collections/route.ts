@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireAdminAuth } from "@/lib/server/admin-auth";
 
 type CollectionWhereInput = NonNullable<Parameters<typeof prisma.nFTCollection.findMany>[0]>["where"];
 
 // GET /api/admin/collections - List all collections with aggregated stats
 export async function GET(request: NextRequest) {
+  const auth = requireAdminAuth(request, "collections");
+  if (!auth.ok) return auth.response;
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -43,13 +46,18 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/collections - Create new collection (álbum)
 export async function POST(request: NextRequest) {
+  // Auditoria 2026-06-18 (alta #9): rota mutável exige permissão e createdBy NUNCA
+  // pode vir do body (era spoofável) — deriva sempre da sessão autenticada.
+  const auth = requireAdminAuth(request, "collections");
+  if (!auth.ok) return auth.response;
   try {
     const body = await request.json();
-    const { name, symbol, description, createdBy } = body;
+    const { name, symbol, description } = body;
+    const createdBy = auth.session.email;
 
-    if (!name || !symbol || !createdBy) {
+    if (!name || !symbol) {
       return NextResponse.json(
-        { error: "Campos obrigatórios: name, symbol, createdBy" },
+        { error: "Campos obrigatórios: name, symbol" },
         { status: 400 }
       );
     }

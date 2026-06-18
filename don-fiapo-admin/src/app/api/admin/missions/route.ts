@@ -7,7 +7,7 @@ import { fetchWebApi, webApiProxyErrorMessage, webApiProxyErrorStatus } from "@/
  * Proxy to don-fiapo-web /api/admin/missions
  */
 export async function GET(req: NextRequest) {
-  const auth = requireAdminAuth(req);
+  const auth = requireAdminAuth(req, "marketing");
   if (!auth.ok) return auth.response;
 
   try {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
  * Create a new mission (proxy)
  */
 export async function POST(req: NextRequest) {
-  const auth = requireAdminAuth(req);
+  const auth = requireAdminAuth(req, "marketing");
   if (!auth.ok) return auth.response;
 
   try {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
  * Update a mission (proxy)
  */
 export async function PATCH(req: NextRequest) {
-  const auth = requireAdminAuth(req);
+  const auth = requireAdminAuth(req, "marketing");
   if (!auth.ok) return auth.response;
 
   try {
@@ -73,7 +73,7 @@ export async function PATCH(req: NextRequest) {
  * Deactivate a mission (proxy)
  */
 export async function DELETE(req: NextRequest) {
-  const auth = requireAdminAuth(req);
+  const auth = requireAdminAuth(req, "marketing");
   if (!auth.ok) return auth.response;
 
   try {

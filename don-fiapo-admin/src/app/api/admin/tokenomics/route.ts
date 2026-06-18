@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireAdminAuth } from "@/lib/server/admin-auth";
 
 /**
  * GET /api/admin/tokenomics
  * Returns token distribution tracking (planned vs distributed)
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = requireAdminAuth(req, "finance");
+  if (!auth.ok) return auth.response;
   try {
     const distributions = await prisma.tokenDistribution.findMany({
       orderBy: { percentage: "desc" },
@@ -32,6 +35,8 @@ export async function GET() {
  * Update a distribution's distributed amount or status
  */
 export async function PATCH(req: NextRequest) {
+  const auth = requireAdminAuth(req, "finance");
+  if (!auth.ok) return auth.response;
   try {
     const body = await req.json();
     const { category, distributed, status, notes } = body;
