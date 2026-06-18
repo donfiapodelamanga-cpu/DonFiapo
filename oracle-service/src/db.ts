@@ -117,6 +117,28 @@ export const PaymentRepository = {
         stmt.run(transactionHash, id);
     },
 
+    // Auditoria 2026-06-18 — alta #13: reserva atomica anti-TOCTOU.
+    // UPDATE condicional pending->processing gravando o transaction_hash sob o
+    // unique index. Retorna true SOMENTE para o requisitante que ganhou a corrida;
+    // concorrentes (mesmo paymentId ja em processing, ou tx_hash ja usado por outro
+    // pagamento -> violacao de unique) recebem false e NAO chamam o contrato.
+    reserveForProcessing: (id: string, transactionHash: string): boolean => {
+        try {
+            const stmt = db.prepare("UPDATE pending_payments SET status = 'processing', transaction_hash = ? WHERE id = ? AND status = 'pending'");
+            const info = stmt.run(transactionHash, id);
+            return info.changes > 0;
+        } catch {
+            return false; // unique constraint: transaction_hash ja reservado
+        }
+    },
+
+    // Libera a reserva (processing->pending, limpa tx_hash) quando a confirmacao
+    // on-chain falha, permitindo retry legitimo.
+    releaseReservation: (id: string) => {
+        const stmt = db.prepare("UPDATE pending_payments SET status = 'pending', transaction_hash = NULL WHERE id = ? AND status = 'processing'");
+        stmt.run(id);
+    },
+
     cleanupExpired: () => {
         const now = Date.now();
         const stmt = db.prepare("DELETE FROM pending_payments WHERE expires_at < ? AND status = 'pending'");

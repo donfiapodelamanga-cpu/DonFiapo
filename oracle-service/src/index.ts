@@ -286,6 +286,13 @@ export function createServer(): express.Application {
       return;
     }
 
+    // Reserva atomica anti-TOCTOU (auditoria #13): apenas o requisitante que vence
+    // a corrida prossegue ate o confirm on-chain; concorrentes recebem 409.
+    if (!PaymentRepository.reserveForProcessing(paymentId, transactionHash)) {
+      res.status(409).json({ error: 'Payment is already being processed or transaction already used' });
+      return;
+    }
+
     try {
       // 1. Verifica transação na Solana
       console.log(`\n🔍 Verificando transação: ${transactionHash}`);
@@ -296,6 +303,7 @@ export function createServer(): express.Application {
       );
 
       if (!verification.isValid) {
+        PaymentRepository.releaseReservation(paymentId);
         res.status(400).json({
           error: 'Transaction verification failed',
           details: verification.error,
@@ -328,6 +336,7 @@ export function createServer(): express.Application {
       }
 
       if (!confirmResult.success) {
+        PaymentRepository.releaseReservation(paymentId);
         res.status(500).json({
           error: 'Failed to confirm on Lunes contract',
           details: confirmResult.error,
@@ -357,6 +366,7 @@ export function createServer(): express.Application {
 
     } catch (error) {
       console.error('❌ Erro na verificação:', error);
+      PaymentRepository.releaseReservation(paymentId);
       res.status(500).json({
         error: 'Verification error',
         details: error instanceof Error ? error.message : 'Unknown error',
