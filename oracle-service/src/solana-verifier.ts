@@ -194,42 +194,35 @@ export class SolanaVerifier {
   ): { sender: string; receiver: string; amount: number } | null {
     const instructions = tx.transaction?.message?.instructions || [];
 
+    // SEGURANCA (auditoria 2026-06-18, critico #3): aceitar SOMENTE `transferChecked`
+    // com mint == USDT, tanto top-level quanto em inner instructions. `transfer`
+    // simples NAO carrega o mint, logo nao prova que o token e USDT — aceita-lo
+    // permitia liberar beneficio pagando com um token sem valor.
+    const asUsdtTransfer = (parsed: any) => {
+      if (!parsed || parsed.type !== 'transferChecked') return null;
+      const info = parsed.info || {};
+      if (info.mint !== this.usdtTokenAddress) return null;
+      return {
+        sender: info.authority || info.source,
+        receiver: info.destination,
+        amount: parseInt(info.amount, 10),
+      };
+    };
+
     for (const instruction of instructions) {
-      // Verifica se é uma instrução parsed do Token Program
       if (instruction.parsed && instruction.program === 'spl-token') {
-        const parsed = instruction.parsed;
-
-        // Verifica transferência ou transferChecked
-        if (parsed.type === 'transfer' || parsed.type === 'transferChecked') {
-          const info = parsed.info;
-
-          // Verifica se é USDT
-          if (parsed.type === 'transferChecked' && info.mint !== this.usdtTokenAddress) {
-            continue;
-          }
-
-          return {
-            sender: info.authority || info.source,
-            receiver: info.destination,
-            amount: parseInt(info.amount, 10),
-          };
-        }
+        const details = asUsdtTransfer(instruction.parsed);
+        if (details) return details;
       }
     }
 
-    // Também verifica inner instructions
+    // Mesma validacao de mint nas inner instructions
     if (tx.meta?.innerInstructions) {
       for (const innerIx of tx.meta.innerInstructions) {
         for (const instruction of innerIx.instructions) {
           if (instruction.parsed && instruction.program === 'spl-token') {
-            const parsed = instruction.parsed;
-            if (parsed.type === 'transfer' || parsed.type === 'transferChecked') {
-              return {
-                sender: parsed.info.authority || parsed.info.source,
-                receiver: parsed.info.destination,
-                amount: parseInt(parsed.info.amount, 10),
-              };
-            }
+            const details = asUsdtTransfer(instruction.parsed);
+            if (details) return details;
           }
         }
       }
