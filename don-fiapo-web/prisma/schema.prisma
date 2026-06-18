@@ -19,7 +19,7 @@ model User {
   xId             String?  @unique // Twitter ID (OAuth)
   xUsername       String?
   xAccessToken    String?  // OAuth 2.0 access token (encrypted at rest)
-  xRefreshToken   String?  // OAuth 2.0 refresh token
+  xRefreshToken   String?  // OAuth 2.0 refresh token (encrypted at rest)
   xTokenExpiresAt DateTime?
   xAccountCreatedAt DateTime? // Para detectar contas novas (< 30 dias)
   xFollowersCount Int?

@@ -6,6 +6,7 @@ import { recordReferral } from "@/lib/missions/referral-service";
 import { resolveReferrerCode } from "@/lib/missions/referral-resolver";
 import { db } from "@/lib/db";
 import { buildPublicUrl, publicOriginInputFromHeaders } from "@/lib/http/public-origin";
+import { encryptToken } from "@/lib/crypto/token-cipher";
 
 /**
  * GET /api/auth/twitter/callback?code=...&state=...
@@ -75,8 +76,9 @@ export async function GET(req: NextRequest) {
       data: {
         xId: xUser.id,
         xUsername: xUser.username,
-        xAccessToken: accessToken,
-        xRefreshToken: refreshToken ?? null,
+        // Tokens OAuth criptografados em repouso com AES-256-GCM (audit 2026-06-18).
+        xAccessToken: encryptToken(accessToken),
+        xRefreshToken: refreshToken ? encryptToken(refreshToken) : null,
         xTokenExpiresAt: tokenExpiresAt,
         xAccountCreatedAt: xUser.createdAt ? new Date(xUser.createdAt) : null,
         xFollowersCount: xUser.publicMetrics?.followersCount ?? null,

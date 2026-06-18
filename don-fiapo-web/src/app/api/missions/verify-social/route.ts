@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { findOrCreateUserByWallet } from "@/lib/missions/service";
 import { verifyFollow, verifyLike, verifyRepost, verifyComment, refreshAccessToken } from "@/lib/missions/verifiers/twitter";
 import { verifyTelegramMembership } from "@/lib/missions/verifiers/telegram";
+import { encryptToken, decryptToken } from "@/lib/crypto/token-cipher";
 import { runPreSubmissionChecks, applyTrustScoreDelta, scheduleRecheck } from "@/lib/missions/fraud-engine";
 import { calculateMissionPoints } from "@/lib/missions/score-engine";
 import { rateLimit, validateWalletOrError } from "@/lib/security";
@@ -88,8 +89,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Refresh token if expired
-      let accessToken = user.xAccessToken;
+      // Refresh token if expired. Tokens ficam criptografados em repouso (audit 2026-06-18).
+      let accessToken = decryptToken(user.xAccessToken);
       if (user.xTokenExpiresAt && user.xTokenExpiresAt < new Date()) {
         if (!user.xRefreshToken) {
           return NextResponse.json(
@@ -97,13 +98,13 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
-        const refreshed = await refreshAccessToken(user.xRefreshToken);
+        const refreshed = await refreshAccessToken(decryptToken(user.xRefreshToken));
         accessToken = refreshed.accessToken;
         await db.user.update({
           where: { id: userId },
           data: {
-            xAccessToken: refreshed.accessToken,
-            xRefreshToken: refreshed.refreshToken ?? user.xRefreshToken,
+            xAccessToken: encryptToken(refreshed.accessToken),
+            xRefreshToken: refreshed.refreshToken ? encryptToken(refreshed.refreshToken) : user.xRefreshToken,
             xTokenExpiresAt: new Date(Date.now() + refreshed.expiresIn * 1000),
           },
         });
