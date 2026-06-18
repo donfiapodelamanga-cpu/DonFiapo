@@ -37,6 +37,8 @@ mod fiapo_oracle_multisig {
         TooManyPendingPayments,
         CrossContractCallFailed,
         ContractNotConfigured,
+        /// O amount_usdt pago não cobre o preço on-chain do item concedido.
+        PriceMismatch,
     }
 
     /// Tipo de pagamento/ação a executar
@@ -110,6 +112,12 @@ mod fiapo_oracle_multisig {
         staking_contract: Option<AccountId>,
         lottery_contract: Option<AccountId>,
         governance_contract: Option<AccountId>,
+        // Tabela de preço on-chain (audit 2026-06-18): valida que o amount_usdt
+        // pago cobre o item concedido, em vez de confiar cegamente no payload do
+        // oráculo. Preço 0 (default) = sem enforcement; owner ativa configurando.
+        nft_tier_prices: Mapping<u8, u64>,
+        lottery_ticket_price_cents: u64,
+        min_staking_usdt_cents: u64,
     }
 
     impl FiapoOracleMultisig {
@@ -147,6 +155,9 @@ mod fiapo_oracle_multisig {
                 staking_contract: None,
                 lottery_contract: None,
                 governance_contract: None,
+                nft_tier_prices: Mapping::default(),
+                lottery_ticket_price_cents: 0,
+                min_staking_usdt_cents: 0,
             }
         }
 
@@ -208,6 +219,47 @@ mod fiapo_oracle_multisig {
                 _ => return Err(OracleError::InvalidConfiguration),
             }
             Ok(())
+        }
+
+        // ==================== Tabela de Preço (audit 2026-06-18) ====================
+
+        /// Define o preço mínimo (centavos USDT) para cunhar um NFT do tier (owner).
+        #[ink(message)]
+        pub fn set_nft_tier_price(&mut self, tier: u8, price_cents: u64) -> Result<(), OracleError> {
+            self.ensure_owner()?;
+            self.nft_tier_prices.insert(tier, &price_cents);
+            Ok(())
+        }
+
+        /// Define o preço por ticket de loteria (centavos USDT) (owner).
+        #[ink(message)]
+        pub fn set_lottery_ticket_price(&mut self, price_cents: u64) -> Result<(), OracleError> {
+            self.ensure_owner()?;
+            self.lottery_ticket_price_cents = price_cents;
+            Ok(())
+        }
+
+        /// Define o piso de USDT (centavos) para uma entrada de staking (owner).
+        #[ink(message)]
+        pub fn set_min_staking_usdt(&mut self, price_cents: u64) -> Result<(), OracleError> {
+            self.ensure_owner()?;
+            self.min_staking_usdt_cents = price_cents;
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_nft_tier_price(&self, tier: u8) -> u64 {
+            self.nft_tier_prices.get(tier).unwrap_or(0)
+        }
+
+        #[ink(message)]
+        pub fn get_lottery_ticket_price(&self) -> u64 {
+            self.lottery_ticket_price_cents
+        }
+
+        #[ink(message)]
+        pub fn get_min_staking_usdt(&self) -> u64 {
+            self.min_staking_usdt_cents
         }
 
         // ==================== Funções de Leitura ====================
@@ -315,6 +367,9 @@ mod fiapo_oracle_multisig {
         // ==================== Lógica Interna ====================
 
         fn process_confirmed_payment(&self, payment: &PendingPayment) -> Result<(), OracleError> {
+            // Antes de conceder o item, valida on-chain que o valor pago cobre o
+            // preço configurado — não confia cegamente no tier/quantity do payload.
+            self.ensure_price_consistent(payment)?;
             match &payment.payment_type {
                 PaymentType::StakingEntry { amount, pool } => {
                     self.call_staking_stake_for(payment.beneficiary, *amount, *pool)?;
@@ -471,6 +526,35 @@ mod fiapo_oracle_multisig {
                 Ok(())
             }
         }
+
+        /// Valida que o `amount_usdt` pago cobre o preço on-chain do item concedido.
+        /// Preço/piso 0 (não configurado) = sem enforcement, para não quebrar deploys
+        /// existentes; o owner ativa configurando os preços (audit 2026-06-18).
+        fn ensure_price_consistent(&self, payment: &PendingPayment) -> Result<(), OracleError> {
+            match &payment.payment_type {
+                PaymentType::NFTPurchase { tier } => {
+                    let price = self.nft_tier_prices.get(*tier).unwrap_or(0);
+                    if payment.amount_usdt < price {
+                        return Err(OracleError::PriceMismatch);
+                    }
+                }
+                PaymentType::LotteryTicket { quantity } => {
+                    let required = self
+                        .lottery_ticket_price_cents
+                        .saturating_mul(*quantity as u64);
+                    if payment.amount_usdt < required {
+                        return Err(OracleError::PriceMismatch);
+                    }
+                }
+                PaymentType::StakingEntry { amount, .. } => {
+                    if *amount == 0 || payment.amount_usdt < self.min_staking_usdt_cents {
+                        return Err(OracleError::PriceMismatch);
+                    }
+                }
+                PaymentType::GovernanceDeposit | PaymentType::Custom(_) => {}
+            }
+            Ok(())
+        }
     }
 
     // ==================== Oracle Trait Implementation ====================
@@ -604,6 +688,103 @@ mod fiapo_oracle_multisig {
 
             let payment = contract.get_pending_payment(String::from("tx123")).unwrap();
             assert_eq!(payment.status, PaymentStatus::Confirmed);
+        }
+
+        // ---------- Tabela de preço on-chain (audit 2026-06-18) ----------
+
+        fn new_owned_by_alice() -> FiapoOracleMultisig {
+            let accounts = default_accounts();
+            set_caller(accounts.alice);
+            FiapoOracleMultisig::new(vec![accounts.alice, accounts.bob], 2)
+        }
+
+        fn mk_payment(amount_usdt: u64, payment_type: PaymentType) -> PendingPayment {
+            let accounts = default_accounts();
+            PendingPayment {
+                tx_hash: String::from("tx"),
+                sender_address: String::from("sol"),
+                amount_usdt,
+                beneficiary: accounts.eve,
+                payment_type,
+                confirmations: Vec::new(),
+                created_at: 0,
+                status: PaymentStatus::Pending,
+            }
+        }
+
+        #[ink::test]
+        fn set_nft_tier_price_requires_owner() {
+            let accounts = default_accounts();
+            let mut contract = new_owned_by_alice();
+            set_caller(accounts.charlie);
+            assert_eq!(
+                contract.set_nft_tier_price(2, 500),
+                Err(OracleError::Unauthorized)
+            );
+            set_caller(accounts.alice);
+            assert!(contract.set_nft_tier_price(2, 500).is_ok());
+            assert_eq!(contract.get_nft_tier_price(2), 500);
+        }
+
+        #[ink::test]
+        fn nft_price_is_enforced() {
+            let mut contract = new_owned_by_alice();
+            contract.set_nft_tier_price(2, 500).unwrap();
+            // Pagou menos que o preço do tier -> rejeita.
+            assert_eq!(
+                contract.ensure_price_consistent(&mk_payment(499, PaymentType::NFTPurchase { tier: 2 })),
+                Err(OracleError::PriceMismatch)
+            );
+            // Pagou o preço exato -> ok.
+            assert!(contract
+                .ensure_price_consistent(&mk_payment(500, PaymentType::NFTPurchase { tier: 2 }))
+                .is_ok());
+        }
+
+        #[ink::test]
+        fn lottery_price_scales_with_quantity() {
+            let mut contract = new_owned_by_alice();
+            contract.set_lottery_ticket_price(100).unwrap();
+            // 3 tickets exigem 300; 299 falha, 300 passa.
+            assert_eq!(
+                contract.ensure_price_consistent(&mk_payment(299, PaymentType::LotteryTicket { quantity: 3 })),
+                Err(OracleError::PriceMismatch)
+            );
+            assert!(contract
+                .ensure_price_consistent(&mk_payment(300, PaymentType::LotteryTicket { quantity: 3 }))
+                .is_ok());
+        }
+
+        #[ink::test]
+        fn staking_floor_and_nonzero_amount_enforced() {
+            let mut contract = new_owned_by_alice();
+            contract.set_min_staking_usdt(1000).unwrap();
+            // Abaixo do piso -> rejeita.
+            assert_eq!(
+                contract.ensure_price_consistent(&mk_payment(999, PaymentType::StakingEntry { amount: 10, pool: 1 })),
+                Err(OracleError::PriceMismatch)
+            );
+            // No piso, amount>0 -> ok.
+            assert!(contract
+                .ensure_price_consistent(&mk_payment(1000, PaymentType::StakingEntry { amount: 10, pool: 1 }))
+                .is_ok());
+            // amount==0 sempre rejeita.
+            assert_eq!(
+                contract.ensure_price_consistent(&mk_payment(5000, PaymentType::StakingEntry { amount: 0, pool: 1 })),
+                Err(OracleError::PriceMismatch)
+            );
+        }
+
+        #[ink::test]
+        fn unconfigured_price_allows_backward_compat() {
+            let contract = new_owned_by_alice();
+            // Sem preços configurados (default 0): não há enforcement.
+            assert!(contract
+                .ensure_price_consistent(&mk_payment(1, PaymentType::NFTPurchase { tier: 2 }))
+                .is_ok());
+            assert!(contract
+                .ensure_price_consistent(&mk_payment(0, PaymentType::GovernanceDeposit))
+                .is_ok());
         }
     }
 }
