@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { requireAdminAuth } from "@/lib/server/admin-auth";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+    const auth = requireAdminAuth(req, "finance");
+    if (!auth.ok) return auth.response;
     try {
         const { searchParams } = new URL(req.url);
         const startDate = searchParams.get("startDate");
@@ -28,7 +31,9 @@ export async function GET(req: Request) {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const auth = requireAdminAuth(req, "finance");
+    if (!auth.ok) return auth.response;
     try {
         const body = await req.json();
         const { description, category, source, amount, currency, status, date } = body;

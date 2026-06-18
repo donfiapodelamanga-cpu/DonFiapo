@@ -3,6 +3,7 @@ import { PATCH as patchAirdropClaims } from "../app/api/admin/airdrop/claims/rou
 import { POST as postMigrationVerify } from "../app/api/admin/migrations/route";
 import { POST as postMissionMilestones } from "../app/api/admin/missions/milestones/route";
 import { POST as postReferralFraud } from "../app/api/admin/referrals/fraud/route";
+import { POST as postMissionVerify } from "../app/api/admin/missions/verify/route";
 import { requireAdminAuth } from "../lib/server/admin-auth";
 import { fetchWebApi } from "../lib/server/web-api";
 
@@ -94,6 +95,28 @@ describe("admin web API proxy RBAC", () => {
     expect(res.status).toBe(403);
     expect(requireAdminAuth).toHaveBeenCalledWith(expect.anything(), "marketing");
     expect(fetchWebApi).not.toHaveBeenCalled();
+  });
+
+  it("blocks mission verify before proxying without marketing permission", async () => {
+    deny(403);
+
+    const res = await postMissionVerify(request({ missionId: "m-1", action: "approve" }));
+
+    expect(res.status).toBe(403);
+    expect(requireAdminAuth).toHaveBeenCalledWith(expect.anything(), "marketing");
+    expect(fetchWebApi).not.toHaveBeenCalled();
+  });
+
+  it("proxies authorized mission verify with protected web API headers", async () => {
+    allow("marketing");
+
+    const res = await postMissionVerify(request({ missionId: "m-1", action: "approve" }));
+
+    expect(res.status).toBe(200);
+    expect(fetchWebApi).toHaveBeenCalledWith(
+      "/api/missions/verify",
+      expect.objectContaining({ method: "POST" })
+    );
   });
 
   it("proxies authorized migration verification with protected web API headers", async () => {
