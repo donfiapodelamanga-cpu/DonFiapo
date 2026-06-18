@@ -4,6 +4,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { findOrCreateUserByWallet } from "@/lib/missions/service";
 import { rateLimit, getClientIP } from "@/lib/security";
 import { getSystemWalletAddress } from "@/lib/api/system-wallets";
+import { requireUserSession } from "@/lib/server/user-session";
 
 export async function POST(req: NextRequest) {
   try {
@@ -107,11 +108,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
+    // Auditoria #6 (IDOR): userId vem da sessão, nunca da query string.
+    const session = requireUserSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
+    const userId = session.userId;
 
     const migrations = await db.tokenMigration.findMany({
       where: { userId },

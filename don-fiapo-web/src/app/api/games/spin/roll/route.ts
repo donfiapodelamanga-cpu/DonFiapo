@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import { db } from "@/lib/db";
-import { findOrCreateUserByWallet } from "@/lib/missions/service";
 import { calculateMissionPoints, calculateTotalScore, calculateRank } from "@/lib/missions/score-engine";
 import { tryClaimEarlyBirdSlot } from "@/lib/missions/early-bird";
-import { rateLimit, validateWalletOrError } from "@/lib/security";
+import { rateLimit } from "@/lib/security";
+import { requireUserSession } from "@/lib/server/user-session";
 import { sendUsdtToUser, sendLunesToUser } from "@/lib/prizes/payout";
 import { selectPayoutWallet } from "@/lib/wallets/select-payout-wallet";
 import { NoSpinBalanceError } from "@/lib/games/spin-balance";
@@ -117,19 +117,18 @@ async function pickPrizeServer(): Promise<PrizeDef> {
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { wallet } = body;
+    // Auditoria #5: identidade vem da sessão (proof-of-ownership), nunca de uma
+    // string `wallet` não autenticada do body.
+    const session = requireUserSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+    const userId = session.userId;
 
-    // Validate wallet format
-    const walletError = validateWalletOrError(wallet);
-    if (walletError) return walletError;
-
-    // Rate limit: 10 spins per minute per wallet
-    const rl = rateLimit(`spin:${wallet}`, 10, 60_000);
+    // Rate limit: 10 spins por minuto por usuário autenticado
+    const rl = rateLimit(`spin:${userId}`, 10, 60_000);
     if (rl) return rl;
 
-    // Find/create user
-    const userId = await findOrCreateUserByWallet(wallet);
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -140,7 +139,7 @@ export async function POST(req: NextRequest) {
       select: { address: true, network: true, isPrimary: true },
     });
     const userSolanaWallet = selectPayoutWallet(payoutWallets, "SOLANA");
-    const userLunesWallet = selectPayoutWallet(payoutWallets, "LUNES") ?? wallet;
+    const userLunesWallet = selectPayoutWallet(payoutWallets, "LUNES");
 
     // ── Server-side prize determination with DB-backed daily caps ──
     const prize = await pickPrizeServer();
@@ -214,7 +213,7 @@ export async function POST(req: NextRequest) {
 
     // ── LUNES — send immediately on-chain to user's Lunes wallet address ──
     let lunesTxHash: string | undefined;
-    if (prize.sublabel === "LUNES") {
+    if (prize.sublabel === "LUNES" && userLunesWallet) {
       const lunesAmount = parseFloat(prize.label);
       const payoutResult = await sendLunesToUser(userLunesWallet, lunesAmount);
       if (!payoutResult.success) {
@@ -269,7 +268,7 @@ export async function POST(req: NextRequest) {
               earnedPoints,
               verifiedAt: new Date(),
               proofMetadata: JSON.stringify({
-                wallet,
+                wallet: userLunesWallet,
                 prizeIndex: prize.index,
                 prizeLabel: prize.label,
                 tier: prize.tier,

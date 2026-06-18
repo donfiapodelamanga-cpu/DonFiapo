@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { recordReferral } from "@/lib/missions/referral-service";
 import { findOrCreateUserByWallet } from "@/lib/missions/service";
 import { resolveReferrerCode } from "@/lib/missions/referral-resolver";
+import { requireUserSession } from "@/lib/server/user-session";
 
 /**
  * POST /api/referral
@@ -89,10 +90,12 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get("userId");
-    if (!userId) {
-      return NextResponse.json({ error: "userId required" }, { status: 400 });
+    // Auditoria #6 (IDOR): userId vem da sessão, nunca da query string.
+    const session = requireUserSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
+    const userId = session.userId;
 
     const referral = await db.referral.findUnique({
       where: { referredId: userId },
