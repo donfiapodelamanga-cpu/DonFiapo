@@ -180,7 +180,41 @@ async function initialize(): Promise<void> {
  */
 export function createServer(): express.Application {
   const app = express();
+
+  // Auditoria #13/#15: anti-fingerprint + confiar no proxy (Nginx/Cloudflare) para
+  // que req.ip seja o IP real do cliente (rate limit eficaz).
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
+
   app.use(express.json());
+
+  // Auditoria #13: security headers (servico de API, sem HTML — headers basicos).
+  app.use((_req: Request, res: Response, next: express.NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+  });
+
+  // Auditoria #14: CORS restritivo por allowlist (nunca '*').
+  const allowedOrigins = (process.env.ORACLE_ALLOWED_ORIGINS ||
+    'http://localhost:3000,http://localhost:3002,http://localhost:3003')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  app.use((req: Request, res: Response, next: express.NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+    }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
 
   // Apply Rate Limiting globally
   app.use(rateLimiter);
