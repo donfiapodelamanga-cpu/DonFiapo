@@ -13,6 +13,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import { timingSafeEqual, createHash } from 'crypto';
 import { SolanaVerifier } from './solana-verifier';
 import { LunesContractClient, ConfirmPaymentResult } from './lunes-contract';
 import { PaymentRepository, PendingPayment } from './db';
@@ -37,9 +38,27 @@ const config = {
   minConfirmations: parseInt(process.env.MIN_CONFIRMATIONS || '12', 10),
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || '10000', 10),
   port: parseInt(process.env.PORT || '3000', 10),
-  apiKey: process.env.ORACLE_API_KEY || 'dev-secret-key', // Default for dev only
+  apiKey: process.env.ORACLE_API_KEY || '', // SEM default fraco (auditoria #12)
   enableMock: process.env.ENABLE_MOCK_PAYMENTS === 'true',
 };
+
+// Auditoria 2026-06-18 — #11: comparacao de API key timing-safe (hash de tamanho fixo).
+export function apiKeyMatches(provided: unknown, expected: string): boolean {
+  if (typeof provided !== 'string' || !expected) return false;
+  const a = createHash('sha256').update(provided).digest();
+  const b = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+// Auditoria 2026-06-18 — #12: falhar fechado se a API key for ausente/fraca em modo real.
+export function assertApiKeyConfig(apiKey: string, enableMock: boolean): void {
+  if (enableMock) return;
+  if (!apiKey || apiKey.length < 32) {
+    throw new Error(
+      'ORACLE_API_KEY ausente ou < 32 caracteres. Configure uma chave forte (>=32) ou ENABLE_MOCK_PAYMENTS=true em dev.'
+    );
+  }
+}
 
 // Registro de pagamentos pendentes (em produção, use Redis ou DB)
 // interface PendingPayment mooved to db.ts
@@ -80,8 +99,7 @@ function rateLimiter(req: Request, res: Response, next: express.NextFunction) {
 
 // Authentication Middleware
 function authenticate(req: Request, res: Response, next: express.NextFunction) {
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey || apiKey !== config.apiKey) {
+  if (!apiKeyMatches(req.headers['x-api-key'], config.apiKey)) {
     res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
     return;
   }
@@ -377,6 +395,7 @@ async function main(): Promise<void> {
   });
 
   try {
+    assertApiKeyConfig(config.apiKey, config.enableMock);
     await initialize();
 
     const app = createServer();
