@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getRoleById } from "@/lib/auth-roles";
 import { createAdminSessionToken, setAdminSessionCookie } from "@/lib/server/admin-auth";
 import { verifyPassword } from "@/lib/server/password";
+import { checkLoginRateLimit, recordLoginFailure, resetLoginRateLimit } from "@/lib/server/login-rate-limit";
 
 function normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
@@ -32,6 +33,18 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Senha inválida" }, { status: 400 });
         }
 
+        // Rate limiting anti brute-force (auditoria #10), por IP + email.
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        const rlKey = `${ip}:${email}`;
+        const now = Date.now();
+        const rl = checkLoginRateLimit(rlKey, now);
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: "Muitas tentativas. Tente novamente mais tarde." },
+                { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+            );
+        }
+
         // 1) DB-backed admin login (preferred)
         const dbUser = await prisma.adminUser.findUnique({ where: { email } });
         if (dbUser) {
@@ -39,8 +52,10 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: "Usuário suspenso" }, { status: 403 });
             }
             if (!dbUser.passwordHash || !verifyPassword(password, dbUser.passwordHash)) {
+                recordLoginFailure(rlKey, now);
                 return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
             }
+            resetLoginRateLimit(rlKey);
 
             const roleDef = getRoleById(dbUser.role);
             const token = createAdminSessionToken({ id: dbUser.id, email: dbUser.email, role: dbUser.role });
@@ -70,6 +85,7 @@ export async function POST(request: NextRequest) {
         const validPassword = process.env.ADMIN_PASSWORD;
 
         if (email === validEmail && password === validPassword) {
+            resetLoginRateLimit(rlKey);
             const token = createAdminSessionToken({
                 id: "env-admin",
                 email: validEmail,
@@ -91,6 +107,7 @@ export async function POST(request: NextRequest) {
             return response;
         }
 
+        recordLoginFailure(rlKey, now);
         return NextResponse.json(
             { error: "Credenciais inválidas" },
             { status: 401 }
