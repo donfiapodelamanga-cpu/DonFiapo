@@ -213,3 +213,37 @@ Soma: `100 - 150 - 200 - 130 - 25 + 5 + 5 = -395` -> **piso 0**.
 - contratos: `overflow-checks=true` (release+dev) + `saturating_*` consistente (pendencia do PLANO_DE_ACAO ja corrigida); core PSP22 com `ensure_owner`/minter/burner; timelock gated; governance com replay de tx_hash.
 
 **Vulnerabilidades abertas (contam no score):** 5 Criticas + 10 Altas + 13 Medias + 5 Baixas, detalhadas na Secao 2.
+
+---
+
+## 6. Status de Remediacao (branch `security-audit-2026-06-18`)
+
+Atualizado apos a corrida de remediacao. Cada item abaixo foi corrigido **com teste** e verificado (testes ink/unit verdes + wasm build dos contratos alterados).
+
+### Criticas — 5/5 FECHADAS
+- **C1** ICO.mint_paid: removido/gated por confirmacao do oracle on-chain.
+- **C2** ABI de retorno do oracle multisig: decodifica `Result` real do callee (sem sucesso silencioso).
+- **C3** mint bypass no oracle-service: somente `transferChecked` com mint USDT validado (inclusive inner).
+- **C4** RBAC server-side nas rotas financeiras do admin.
+- **C5** missions/verify do admin com `requireAdminAuth` antes do proxy privilegiado.
+
+### Altas — 10/10 FECHADAS
+A1 allowlist noble/rewards; A2 1-pessoa-1-voto em governance; A3 reserva atomica anti-TOCTOU; A4 API key timing-safe; A5 remocao de default fraco + gate de forca; A6 sessao proof-of-ownership no web; A7 IDOR fechado em migration/referral; A8 rate limiting no login admin; A9 RBAC em tokenomics; A10 permissao por rota (missions/collections).
+
+### Medias — 13/13 FECHADAS
+- Quorum floor no construtor do oracle_multisig.
+- **CSP web** + **CSP/HSTS/headers admin** + **Helmet oracle** + **CORS allowlist oracle** + **trust proxy oracle** (cluster de transporte, validado no navegador).
+- **spin_purchase `expectedSender`** obrigatorio (anti front-running).
+- **admin** sessao/segredos timing-safe (`timingSafeEqual`) + rate limit no login.
+- **M-a** oracle nao vaza `error.message` na resposta (detalhe so no log server-side).
+- **M-b** tokens X (access/refresh) criptografados em repouso (AES-256-GCM, `enc:v1:`), com passthrough de legado para migracao gradual; requer `X_TOKEN_ENCRYPTION_KEY`.
+- **M-c** lottery: RNG **commit-reveal** (commit `keccak256(secret)` antes, reveal em bloco posterior) + elegibilidade restrita a participantes reais (`user_tickets>0`).
+- **M-d** spin_game: hardening de entropia (segredo rotativo do owner + acumulador de estado misturados ao keccak).
+- **M-e** oracle: tabela de preco on-chain valida `amount_usdt` vs item concedido (deixa de confiar cegamente no payload).
+
+> **Limitacao conhecida (RNG on-chain):** ink! 4.3 nesta chain nao expoe VRF. Commit-reveal (lottery) e o hardening de entropia (spin_game) **elevam significativamente a barra** contra previsao/grinding, mas **nao sao resistentes a um validator malicioso** que controle a producao do bloco. O RNG autoritativo do spin permanece server-side. Para garantia forte, integrar um oraculo de aleatoriedade/VRF e trabalho de milestone futuro.
+
+> **Operacional (M-e):** a tabela de preco vem com preco/piso 0 (sem enforcement) para nao quebrar deploys existentes. **Apos deploy, o owner DEVE configurar** `set_nft_tier_price`/`set_lottery_ticket_price`/`set_min_staking_usdt` para ativar o enforcement on-chain.
+
+### Baixas
+Reavaliar/registrar como divida tecnica priorizada (overpayment de marketplace; `set_code_hash` no upgrade; CORS wildcard apenas para enderecos publicos; rate limiter web por chave do cliente; fallback `ADMIN_PASSWORD`). Nenhuma e bloqueante para o gate de release das criticas/altas.
