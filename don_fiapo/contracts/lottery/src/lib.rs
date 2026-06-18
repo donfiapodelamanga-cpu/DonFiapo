@@ -34,6 +34,12 @@ mod fiapo_lottery {
         TooEarlyForDraw,
         Unauthorized,
         AlreadyExecuted,
+        /// Nenhum commitment de seed registrado antes do sorteio.
+        NoCommitment,
+        /// O `secret` revelado nao corresponde ao commitment.
+        InvalidReveal,
+        /// Reveal no mesmo bloco do commit (entropia de bloco ainda conhecida).
+        RevealTooEarly,
     }
 
     /// Configuração do sorteio
@@ -124,6 +130,10 @@ mod fiapo_lottery {
         user_tickets: Mapping<AccountId, u32>,
         /// Lista de participantes do próximo sorteio
         participants: Vec<AccountId>,
+        /// Commit-reveal: keccak256(secret) registrado pelo owner antes do sorteio.
+        draw_commitment: Option<[u8; 32]>,
+        /// Bloco em que o commitment foi registrado (reveal precisa vir depois).
+        commit_block: u32,
     }
 
     impl FiapoLottery {
@@ -151,6 +161,8 @@ mod fiapo_lottery {
                 annual_fund: 0,
                 user_tickets: Mapping::default(),
                 participants: Vec::new(),
+                draw_commitment: None,
+                commit_block: 0,
             }
         }
 
@@ -267,11 +279,36 @@ mod fiapo_lottery {
 
         // ==================== Draw Functions ====================
 
-        /// Executa sorteio mensal
+        /// Registra o commitment keccak256(secret) do sorteio (apenas owner).
+        ///
+        /// Commit-reveal: o owner commita `keccak256(secret)` ANTES do sorteio
+        /// (idealmente em bloco anterior). No sorteio ele revela `secret`; o
+        /// contrato valida o hash e exige que o reveal venha em bloco posterior,
+        /// de forma que a entropia do bloco do sorteio nao seja conhecida no
+        /// momento do commit. Isso eleva a barra contra previsao/grinding do RNG
+        /// (nao e VRF; ver auditoria 2026-06-18).
+        #[ink(message)]
+        pub fn commit_draw_seed(&mut self, commitment: [u8; 32]) -> Result<(), LotteryError> {
+            if self.env().caller() != self.owner {
+                return Err(LotteryError::Unauthorized);
+            }
+            self.draw_commitment = Some(commitment);
+            self.commit_block = self.env().block_number();
+            Ok(())
+        }
+
+        /// Retorna o commitment de sorteio pendente (se houver).
+        #[ink(message)]
+        pub fn get_draw_commitment(&self) -> Option<[u8; 32]> {
+            self.draw_commitment
+        }
+
+        /// Executa sorteio mensal. `secret` deve corresponder ao commitment.
         #[ink(message)]
         pub fn execute_monthly_draw(
             &mut self,
             eligible_wallets: Vec<(AccountId, Balance)>,
+            secret: Vec<u8>,
         ) -> Result<DrawResult, LotteryError> {
             let caller = self.env().caller();
             let current = self.env().block_timestamp();
@@ -295,6 +332,7 @@ mod fiapo_lottery {
                 self.monthly_fund,
                 LotteryType::Monthly,
                 &self.monthly_config.clone(),
+                &secret,
             )?;
 
             self.monthly_fund = 0;
@@ -303,11 +341,12 @@ mod fiapo_lottery {
             Ok(result)
         }
 
-        /// Executa sorteio de Natal
+        /// Executa sorteio de Natal. `secret` deve corresponder ao commitment.
         #[ink(message)]
         pub fn execute_christmas_draw(
             &mut self,
             eligible_wallets: Vec<(AccountId, Balance)>,
+            secret: Vec<u8>,
         ) -> Result<DrawResult, LotteryError> {
             let caller = self.env().caller();
             let current = self.env().block_timestamp();
@@ -331,6 +370,7 @@ mod fiapo_lottery {
                 self.annual_fund,
                 LotteryType::Christmas,
                 &self.christmas_config.clone(),
+                &secret,
             )?;
 
             self.annual_fund = 0;
@@ -346,18 +386,38 @@ mod fiapo_lottery {
             fund: Balance,
             lottery_type: LotteryType,
             config: &LotteryConfig,
+            secret: &[u8],
         ) -> Result<DrawResult, LotteryError> {
-            // Filtra elegíveis
+            // Commit-reveal: valida o secret contra o commitment registrado e exige
+            // que o reveal venha em bloco posterior ao commit (audit 2026-06-18).
+            let commitment = self.draw_commitment.ok_or(LotteryError::NoCommitment)?;
+            if Self::keccak_of(secret) != commitment {
+                return Err(LotteryError::InvalidReveal);
+            }
+            if self.env().block_number() <= self.commit_block {
+                return Err(LotteryError::RevealTooEarly);
+            }
+
+            // Filtra elegíveis: dentro da faixa de saldo E participante real
+            // (comprou ticket via Oracle). Impede o owner de injetar carteiras
+            // que nunca participaram (audit 2026-06-18).
             let eligible: Vec<_> = wallets.into_iter()
-                .filter(|(_, bal)| *bal >= config.min_balance && *bal <= config.max_balance)
+                .filter(|(wallet, bal)| {
+                    *bal >= config.min_balance
+                        && *bal <= config.max_balance
+                        && self.user_tickets.get(*wallet).unwrap_or(0) > 0
+                })
                 .collect();
 
             if eligible.len() < 3 {
                 return Err(LotteryError::NotEnoughParticipants);
             }
 
-            // Seleciona 3 ganhadores pseudo-aleatórios
-            let winners = self.select_winners(eligible.clone(), 3);
+            // Seleciona 3 ganhadores via RNG commit-reveal + entropia de bloco
+            let winners = self.select_winners(eligible.clone(), 3, secret, self.next_lottery_id);
+
+            // Consome o commitment (uso único por sorteio)
+            self.draw_commitment = None;
 
             // Calcula prêmios
             let first_prize = fund.saturating_mul(config.first_place_bps as u128).saturating_div(10000);
@@ -417,8 +477,16 @@ mod fiapo_lottery {
             }
         }
 
-        /// Seleciona ganhadores pseudo-aleatórios
-        fn select_winners(&self, mut wallets: Vec<(AccountId, Balance)>, count: usize) -> Vec<AccountId> {
+        /// Seleciona ganhadores combinando o `secret` revelado (commit-reveal) com
+        /// a entropia do bloco do sorteio, com separação de domínio por sorteio e
+        /// por posição. Cada índice usa keccak256(secret, block, time, draw_id, pick).
+        fn select_winners(
+            &self,
+            mut wallets: Vec<(AccountId, Balance)>,
+            count: usize,
+            secret: &[u8],
+            draw_id: u64,
+        ) -> Vec<AccountId> {
             let mut winners = Vec::new();
             let block = self.env().block_number();
             let time = self.env().block_timestamp();
@@ -427,18 +495,43 @@ mod fiapo_lottery {
                 if wallets.is_empty() {
                     break;
                 }
-                
-                let seed = (block as u64).saturating_add(time).saturating_add(i as u64);
-                if wallets.is_empty() {
-                    break;
-                }
                 let len = wallets.len() as u64;
-                let idx = (seed.checked_rem(len).unwrap_or(0)) as usize;
+                let idx = Self::derive_winner_index(secret, block, time, draw_id, i as u64, len);
                 let (winner, _) = wallets.remove(idx);
                 winners.push(winner);
             }
 
             winners
+        }
+
+        /// keccak256 de um buffer arbitrário (helper puro para commit-reveal).
+        fn keccak_of(secret: &[u8]) -> [u8; 32] {
+            let mut output = <[u8; 32]>::default();
+            ink::env::hash_bytes::<ink::env::hash::Keccak256>(secret, &mut output);
+            output
+        }
+
+        /// Deriva um índice de ganhador determinístico a partir do seed misturado.
+        /// Função pura/associada para permitir teste unitário do RNG.
+        fn derive_winner_index(
+            secret: &[u8],
+            block: u32,
+            time: u64,
+            draw_id: u64,
+            pick: u64,
+            len: u64,
+        ) -> usize {
+            if len == 0 {
+                return 0;
+            }
+            let seed_data = (secret, block, time, draw_id, pick);
+            let mut output = <[u8; 32]>::default();
+            ink::env::hash_encoded::<ink::env::hash::Keccak256, _>(&seed_data, &mut output);
+            let val = u64::from_le_bytes([
+                output[0], output[1], output[2], output[3],
+                output[4], output[5], output[6], output[7],
+            ]);
+            val.checked_rem(len).unwrap_or(0) as usize
         }
     }
 
@@ -465,11 +558,130 @@ mod fiapo_lottery {
         fn config_defaults_correct() {
             let accounts = default_accounts();
             let contract = FiapoLottery::new(accounts.charlie);
-            
+
             let config = contract.get_monthly_config();
             assert_eq!(config.first_place_bps, 5000);
             assert_eq!(config.second_place_bps, 3000);
             assert_eq!(config.third_place_bps, 2000);
+        }
+
+        // ---------- Commit-reveal RNG (audit 2026-06-18) ----------
+
+        fn set_caller(who: AccountId) {
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(who);
+        }
+
+        #[ink::test]
+        fn derive_winner_index_is_deterministic_and_in_range() {
+            let secret = b"a-good-secret";
+            // Determinismo: mesmas entradas -> mesmo indice.
+            let a = FiapoLottery::derive_winner_index(secret, 100, 9_999, 1, 0, 7);
+            let b = FiapoLottery::derive_winner_index(secret, 100, 9_999, 1, 0, 7);
+            assert_eq!(a, b);
+            // Sempre dentro de [0, len).
+            for pick in 0..50u64 {
+                let idx = FiapoLottery::derive_winner_index(secret, 100, 9_999, 1, pick, 7);
+                assert!(idx < 7);
+            }
+        }
+
+        #[ink::test]
+        fn derive_winner_index_is_sensitive_to_secret() {
+            // Segredos diferentes devem produzir distribuicoes diferentes:
+            // ao menos um pick difere entre dois secrets.
+            let mut differs = false;
+            for pick in 0..16u64 {
+                let x = FiapoLottery::derive_winner_index(b"secret-one", 1, 1, 1, pick, 1000);
+                let y = FiapoLottery::derive_winner_index(b"secret-two", 1, 1, 1, pick, 1000);
+                if x != y {
+                    differs = true;
+                    break;
+                }
+            }
+            assert!(differs);
+        }
+
+        #[ink::test]
+        fn keccak_commitment_roundtrip() {
+            let secret = b"reveal-me";
+            let commitment = FiapoLottery::keccak_of(secret);
+            assert_eq!(FiapoLottery::keccak_of(secret), commitment);
+            assert_ne!(FiapoLottery::keccak_of(b"other"), commitment);
+        }
+
+        #[ink::test]
+        fn commit_draw_seed_requires_owner() {
+            let accounts = default_accounts();
+            // owner = caller do construtor (alice por padrao)
+            let mut contract = FiapoLottery::new(accounts.charlie);
+            set_caller(accounts.bob);
+            assert_eq!(
+                contract.commit_draw_seed([1u8; 32]),
+                Err(LotteryError::Unauthorized)
+            );
+        }
+
+        fn prime_for_monthly_draw(contract: &mut FiapoLottery) {
+            // Avanca o tempo alem do intervalo mensal e provê fundo.
+            // O numero de bloco começa em 0 nos testes (commit_block sera 0 ao commitar).
+            ink::env::test::set_block_timestamp::<ink::env::DefaultEnvironment>(3_000_000_000);
+            let _ = contract.add_monthly_fund(1_000_000);
+        }
+
+        #[ink::test]
+        fn draw_without_commitment_is_rejected() {
+            let accounts = default_accounts();
+            let mut contract = FiapoLottery::new(accounts.charlie);
+            prime_for_monthly_draw(&mut contract);
+            assert_eq!(
+                contract.execute_monthly_draw(Vec::new(), b"x".to_vec()),
+                Err(LotteryError::NoCommitment)
+            );
+        }
+
+        #[ink::test]
+        fn draw_with_wrong_secret_is_rejected() {
+            let accounts = default_accounts();
+            let mut contract = FiapoLottery::new(accounts.charlie);
+            prime_for_monthly_draw(&mut contract);
+            contract.commit_draw_seed(FiapoLottery::keccak_of(b"correct")).unwrap();
+            ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
+            assert_eq!(
+                contract.execute_monthly_draw(Vec::new(), b"wrong".to_vec()),
+                Err(LotteryError::InvalidReveal)
+            );
+        }
+
+        #[ink::test]
+        fn draw_revealed_same_block_is_rejected() {
+            let accounts = default_accounts();
+            let mut contract = FiapoLottery::new(accounts.charlie);
+            prime_for_monthly_draw(&mut contract); // commit_block sera 10
+            contract.commit_draw_seed(FiapoLottery::keccak_of(b"correct")).unwrap();
+            // Reveal no MESMO bloco do commit -> RevealTooEarly (entropia conhecida).
+            assert_eq!(
+                contract.execute_monthly_draw(Vec::new(), b"correct".to_vec()),
+                Err(LotteryError::RevealTooEarly)
+            );
+        }
+
+        #[ink::test]
+        fn draw_rejects_non_participant_wallets() {
+            let accounts = default_accounts();
+            let mut contract = FiapoLottery::new(accounts.charlie);
+            prime_for_monthly_draw(&mut contract);
+            contract.commit_draw_seed(FiapoLottery::keccak_of(b"correct")).unwrap();
+            ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
+            // Carteiras com saldo valido mas que NUNCA compraram ticket: nao elegiveis.
+            let fake = ink::prelude::vec![
+                (accounts.bob, 5_000 * 100_000_000),
+                (accounts.eve, 5_000 * 100_000_000),
+                (accounts.frank, 5_000 * 100_000_000),
+            ];
+            assert_eq!(
+                contract.execute_monthly_draw(fake, b"correct".to_vec()),
+                Err(LotteryError::NotEnoughParticipants)
+            );
         }
     }
 }
