@@ -187,6 +187,8 @@ mod fiapo_rewards {
         total_distributed: Balance,
         /// Último ranking mensal
         last_monthly_ranking: u64,
+        /// Contratos autorizados a adicionar fundos (auditoria 2026-06-18, alta #4)
+        authorized_funders: Mapping<AccountId, bool>,
     }
 
     impl FiapoRewards {
@@ -204,6 +206,7 @@ mod fiapo_rewards {
                 rewards_fund: 0,
                 total_distributed: 0,
                 last_monthly_ranking: 0,
+                authorized_funders: Mapping::default(),
             };
             
             // Inicializa configurações padrão
@@ -305,9 +308,24 @@ mod fiapo_rewards {
         /// Adiciona fundos ao pool de recompensas
         #[ink(message)]
         pub fn add_rewards_fund(&mut self, amount: Balance) -> Result<(), RewardsError> {
-            // Permite que qualquer contrato ou usuário adicione fundos
-            // O valor deve ter sido transferido via Core::transfer
+            // SEGURANCA (auditoria #4): apenas owner ou contratos autorizados (staking,
+            // governance) podem creditar o fundo — antes qualquer conta inflava o pool
+            // e distorcia o ranking. O valor deve ter sido transferido via Core::transfer.
+            let caller = self.env().caller();
+            if caller != self.owner && !self.authorized_funders.get(caller).unwrap_or(false) {
+                return Err(RewardsError::Unauthorized);
+            }
             self.rewards_fund = self.rewards_fund.saturating_add(amount);
+            Ok(())
+        }
+
+        /// Autoriza/revoga um contrato a adicionar fundos (apenas owner). Auditoria #4.
+        #[ink(message)]
+        pub fn set_authorized_funder(&mut self, funder: AccountId, authorized: bool) -> Result<(), RewardsError> {
+            if self.env().caller() != self.owner {
+                return Err(RewardsError::Unauthorized);
+            }
+            self.authorized_funders.insert(funder, &authorized);
             Ok(())
         }
 
@@ -511,6 +529,23 @@ mod fiapo_rewards {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let contract = FiapoRewards::new(accounts.charlie);
             assert_eq!(contract.total_distributed(), 0);
+        }
+
+        // Auditoria #4: add_rewards_fund exige owner ou funder autorizado.
+        #[ink::test]
+        fn add_rewards_fund_requires_authorization() {
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let set = |c| ink::env::test::set_caller::<ink::env::DefaultEnvironment>(c);
+            // owner = caller default (alice) no construtor
+            let mut contract = FiapoRewards::new(accounts.charlie);
+            // caller nao autorizado -> rejeitado
+            set(accounts.eve);
+            assert_eq!(contract.add_rewards_fund(1000), Err(RewardsError::Unauthorized));
+            // owner autoriza eve -> agora passa
+            set(accounts.alice);
+            contract.set_authorized_funder(accounts.eve, true).unwrap();
+            set(accounts.eve);
+            assert!(contract.add_rewards_fund(1000).is_ok());
         }
     }
 }

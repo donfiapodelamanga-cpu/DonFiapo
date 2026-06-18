@@ -73,6 +73,8 @@ async function main() {
   const staking = new ContractPromise(api, load('fiapo_staking').abi, addr.STAKING)
   const oracle = new ContractPromise(api, load('fiapo_oracle_multisig').abi, addr.ORACLE)
   const governance = new ContractPromise(api, load('fiapo_governance').abi, addr.GOVERNANCE)
+  const rewards = new ContractPromise(api, load('fiapo_rewards').abi, addr.REWARDS)
+  const noble = new ContractPromise(api, load('noble_affiliate').abi, addr.NOBLE)
 
   const wire = async (label, p) => { const r = await p; console.log(`  ${label}: ${r.ok ? 'ok' : 'FALHOU ' + (r.error || '').slice(0, 80)}`) }
   await wire('ico.setOracleContract', call(api, alice, ico, 'setOracleContract', addr.ORACLE))
@@ -83,6 +85,11 @@ async function main() {
   await wire('oracle.setContractAddress(lottery)', call(api, alice, oracle, 'setContractAddress', 'lottery', addr.LOTTERY))
   await wire('oracle.setContractAddress(governance)', call(api, alice, oracle, 'setContractAddress', 'governance', addr.GOVERNANCE))
   await wire('governance.setLinkedContracts', call(api, alice, governance, 'setLinkedContracts', addr.STAKING, addr.REWARDS, addr.ORACLE, addr.NOBLE, null, null))
+  // Allowlists de caller (auditoria #1, #4): autoriza os contratos-fonte legitimos.
+  await wire('rewards.setAuthorizedFunder(staking)', call(api, alice, rewards, 'setAuthorizedFunder', addr.STAKING, true))
+  await wire('rewards.setAuthorizedFunder(governance)', call(api, alice, rewards, 'setAuthorizedFunder', addr.GOVERNANCE, true))
+  await wire('noble.setAuthorizedSource(ico)', call(api, alice, noble, 'setAuthorizedSource', addr.ICO, true))
+  await wire('noble.setAuthorizedSource(staking)', call(api, alice, noble, 'setAuthorizedSource', addr.STAKING, true))
 
   // --- Persistir endereços ---
   const envLines = Object.entries(addr).map(([k, v]) => `${k}=${v}`).join('\n') + '\n'

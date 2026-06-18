@@ -161,6 +161,8 @@ mod noble_affiliate {
 
         payout_interval: Timestamp,
         last_payout: Timestamp,
+        /// Contratos-fonte autorizados a registrar receita (auditoria 2026-06-18, alta #1)
+        authorized_sources: Mapping<AccountId, bool>,
     }
 
     impl OrderOfNobles {
@@ -174,8 +176,9 @@ mod noble_affiliate {
                 affiliate_code_to_noble: Mapping::default(),
                 commissions: Mapping::default(),
                 referral_history: Mapping::default(),
-                payout_interval: 15 * 24 * 60 * 60 * 1000, 
+                payout_interval: 15 * 24 * 60 * 60 * 1000,
                 last_payout: Self::env().block_timestamp(),
+                authorized_sources: Mapping::default(),
             }
         }
 
@@ -271,6 +274,13 @@ mod noble_affiliate {
             base_amount: Balance,
             payer: AccountId, // New Argument for tracking
         ) -> Result<(), NobleError> {
+            // SEGURANCA (auditoria #1): apenas owner ou contratos-fonte autorizados
+            // (ico, staking, marketplace) podem registrar receita — antes qualquer conta
+            // inflava comissoes arbitrariamente.
+            let caller = self.env().caller();
+            if caller != self.owner && !self.authorized_sources.get(caller).unwrap_or(false) {
+                return Err(NobleError::Unauthorized);
+            }
             let noble_wallet = self.affiliate_code_to_noble.get(affiliate_code).ok_or(NobleError::NobleNotFound)?;
             let mut noble = self.nobles.get(noble_wallet).ok_or(NobleError::NobleNotFound)?;
             
@@ -302,6 +312,14 @@ mod noble_affiliate {
             
             self.commissions.insert(noble_wallet, &commission);
 
+            Ok(())
+        }
+
+        /// Autoriza/revoga um contrato-fonte a registrar receita (apenas owner). Auditoria #1.
+        #[ink(message)]
+        pub fn set_authorized_source(&mut self, source: AccountId, authorized: bool) -> Result<(), NobleError> {
+            self.only_owner()?;
+            self.authorized_sources.insert(source, &authorized);
             Ok(())
         }
 
@@ -458,11 +476,25 @@ mod noble_affiliate {
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(caller);
         }
 
+        // Auditoria #1: caller nao autorizado nao pode registrar receita.
+        #[ink::test]
+        fn register_revenue_rejects_unauthorized_caller() {
+            let accounts = default_accounts();
+            let mut contract = OrderOfNobles::new(accounts.django);
+            set_caller(accounts.eve); // nao e owner nem fonte autorizada
+            let code = Hash::from([0x11u8; 32]);
+            assert_eq!(
+                contract.register_revenue(code, RevenueSource::IcoNft, 1000, accounts.frank),
+                Err(NobleError::Unauthorized)
+            );
+        }
+
         #[ink::test]
         fn e2e_activation_flow_works() {
             // 1. Setup
             let accounts = default_accounts();
             let mut contract = OrderOfNobles::new(accounts.django); // Django as Core
+            contract.set_authorized_source(accounts.eve, true).unwrap(); // auditoria #1: autoriza fonte de teste
             ink::env::test::set_block_timestamp::<ink::env::DefaultEnvironment>(1672531200000); // Set to non-zero (Jan 1 2023)
             
             // 2. Add Commercial (Alice -> Bob)
@@ -567,6 +599,7 @@ mod noble_affiliate {
         fn test_revenue_and_payout() {
             let accounts = default_accounts();
             let mut contract = OrderOfNobles::new(accounts.django);
+            contract.set_authorized_source(accounts.eve, true).unwrap(); // auditoria #1: autoriza fonte de teste
             
             set_caller(accounts.alice);
             contract.add_commercial(accounts.bob).unwrap();
@@ -607,6 +640,7 @@ mod noble_affiliate {
         fn test_solana_redundancy_flow() {
             let accounts = default_accounts();
             let mut contract = OrderOfNobles::new(accounts.django);
+            contract.set_authorized_source(accounts.eve, true).unwrap(); // auditoria #1: autoriza fonte de teste
             
             set_caller(accounts.alice);
             contract.add_commercial(accounts.bob).unwrap();
